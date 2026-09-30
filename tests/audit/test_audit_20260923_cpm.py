@@ -10274,3 +10274,1112 @@ def test_a0923_cpm_047_a_lag0_ss_sf_bound_at_a_block_boundary_is_the_next_block_
         "a lag-0 SS / SF bound from a predecessor that starts on an internal block boundary is "
         f"read at the block END, before the predecessor starts: {wrong}"
     )
+
+
+# --- A0923-CPM-048 fragment -------------------------------------------------------------------
+# Relies on the module header of tests/audit/test_audit_20260923_cpm.py:
+#   imports    datetime as dt, re, pytest, TestClient (fastapi.testclient), Any (typing),
+#              compute_cpm and offset_to_datetime (schedule_forensics.engine.cpm),
+#              parse_mspdi_text (schedule_forensics.importers.mspdi),
+#              SessionState and create_app (schedule_forensics.web.app)
+#   helpers    _visible (the module's tag-stripping reader)
+#   fixture    the module-level autouse _air_gapped
+# The header needs NO edit. Inputs: inline MSPDI text built below (a hand file, not an MS Project
+# save). No fixture file; nothing CUI.
+
+_A0923_CPM_048_MON = dt.datetime(2026, 1, 5, 8, 0)  # Monday: the project start, A's and B's start
+_A0923_CPM_048_TIMES = (
+    "<WorkingTimes><WorkingTime><FromTime>08:00:00</FromTime><ToTime>12:00:00</ToTime>"
+    "</WorkingTime><WorkingTime><FromTime>13:00:00</FromTime><ToTime>17:00:00</ToTime>"
+    "</WorkingTime></WorkingTimes>"
+)
+_A0923_CPM_048_LINK = (
+    "<PredecessorLink><PredecessorUID>{p}</PredecessorUID><Type>1</Type><CrossProject>0"
+    "</CrossProject><LinkLag>0</LinkLag><LagFormat>7</LagFormat></PredecessorLink>"
+)
+
+
+def _a0923_cpm_048_mspdi(splits: int, saved_split: bool) -> str:
+    """The hand file: Standard calendar (Mon-Fri 08-12 / 13-17), start Mon 2026-01-05 08:00,
+    status date Wed 01-07 08:00. A (UID 1, 3 d, no predecessors) -FS0-> B (UID 2, 5 d, STARTED
+    OUT OF SEQUENCE: ActualStart Mon 01-05 08:00, 40 %, ActualDuration 16 h, RemainingDuration
+    24 h, Stop Tue 01-06 17:00) -FS0-> C (UID 3, 2 d). ``splits`` is written as the project's
+    ``<SplitsInProgressTasks>`` element. ``saved_split=False`` writes the stored dates the
+    arithmetic gives when B cannot be split (Resume Wed 01-07 08:00 = contiguous with its
+    Stop; B Finish Fri 01-09 17:00; C Mon 01-12 08:00 -> Tue 01-13 17:00; FinishDate Tue 01-13
+    17:00). ``saved_split=True`` writes the dates MS Project stores when the split is allowed
+    (Resume Thu 01-08 08:00, after A; B Finish Mon 01-12 17:00; C Tue 01-13 -> Wed 01-14;
+    FinishDate Wed 01-14 17:00) -- the control the engine reproduces today."""
+    resume = "2026-01-08T08:00:00" if saved_split else "2026-01-07T08:00:00"
+    b_finish = "2026-01-12T17:00:00" if saved_split else "2026-01-09T17:00:00"
+    c_start = "2026-01-13T08:00:00" if saved_split else "2026-01-12T08:00:00"
+    c_finish = "2026-01-14T17:00:00" if saved_split else "2026-01-13T17:00:00"
+    days = "".join(
+        f"<WeekDay><DayType>{d}</DayType><DayWorking>{int(2 <= d <= 6)}</DayWorking>"
+        + (_A0923_CPM_048_TIMES if 2 <= d <= 6 else "")
+        + "</WeekDay>"
+        for d in range(1, 8)
+    )
+    common = (
+        "<Type>1</Type><IsNull>0</IsNull><OutlineLevel>1</OutlineLevel><DurationFormat>7"
+        "</DurationFormat><Summary>0</Summary><Milestone>0</Milestone><Active>1</Active>"
+        "<Manual>0</Manual><Estimated>0</Estimated><ConstraintType>0</ConstraintType>"
+    )
+    tasks = (
+        f"<Task><UID>1</UID><ID>1</ID><Name>A</Name>{common}<Duration>PT24H0M0S</Duration>"
+        "<Start>2026-01-05T08:00:00</Start><Finish>2026-01-07T17:00:00</Finish>"
+        "<PercentComplete>0</PercentComplete><Critical>0</Critical><TotalSlack>0</TotalSlack>"
+        "<FreeSlack>0</FreeSlack></Task>"
+        f"<Task><UID>2</UID><ID>2</ID><Name>B</Name>{common}<Duration>PT40H0M0S</Duration>"
+        f"<Start>2026-01-05T08:00:00</Start><Finish>{b_finish}</Finish>"
+        "<PercentComplete>40</PercentComplete><ActualStart>2026-01-05T08:00:00</ActualStart>"
+        "<ActualDuration>PT16H0M0S</ActualDuration><RemainingDuration>PT24H0M0S"
+        f"</RemainingDuration><Stop>2026-01-06T17:00:00</Stop><Resume>{resume}</Resume>"
+        "<Critical>1</Critical><TotalSlack>0</TotalSlack><FreeSlack>0</FreeSlack>"
+        f"{_A0923_CPM_048_LINK.format(p=1)}</Task>"
+        f"<Task><UID>3</UID><ID>3</ID><Name>C</Name>{common}<Duration>PT16H0M0S</Duration>"
+        f"<Start>{c_start}</Start><Finish>{c_finish}</Finish>"
+        "<PercentComplete>0</PercentComplete><Critical>1</Critical><TotalSlack>0</TotalSlack>"
+        f"<FreeSlack>0</FreeSlack>{_A0923_CPM_048_LINK.format(p=2)}</Task>"
+    )
+    return (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<Project xmlns="http://schemas.microsoft.com/project"><SaveVersion>14</SaveVersion>'
+        "<Name>nosplit.xml</Name><Title>nosplit</Title><ScheduleFromStart>1</ScheduleFromStart>"
+        f"<StartDate>2026-01-05T08:00:00</StartDate><FinishDate>{c_finish}</FinishDate>"
+        "<CurrentDate>2026-01-07T08:00:00</CurrentDate><StatusDate>2026-01-07T08:00:00"
+        "</StatusDate><DefaultStartTime>08:00:00</DefaultStartTime><DefaultFinishTime>17:00:00"
+        "</DefaultFinishTime><MinutesPerDay>480</MinutesPerDay><MinutesPerWeek>2400"
+        "</MinutesPerWeek><DaysPerMonth>20</DaysPerMonth><CalendarUID>1</CalendarUID>"
+        f"<HonorConstraints>1</HonorConstraints><SplitsInProgressTasks>{splits}"
+        "</SplitsInProgressTasks><Calendars><Calendar><UID>1</UID><Name>Standard</Name>"
+        "<IsBaseCalendar>1</IsBaseCalendar><BaseCalendarUID>-1</BaseCalendarUID>"
+        f"<WeekDays>{days}</WeekDays></Calendar></Calendars><Tasks>{tasks}</Tasks>"
+        "<Resources/><Assignments/></Project>"
+    )
+
+
+def _a0923_cpm_048_engine(text: str) -> tuple[dict[int, tuple[int, int]], int, Any]:
+    """``parse_mspdi_text`` + ``compute_cpm`` on one hand file: (ES, EF) per UID in working
+    minutes from the project start, the project finish, and a renderer of an offset as the
+    schedule's own wall instant (for the failure messages only)."""
+    sch = parse_mspdi_text(text, source_file="nosplit.xml")
+    if sch.tasks_by_id[2].resume is None or sch.tasks_by_id[2].remaining_duration_minutes != 1440:
+        pytest.fail(
+            f"precondition: B's Resume / RemainingDuration did not import: {sch.tasks_by_id[2]}"
+        )
+    res = compute_cpm(sch)
+
+    def wall(offset: int) -> str:
+        return f"{offset_to_datetime(sch.project_start, offset, sch.calendar):%a %m-%d %H:%M}"
+
+    dates = {u: (t.early_start, t.early_finish) for u, t in res.timings.items()}
+    return dates, res.project_finish, wall
+
+
+def _a0923_cpm_048_served(text: str) -> dict[str, str | None]:
+    """The served app on one hand file: the finish date the /analysis takeaway sentence, the
+    /analysis KPI card and the /path KPI card print as the computed finish (MM/DD/YYYY)."""
+    state = SessionState()
+    client = TestClient(create_app(state))
+    up = client.post("/upload", files={"files": ("nosplit.xml", text.encode(), "text/xml")})
+    if up.status_code != 200 or list(state.schedules) != ["nosplit"]:
+        pytest.fail(
+            f"precondition: upload answered {up.status_code}, loaded {list(state.schedules)}"
+        )
+    pages = {}
+    for path in ("/analysis/nosplit", "/path"):
+        page = client.get(path)
+        if page.status_code != 200:
+            pytest.fail(f"precondition: {path} answered {page.status_code}")
+        pages[path] = _visible(page.text)
+    takeaway = re.search(r"computed finish (\d\d/\d\d/\d{4})", pages["/analysis/nosplit"])
+    kpi = re.search(r"(\d\d/\d\d/\d{4}) Computed finish", pages["/analysis/nosplit"])
+    path_kpi = re.search(r"(\d\d/\d\d/\d{4}) Computed finish", pages["/path"])
+    if takeaway is None or kpi is None or path_kpi is None:
+        pytest.fail(
+            f"precondition: a page no longer prints a computed finish: {takeaway} {kpi} {path_kpi}"
+        )
+    return {
+        "/analysis takeaway 'computed finish'": takeaway.group(1),
+        "/analysis KPI 'Computed finish'": kpi.group(1),
+        "/path KPI 'Computed finish'": path_kpi.group(1),
+    }
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason=(
+        "A0923-CPM-048: the project option <SplitsInProgressTasks> is never read (0 readers in "
+        "src/; flipping it on identical task data gives byte-identical output), and R-72's "
+        "restart = max(logic_restart, stored_restart) (cpm.py:2808; the wall path's twin :2666) "
+        "splits an out-of-sequence started activity's remaining work off its record even when "
+        "the file declares 0 (in-progress tasks cannot be split): B's remaining 3 d restarts at "
+        "A's finish (EF 2880 = Mon 01-12 17:00 for the contiguous 2400 = Fri 01-09 17:00), C and "
+        "the project finish follow (3840 = Wed 01-14 17:00 for 3360 = Tue 01-13 17:00, the file's "
+        "own FinishDate), and /analysis and /path print 01/14/2026 with no disclosure"
+    ),
+)
+def test_a0923_cpm_048_a_no_split_file_keeps_started_work_contiguous_from_its_resume() -> None:
+    """A0923-CPM-048 (finder id F-MODE-001) · CPM · T2 (lead) / T1 (finder) · latent,
+    option-gated: ``<SplitsInProgressTasks>`` = 1 on 44 of 44 corpus files (0 declare 0), so no
+    committed figure moves; an operator file saved with "Split in-progress tasks" OFF is exposed.
+
+    Claim (verifiers P1 and P5, reproduced as stated): at 78e20308 a hand MSPDI declaring
+    ``<SplitsInProgressTasks>0</SplitsInProgressTasks>`` (Standard 08-12 / 13-17, start Mon
+    2026-01-05 08:00; A 3 d -FS0-> B 5 d started OUT OF SEQUENCE -- ActualStart Mon 01-05 08:00,
+    40 %, 3 d remaining, Stop Tue 01-06 17:00, Resume Wed 01-07 08:00 contiguous, stored Finish
+    Fri 01-09 17:00 -FS0-> C 2 d stored Mon 01-12 -> Tue 01-13; FinishDate Tue 01-13 17:00) gives,
+    through ``parse_mspdi_text`` + ``compute_cpm``, B's remaining work SPLIT off its actual work
+    and restarted at A's finish: B EF 2880 (Mon 01-12 17:00), C 2880 -> 3840, project finish
+    3840 (Wed 01-14 17:00) -- one working day past the file's own FinishDate -- and the served
+    /analysis takeaway, /analysis KPI and /path KPI all print the computed finish 01/14/2026.
+    The option is never read: ``grep SplitsInProgress src/`` finds 0 readers, ``import_notes``
+    is empty, and the same task data under a flag of 1 gives byte-identical output.
+    Mechanism: R-72's restart rule ``restart = max(logic_restart, stored_restart)``
+    (``engine/cpm.py:2808``; the wall path's twin ``restart_w = max(logic_restart_w,
+    stored_restart_w)`` at ``:2666``) applies the link bound for the remaining unconditionally.
+
+    Authority: A1 -- Microsoft Learn, "SplitsInProgressTasks Element",
+    https://learn.microsoft.com/office-project/xml-data-interchange/splitsinprogresstasks-element?view=project-client-2016
+    (retrieved 2026-09-30): "Indicates whether in-progress tasks can be split. ... 0 | False.
+    1 | True"; "ProjectRow.PROJ_OPT_SPLIT_IN_PROGRESS",
+    https://learn.microsoft.com/dotnet/api/websvcstatusing.projectdataset.projectrow.proj_opt_split_in_progress?view=office-project-server
+    (retrieved 2026-09-30): "True if in-progress tasks can be split; otherwise, false.
+    PROJ_OPT_SPLIT_IN_PROGRESS maps to the Split in-progress option on the Schedule tab of the
+    Options dialog box in Project Professional. ... the default value is true"; Project Online
+    export data definitions (retrieved 2026-09-30): "ProjectSplitTasksInProgress -- Indicated
+    whether to Allow rescheding [sic] of remaining duration and work when a task slips or
+    reports progress ahead of schedule." A2 -- the repo's own rule and its recorded premise,
+    ``docs/adr/0513-...md:27``: "MS Project's rule for a started activity is Finish = Resume +
+    RemainingDuration on its execution calendar | held. ... 1,113 of 1,159"; ``:28``: "every
+    started activity carries a Resume; every file was scheduled with split-in-progress on |
+    held. ... SplitsInProgressTasks = 1 on 44 of 44 files" -- the option is a measured
+    ASSUMPTION of the corpus, not a decision to ignore it. Hand arithmetic (working minutes):
+    A 0 -> 1440 (Mon 08:00 -> Wed 17:00); B cannot be split, so its remaining 1440 runs
+    contiguously from its stored Resume (offset 960, Wed 01-07 08:00): EF 960 + 1440 = 2400 =
+    Fri 01-09 17:00; C 2400 -> 3360 = Mon 01-12 08:00 -> Tue 01-13 17:00; project finish 3360 =
+    Tue 01-13 17:00 -- exactly the stored Finish, C's stored dates and the FinishDate the hand
+    file carries. Independence: the expectation is Microsoft's definition of the element plus
+    that arithmetic; nothing the engine produced.
+
+    UNVERIFIED (ASK-19; the lead's ruling): MS Project desktop's EXACT placement of a non-split
+    in-progress activity whose predecessor finishes after its actual start, and its late-date /
+    Total Slack convention for the link the record violates -- no Learn page states it and no
+    committed MS Project save carries this shape (an MS Project save of this file would settle
+    B's stored Finish and TotalSlack). Hence NOT asserted: B's or A's late dates and float, and
+    the disclosure shape for the honoured option (an import note naming the declared mode is
+    U69's design). Controls (preconditions): the same network saved as MS Project saves it with
+    the split ALLOWED (flag 1, Resume Thu 01-08 08:00 after A, B Finish Mon 01-12, FinishDate
+    Wed 01-14) is reproduced exactly today (B 2880, C 3840, finish 3840) and must stay so; the
+    OFF file's task data under a flag of 1 gives the same split placement (R-72's rule for a
+    file that allows the split) -- so the harness measures the declared option, not the dates.
+    Siblings: A0923-CPM-049 (a STARTED manually-scheduled task moved by the same restart line;
+    same unit U69, a different authority). Runtime ~2 s (one upload).
+    """
+    # control 1: the split-ON save of the same network is reproduced today
+    on_dates, on_finish, _ = _a0923_cpm_048_engine(_a0923_cpm_048_mspdi(1, saved_split=True))
+    if (on_dates[2], on_dates[3], on_finish) != ((0, 2880), (2880, 3840), 3840):
+        pytest.fail(
+            "precondition (control): the split-ON file (Resume after A, MS Project's own "
+            f"placement) is no longer reproduced: B {on_dates[2]} C {on_dates[3]} "
+            f"finish {on_finish}"
+        )
+    # control 2: the OFF file's task data under a flag of 1 -- R-72 splits it (ADR-0513)
+    flip_dates, flip_finish, _ = _a0923_cpm_048_engine(_a0923_cpm_048_mspdi(1, saved_split=False))
+    if (flip_dates[2], flip_dates[3], flip_finish) != ((0, 2880), (2880, 3840), 3840):
+        pytest.fail(
+            "precondition (control): with splitting ALLOWED the remaining no longer restarts at "
+            f"A's finish: B {flip_dates[2]} C {flip_dates[3]} finish {flip_finish}"
+        )
+
+    off = _a0923_cpm_048_mspdi(0, saved_split=False)
+    dates, finish, wall = _a0923_cpm_048_engine(off)
+    if dates[1] != (0, 1440) or dates[2][0] != 0:
+        pytest.fail(f"precondition: A is not 0 -> 1440 or B does not start at its record: {dates}")
+    wrong: dict[str, str] = {}
+    hand = {2: (0, 2400), 3: (2400, 3360)}
+    for uid, want in hand.items():
+        if dates[uid] != want:
+            wrong[f"UID {uid} (ES, EF)"] = (
+                f"{dates[uid]} = {wall(dates[uid][0])} -> {wall(dates[uid][1])} "
+                f"(hand {want} = {wall(want[0])} -> {wall(want[1])})"
+            )
+    if finish != 3360:
+        wrong["project finish"] = (
+            f"{finish} = {wall(finish)} (hand 3360 = {wall(3360)}, the file's FinishDate)"
+        )
+    for surface, shown in _a0923_cpm_048_served(off).items():
+        if shown != "01/13/2026":
+            wrong[surface] = f"{shown} (the file's own finish 01/13/2026)"
+    assert not wrong, (
+        "a file declaring SplitsInProgressTasks=0 (in-progress tasks cannot be split) has its "
+        "started activity's remaining work split off its record and restarted at the late "
+        f"predecessor's finish, the option unread and undisclosed: {wrong}"
+    )
+
+
+# --- A0923-CPM-049 fragment -------------------------------------------------------------------
+# Relies on the module header of tests/audit/test_audit_20260923_cpm.py:
+#   imports    datetime as dt, pytest, Any (typing), TestClient (fastapi.testclient),
+#              quote (urllib.parse), compute_cpm and offset_to_datetime
+#              (schedule_forensics.engine.cpm), parse_mspdi_text
+#              (schedule_forensics.importers.mspdi), SessionState and create_app
+#              (schedule_forensics.web.app); the module-level ``_visible`` helper
+#   fixture    the module-level autouse _air_gapped
+# The header needs NO edit. Inputs: inline MSPDI text (built below). No fixture file; nothing CUI.
+
+_A0923_CPM_049_MON = dt.datetime(2026, 1, 5, 8, 0)  # Monday: the project start and A's start
+#: M started Mon 01-05 08:00, 40 %, 3 d (1,440 min) left; progress recorded through Tue 17:00 and
+#: the remaining resuming Wed 08:00 -- the same working instant (offset 960): contiguous, as MS
+#: Project writes every started task (ADR-0513: Resume on 1,159 of 1,159).
+_A0923_CPM_049_R72 = (
+    "<PercentComplete>40</PercentComplete><ActualStart>2026-01-05T08:00:00</ActualStart>"
+    "<ActualDuration>PT16H0M0S</ActualDuration><RemainingDuration>PT24H0M0S</RemainingDuration>"
+    "<Stop>2026-01-06T17:00:00</Stop><Resume>2026-01-07T08:00:00</Resume>"
+)
+#: the same progress with NO Stop / Resume (a source that records neither): R-72 is inert and
+#: plain logic alone places the task.
+_A0923_CPM_049_PLAIN = (
+    "<PercentComplete>40</PercentComplete><ActualStart>2026-01-05T08:00:00</ActualStart>"
+    "<ActualDuration>PT16H0M0S</ActualDuration><RemainingDuration>PT24H0M0S</RemainingDuration>"
+)
+#: M started IN sequence, Thu 01-08 08:00 (after A's Wed 17:00 finish), Stop Fri 17:00 / Resume
+#: Mon 01-12 08:00 (offset 2,400): stored ManualFinish Wed 01-14 17:00 = 2,400 + 1,440 = 3,840.
+_A0923_CPM_049_INSEQ = (
+    "<PercentComplete>40</PercentComplete><ActualStart>2026-01-08T08:00:00</ActualStart>"
+    "<ActualDuration>PT16H0M0S</ActualDuration><RemainingDuration>PT24H0M0S</RemainingDuration>"
+    "<Stop>2026-01-09T17:00:00</Stop><Resume>2026-01-12T08:00:00</Resume>"
+)
+
+
+def _a0923_cpm_049_mspdi(
+    manual: bool,
+    progress: str,
+    m_span: tuple[str, str] = ("2026-01-05T08:00:00", "2026-01-09T17:00:00"),
+    c_span: tuple[str, str] = ("2026-01-12T08:00:00", "2026-01-13T17:00:00"),
+    finish: str = "2026-01-13T17:00:00",
+) -> str:
+    """Standard (UID 1, Mon-Fri 08-12/13-17), start Mon 2026-01-05 08:00. A (UID 1, 24 h, no
+    predecessor) -FS0-> M (UID 2, 40 h; ``<Manual>`` per ``manual``, with ManualStart /
+    ManualFinish / ManualDuration as MS Project writes them on every manual task -- corpus: 11 of
+    11; ``progress`` = its actuals) -FS0-> C (UID 3, 16 h). Stored spans as MS Project would
+    save them with M at ``m_span``."""
+
+    def week() -> str:
+        blocks = (
+            "<WorkingTimes><WorkingTime><FromTime>08:00:00</FromTime><ToTime>12:00:00</ToTime>"
+            "</WorkingTime><WorkingTime><FromTime>13:00:00</FromTime><ToTime>17:00:00</ToTime>"
+            "</WorkingTime></WorkingTimes>"
+        )
+        return "".join(
+            f"<WeekDay><DayType>{d}</DayType><DayWorking>{int(2 <= d <= 6)}</DayWorking>"
+            + (blocks if 2 <= d <= 6 else "")
+            + "</WeekDay>"
+            for d in range(1, 8)
+        )
+
+    def task(uid: int, name: str, hours: int, span: tuple[str, str], extra: str) -> str:
+        link = (
+            f"<PredecessorLink><PredecessorUID>{uid - 1}</PredecessorUID><Type>1</Type>"
+            "<LinkLag>0</LinkLag><LagFormat>7</LagFormat></PredecessorLink>"
+            if uid > 1
+            else ""
+        )
+        return (
+            f"<Task><UID>{uid}</UID><ID>{uid}</ID><Name>{name}</Name>"
+            f"<Duration>PT{hours}H0M0S</Duration><DurationFormat>7</DurationFormat>"
+            f"<Start>{span[0]}</Start><Finish>{span[1]}</Finish>{extra}{link}</Task>"
+        )
+
+    m_extra = f"<Manual>{int(manual)}</Manual>{progress}"
+    if manual:
+        m_extra += (
+            f"<ManualStart>{m_span[0]}</ManualStart><ManualFinish>{m_span[1]}</ManualFinish>"
+            "<ManualDuration>PT40H0M0S</ManualDuration>"
+        )
+    return (
+        '<Project xmlns="http://schemas.microsoft.com/project"><Name>a0923-cpm-049</Name>'
+        "<ScheduleFromStart>1</ScheduleFromStart><StartDate>2026-01-05T08:00:00</StartDate>"
+        f"<FinishDate>{finish}</FinishDate><MinutesPerDay>480</MinutesPerDay>"
+        "<CalendarUID>1</CalendarUID><Calendars><Calendar><UID>1</UID><Name>Standard</Name>"
+        "<IsBaseCalendar>1</IsBaseCalendar><BaseCalendarUID>-1</BaseCalendarUID>"
+        f"<WeekDays>{week()}</WeekDays></Calendar></Calendars><Tasks>"
+        + task(1, "A", 24, ("2026-01-05T08:00:00", "2026-01-07T17:00:00"), "<Manual>0</Manual>")
+        + task(2, "M", 40, m_span, m_extra)
+        + task(3, "C", 16, c_span, "<Manual>0</Manual>")
+        + "</Tasks></Project>"
+    )
+
+
+def _a0923_cpm_049_solve(text: str) -> tuple[Any, Any]:
+    """(the parsed Schedule, its CPMResult) via parse_mspdi_text + compute_cpm."""
+    sch = parse_mspdi_text(text, source_file="a0923_cpm_049.xml")
+    return sch, compute_cpm(sch)
+
+
+def _a0923_cpm_049_placement(res: Any) -> tuple[int, int, int, int, int]:
+    """(M ES, M EF, C ES, C EF, project finish) in working minutes from Mon 01-05 08:00."""
+    m, c = res.timings[2], res.timings[3]
+    return (m.early_start, m.early_finish, c.early_start, c.early_finish, res.project_finish)
+
+
+def _a0923_cpm_049_served_path(text: str) -> str:
+    """The visible text of ``/path`` for a one-file session holding ``text``."""
+    state = SessionState()
+    client = TestClient(create_app(state))
+    up = client.post("/upload", files={"files": ("a0923_cpm_049.xml", text.encode(), "text/xml")})
+    if up.status_code != 200 or len(state.schedules) != 1:
+        pytest.fail(f"precondition: upload answered {up.status_code} ({list(state.schedules)})")
+    page = client.get("/path")
+    if page.status_code != 200:
+        pytest.fail(f"precondition: /path answered {page.status_code}")
+    return _visible(page.text)
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason=(
+        "A0923-CPM-049: a STARTED manually scheduled task is re-spanned by predecessor logic -- "
+        "_stored_date_bounds (cpm.py:2130) skips every started task before its only is_manual "
+        "read, so the forward pass moves M's record like an auto task's: with Stop/Resume R-72 "
+        "restarts its remaining at A's finish (M 0..2880, project finish 3840 = Wed 01-14 17:00, "
+        "'01/14/2026' on /path); without them the whole task runs from A's finish (M 1440..3840, "
+        "finish 4800); the file stores M at Fri 01-09 17:00 (2400) and its finish at Tue 01-13"
+    ),
+)
+def test_a0923_cpm_049_a_started_manually_scheduled_task_keeps_its_stored_placement() -> None:
+    """A0923-CPM-049 (finder id F-MODE-002) · CPM · T1 latent (mode-gated: a started manually
+    scheduled task; 0 of the corpus's 11 manual tasks are started and incomplete).
+
+    Claim (verifier P1's broadening adopted by the lead): at 78e20308 a manually scheduled task
+    that has STARTED is re-spanned by predecessor logic. Inline MSPDI (Standard 08-12/13-17, start
+    Mon 2026-01-05 08:00): A (UID 1, 3 d, no predecessor) -FS0-> M (UID 2, 5 d, ``<Manual>1``,
+    ManualStart Mon 01-05 08:00 / ManualFinish Fri 01-09 17:00, ActualStart Mon 01-05 08:00, 40 %,
+    3 d remaining) -FS0-> C (UID 3, 2 d, stored Mon 01-12..Tue 01-13); FinishDate Tue 01-13 17:00.
+    ``_stored_date_bounds`` (``engine/cpm.py:2130``) skips every started task before the engine's
+    only ``is_manual`` read (``:2133``), so M reaches the forward pass as an auto task would:
+    (R-72 shape) with Stop Tue 17:00 / Resume Wed 08:00 the remaining is restarted at
+    ``max(logic_restart, stored_restart)`` (``:2808``) = A's finish 1,440 -> M 0..2,880 (Mon
+    01-12 17:00), C 2,880..3,840, project finish 3,840 = Wed 01-14 17:00, ``/path`` printing
+    01/14/2026; (plain-logic shape) with no Stop / Resume R-72 is inert and the WHOLE task runs
+    from A's finish -> M 1,440..3,840, C 3,840..4,800, finish 4,800 = Fri 01-16 17:00, M in neither
+    ``date_driven`` nor ``actual_start_driven``. The mover is logic itself; R-72 only sets the
+    magnitude. No page or note discloses that a manual task was moved.
+
+    Authority: A1 -- Microsoft Learn, "Task.Manual property (Project)",
+    https://learn.microsoft.com/office/vba/api/project.task.manual (retrieved 2026-09-30 via the
+    Microsoft Learn MCP): "True if task recalculation is set to Manually Scheduled; False if task
+    recalculation is set to Auto Schedule."; "Application.TaskRespectLinks method (Project)",
+    https://learn.microsoft.com/office/vba/api/project.application.taskrespectlinks (2026-09-30):
+    a manually scheduled task starting 7/20 after an FS predecessor finishing 7/15 keeps 7/20
+    "until" the method runs -- links are not auto-respected on a manual task. Plus the file's own
+    stored dates: M's remaining 1,440 from its Resume (offset 960) = 2,400 = ManualFinish Fri
+    01-09 17:00; C 2,400..3,360; project finish 3,360 = Tue 01-13 17:00 = the file's FinishDate.
+    A2 -- ``docs/adr/0034-stored-date-cpm-mandate-sparse-logic.md:27-29``: "an unstarted
+    **manually-scheduled** task **PINS** at its stored start -- MS Project keeps manual tasks
+    exactly where they are placed, even against predecessor logic"; its started-work exclusion
+    (``:33`` "started/completed work is untouched -- actuals anchor the record") is a premise
+    ADR-0513 (R-72) overtook without carrying the manual exemption forward, and
+    ``web/help.py:551-556`` promises the pin only for "Unstarted activities". Hand answer for BOTH
+    shapes: M (ES, EF) = (0, 2400), C (2400, 3360), project finish 3360, ``/path`` 01/13/2026.
+    UNVERIFIED (ASK-19): MS Project's stored late dates / Total Slack for a started manual task
+    whose predecessor finishes after its actual start -- not asserted here.
+
+    Held decisions screened: ADR-0034 D2 scopes the pin to unstarted tasks under the premise that
+    started work is untouched -- no longer true of the engine (ADR-0513 moves a started task's
+    remaining); ADR-0513 / 0512 / 0517 never mention manual tasks; ADR-0505 (the corpus's completed
+    manual milestone UID 6150) is a different mechanism. Sibling, separate class: A0923-CPM-048
+    (SplitsInProgressTasks=0, the same restart line, a different authority).
+
+    Independence: the oracle is Microsoft's definition of the mode plus the file's stored dates
+    and hand arithmetic; the engine is consulted only for the placement. Controls (preconditions,
+    each a ``pytest.fail``): the UNSTARTED manual twin is pinned today (M 0..2400, finish 3360, M
+    in ``date_driven`` -- ADR-0034's rule, so the mode is honoured until the task starts); the
+    started AUTO twin keeps R-72's placement (M 0..2880, finish 3840, ADR-0513 -- a repair that
+    pinned EVERY started task would fail here by name); an IN-SEQUENCE started manual task
+    (ActualStart Thu 01-08, after A) sits at its stored finish 3840 today and must stay there.
+    Runtime ~2 s (five solves, one upload).
+    """
+    hand = (0, 2400, 2400, 3360, 3360)
+    r72 = _a0923_cpm_049_mspdi(True, _A0923_CPM_049_R72)
+    plain = _a0923_cpm_049_mspdi(True, _A0923_CPM_049_PLAIN)
+    sch, _ = _a0923_cpm_049_solve(r72)
+    m = sch.tasks_by_id[2]
+    if not (
+        m.is_manual
+        and m.actual_start == _A0923_CPM_049_MON
+        and m.stop is not None
+        and m.resume is not None
+        and m.resume > m.stop
+        and m.remaining_duration_minutes == 1440
+    ):
+        pytest.fail(f"precondition: the importer no longer reads M's mode / actuals / Resume: {m}")
+    sch_p, _ = _a0923_cpm_049_solve(plain)
+    m_p = sch_p.tasks_by_id[2]
+    if not (m_p.is_manual and m_p.actual_start == _A0923_CPM_049_MON and m_p.resume is None):
+        pytest.fail(f"precondition: the plain-logic file no longer reads as started manual: {m_p}")
+
+    unstarted = _a0923_cpm_049_mspdi(True, "<PercentComplete>0</PercentComplete>")
+    _, res = _a0923_cpm_049_solve(unstarted)
+    if _a0923_cpm_049_placement(res) != hand or 2 not in res.date_driven:
+        pytest.fail(
+            "precondition (control): the UNSTARTED manual twin is no longer pinned at its stored "
+            f"start (ADR-0034): {_a0923_cpm_049_placement(res)} date_driven {res.date_driven}"
+        )
+    _, res = _a0923_cpm_049_solve(_a0923_cpm_049_mspdi(False, _A0923_CPM_049_R72))
+    r72_auto = (0, 2880, 2880, 3840, 3840)
+    if _a0923_cpm_049_placement(res) != r72_auto or 2 not in res.actual_start_driven:
+        pytest.fail(
+            "precondition (control): the started AUTO twin no longer takes R-72's placement "
+            f"(ADR-0513: remaining restarted at A's finish): {_a0923_cpm_049_placement(res)}"
+        )
+    inseq = _a0923_cpm_049_mspdi(
+        True,
+        _A0923_CPM_049_INSEQ,
+        ("2026-01-08T08:00:00", "2026-01-14T17:00:00"),
+        ("2026-01-15T08:00:00", "2026-01-16T17:00:00"),
+        "2026-01-16T17:00:00",
+    )
+    _, res = _a0923_cpm_049_solve(inseq)
+    if _a0923_cpm_049_placement(res) != (1440, 3840, 3840, 4800, 4800):
+        pytest.fail(
+            "precondition (control): an IN-SEQUENCE started manual task no longer sits at its "
+            f"stored finish: {_a0923_cpm_049_placement(res)}"
+        )
+
+    wrong: dict[str, str] = {}
+    for label, text in (("R-72 shape (Stop/Resume)", r72), ("plain-logic shape", plain)):
+        sch, res = _a0923_cpm_049_solve(text)
+        got = _a0923_cpm_049_placement(res)
+        if got != hand:
+            when = offset_to_datetime(sch.project_start, res.project_finish, sch.calendar)
+            wrong[label] = (
+                f"(M ES, M EF, C ES, C EF, finish) {got} = finish {when:%a %m-%d %H:%M} "
+                f"(hand {hand} = Tue 01-13 17:00); date_driven {res.date_driven}, "
+                f"actual_start_driven {res.actual_start_driven}"
+            )
+    served = _a0923_cpm_049_served_path(r72)
+    if "01/13/2026" not in served or "01/14/2026" in served:
+        hits = {d: served.count(d) for d in ("01/13/2026", "01/14/2026")}
+        wrong["served /path (R-72 shape)"] = f"computed-finish dates on the page {hits}"
+    assert not wrong, (
+        "a STARTED manually scheduled task is re-spanned by predecessor logic where MS Project "
+        f"does not recalculate it and the file stores it: {wrong}"
+    )
+
+
+# --- A0923-CPM-050 fragment -------------------------------------------------------------------
+# Relies on the module header of tests/audit/test_audit_20260923_cpm.py:
+#   imports    re, pytest, typing.Any, quote (urllib.parse), TestClient (fastapi.testclient),
+#              compute_cpm, offset_to_datetime (schedule_forensics.engine.cpm),
+#              parse_mspdi_text (schedule_forensics.importers.mspdi),
+#              SessionState and create_app (schedule_forensics.web.app)
+#   fixture    the module-level autouse _air_gapped
+# The header needs NO edit. Inputs: inline MSPDI text built below (two hand files that differ
+# only in the declared option and the stored values MS Project would write under it). No fixture
+# file; nothing CUI.
+
+_A0923_CPM_050_BLOCKS = (
+    "<WorkingTimes><WorkingTime><FromTime>08:00:00</FromTime><ToTime>12:00:00</ToTime>"
+    "</WorkingTime><WorkingTime><FromTime>13:00:00</FromTime><ToTime>17:00:00</ToTime>"
+    "</WorkingTime></WorkingTimes>"
+)
+#: MS Project's Standard calendar (UID 1): Mon-Fri 08-12 / 13-17 (MSPDI DayType 1 = Sunday).
+_A0923_CPM_050_CALENDAR = (
+    "<Calendars><Calendar><UID>1</UID><Name>Standard</Name><IsBaseCalendar>1</IsBaseCalendar>"
+    "<BaseCalendarUID>-1</BaseCalendarUID><WeekDays>"
+    + "".join(
+        f"<WeekDay><DayType>{d}</DayType><DayWorking>{int(2 <= d <= 6)}</DayWorking>"
+        + (_A0923_CPM_050_BLOCKS if 2 <= d <= 6 else "")
+        + "</WeekDay>"
+        for d in range(1, 8)
+    )
+    + "</WeekDays></Calendar></Calendars>"
+)
+_A0923_CPM_050_STAT = r"<div class=stat-value>([^<]*)</div><div class=stat-label>{label}</div>"
+
+
+def _a0923_cpm_050_task(
+    uid: int, name: str, hours: int, start: str, finish: str, pred: int | None, stored: str
+) -> str:
+    """One fixed-duration task on the project calendar; ``stored`` carries the MS Project fields
+    (Critical / TotalSlack / Early- and Late- dates) the file records for it."""
+    link = (
+        f"<PredecessorLink><PredecessorUID>{pred}</PredecessorUID><Type>1</Type>"
+        "<CrossProject>0</CrossProject><LinkLag>0</LinkLag><LagFormat>7</LagFormat>"
+        "</PredecessorLink>"
+        if pred is not None
+        else ""
+    )
+    return (
+        f"<Task><UID>{uid}</UID><ID>{uid}</ID><Name>{name}</Name><Type>1</Type><IsNull>0</IsNull>"
+        f"<OutlineLevel>1</OutlineLevel><Duration>PT{hours}H0M0S</Duration>"
+        f"<DurationFormat>7</DurationFormat><Start>{start}</Start><Finish>{finish}</Finish>"
+        "<Summary>0</Summary><Milestone>0</Milestone><Active>1</Active><Manual>0</Manual>"
+        "<Estimated>0</Estimated><ConstraintType>0</ConstraintType>"
+        f"<PercentComplete>0</PercentComplete><FreeSlack>0</FreeSlack>{stored}{link}</Task>"
+    )
+
+
+def _a0923_cpm_050_mspdi(
+    option: int, cd_slack_tenths: int, cd_critical: int, d_late_finish: str
+) -> str:
+    """Standard calendar, start Mon 2026-01-05 08:00, FinishDate Fri 01-16 17:00, two INDEPENDENT
+    networks: A (UID 1, 5 d) -FS0-> B (UID 2, 5 d), ending Fri 01-16 17:00 (the project finish);
+    C (UID 3, 2 d) -FS0-> D (UID 4, 2 d), ending Thu 01-08 17:00, linked to nothing else. The
+    header declares ``<MultipleCriticalPaths>option</MultipleCriticalPaths>``; C and D carry the
+    stored TotalSlack (tenths of a minute), Critical flag and D's LateFinish the caller names --
+    the values MS Project writes under that option. A and B are critical either way."""
+    ab = "<Critical>1</Critical><TotalSlack>0</TotalSlack>"
+    cd = f"<Critical>{cd_critical}</Critical><TotalSlack>{cd_slack_tenths}</TotalSlack>"
+    tasks = (
+        _a0923_cpm_050_task(
+            1,
+            "A",
+            40,
+            "2026-01-05T08:00:00",
+            "2026-01-09T17:00:00",
+            None,
+            ab + "<EarlyStart>2026-01-05T08:00:00</EarlyStart>"
+            "<EarlyFinish>2026-01-09T17:00:00</EarlyFinish>"
+            "<LateStart>2026-01-05T08:00:00</LateStart>"
+            "<LateFinish>2026-01-09T17:00:00</LateFinish>",
+        )
+        + _a0923_cpm_050_task(
+            2,
+            "B",
+            40,
+            "2026-01-12T08:00:00",
+            "2026-01-16T17:00:00",
+            1,
+            ab + "<EarlyStart>2026-01-12T08:00:00</EarlyStart>"
+            "<EarlyFinish>2026-01-16T17:00:00</EarlyFinish>"
+            "<LateStart>2026-01-12T08:00:00</LateStart>"
+            "<LateFinish>2026-01-16T17:00:00</LateFinish>",
+        )
+        + _a0923_cpm_050_task(
+            3,
+            "C",
+            16,
+            "2026-01-05T08:00:00",
+            "2026-01-06T17:00:00",
+            None,
+            cd + "<EarlyStart>2026-01-05T08:00:00</EarlyStart>"
+            "<EarlyFinish>2026-01-06T17:00:00</EarlyFinish>",
+        )
+        + _a0923_cpm_050_task(
+            4,
+            "D",
+            16,
+            "2026-01-07T08:00:00",
+            "2026-01-08T17:00:00",
+            3,
+            cd + "<EarlyStart>2026-01-07T08:00:00</EarlyStart>"
+            "<EarlyFinish>2026-01-08T17:00:00</EarlyFinish>"
+            f"<LateFinish>{d_late_finish}</LateFinish>",
+        )
+    )
+    return (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<Project xmlns="http://schemas.microsoft.com/project"><SaveVersion>14</SaveVersion>'
+        "<Name>a0923-cpm-050</Name><Title>a0923-cpm-050</Title>"
+        "<ScheduleFromStart>1</ScheduleFromStart><StartDate>2026-01-05T08:00:00</StartDate>"
+        "<FinishDate>2026-01-16T17:00:00</FinishDate><CurrentDate>2026-01-05T08:00:00</CurrentDate>"
+        "<StatusDate>2026-01-05T08:00:00</StatusDate><DefaultStartTime>08:00:00</DefaultStartTime>"
+        "<DefaultFinishTime>17:00:00</DefaultFinishTime><MinutesPerDay>480</MinutesPerDay>"
+        "<MinutesPerWeek>2400</MinutesPerWeek><DaysPerMonth>20</DaysPerMonth>"
+        "<CalendarUID>1</CalendarUID><HonorConstraints>1</HonorConstraints>"
+        f"<MultipleCriticalPaths>{option}</MultipleCriticalPaths>"
+        + _A0923_CPM_050_CALENDAR
+        + "<Tasks><Task><UID>0</UID><ID>0</ID><Name>a0923-cpm-050</Name><Summary>1</Summary>"
+        "<OutlineLevel>0</OutlineLevel><Start>2026-01-05T08:00:00</Start>"
+        "<Finish>2026-01-16T17:00:00</Finish></Task>"
+        + tasks
+        + "</Tasks><Resources/><Assignments/></Project>"
+    )
+
+
+def _a0923_cpm_050_solve(text: str, name: str) -> tuple[Any, Any]:
+    """(schedule, CPMResult) from parse_mspdi_text + compute_cpm."""
+    sch = parse_mspdi_text(text, source_file=name)
+    return sch, compute_cpm(sch)
+
+
+def _a0923_cpm_050_figures(res: Any) -> tuple[int, int, int, tuple[int, ...]]:
+    """(C total float, D total float, D late finish, critical_path) -- working minutes."""
+    return (
+        res.timings[3].total_float,
+        res.timings[4].total_float,
+        res.timings[4].late_finish,
+        tuple(res.critical_path),
+    )
+
+
+def _a0923_cpm_050_stat(page: str, label: str) -> str | None:
+    """The value of the ``label`` KPI card on a served page (``_stat_cards`` markup), or None."""
+    m = re.search(_A0923_CPM_050_STAT.format(label=re.escape(label)), page)
+    return m.group(1) if m else None
+
+
+def _a0923_cpm_050_served(text: str) -> dict[str, Any]:
+    """Upload the file to a one-file session and read the served figures: /path's takeaway count
+    and 'Critical-path activities' KPI (cpm.critical_path); /analysis's 'Critical (incomplete)'
+    KPI (the STORED flag, help.py 'critical'); /card's same-labelled KPI (the recomputed
+    ``total_float <= 0``, web/card.py:126-132); /api/analysis's rows by unique id."""
+    state = SessionState()
+    client = TestClient(create_app(state))
+    up = client.post("/upload", files={"files": ("a0923_cpm_050.xml", text.encode(), "text/xml")})
+    if up.status_code != 200 or len(state.schedules) != 1:
+        pytest.fail(f"precondition: upload answered {up.status_code} ({list(state.schedules)})")
+    key = quote(next(iter(state.schedules)), safe="")
+    pages: dict[str, str] = {}
+    for route in ("/path", f"/analysis/{key}", f"/card/{key}"):
+        got = client.get(route)
+        if got.status_code != 200:
+            pytest.fail(f"precondition: {route} answered {got.status_code}")
+        pages[route] = got.text
+    api = client.get(f"/api/analysis/{key}")
+    if api.status_code != 200:
+        pytest.fail(f"precondition: /api/analysis answered {api.status_code}")
+    rows = {a.get("unique_id"): a for a in api.json().get("activities", [])}
+    take = re.search(r"rides on a critical path of (\d+) activit", pages["/path"])
+    return {
+        "path_takeaway_n": int(take.group(1)) if take else None,
+        "path_kpi": _a0923_cpm_050_stat(pages["/path"], "Critical-path activities"),
+        "analysis_kpi": _a0923_cpm_050_stat(pages[f"/analysis/{key}"], "Critical (incomplete)"),
+        "card_kpi": _a0923_cpm_050_stat(pages[f"/card/{key}"], "Critical (incomplete)"),
+        "rows": rows,
+    }
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason=(
+        "A0923-CPM-050: importers/mspdi.py never reads <MultipleCriticalPaths> and compute_cpm "
+        "seeds every successor-less late finish from the ONE network_finish (cpm.py:2859-2862, "
+        ":3141; is_critical = total <= 0 at :3296), so a file declaring the option (C 2d -> D 2d "
+        "beside A 5d -> B 5d) reads C/D total float 2880 (6.0 d served), D late finish Fri 01-16 "
+        "and a critical_path of 2 on /path and 'Critical (incomplete) 2' on /card where the option "
+        "marks all 4 -- while the same session's /analysis prints 4 from the stored flag"
+    ),
+)
+def test_a0923_cpm_050_a_declared_multiple_critical_paths_option_marks_each_network() -> None:
+    """A0923-CPM-050 (finder id F-MODE-003) · CPM · T2 (latent, option-gated:
+    ``<MultipleCriticalPaths>1`` on 0 of the 44 corpus files and 0 of the 13 tree XMLs).
+
+    Claim: at 78e20308 a hand MSPDI declaring ``<MultipleCriticalPaths>1</MultipleCriticalPaths>``
+    (Standard, start Mon 2026-01-05 08:00, FinishDate Fri 01-16 17:00; two INDEPENDENT networks:
+    A 5 d -FS0-> B 5 d ending Fri 01-16 17:00, and C 2 d -FS0-> D 2 d ending Thu 01-08 17:00,
+    with the file storing C/D Critical = 1, TotalSlack 0 and D LateFinish Thu 01-08 17:00) via
+    ``parse_mspdi_text`` + ``compute_cpm`` yields C/D ``total_float`` 2880 (6.0 d), D
+    ``late_finish`` 4800 = Fri 01-16 17:00 and ``critical_path`` (1, 2); the element is never read
+    (``grep -rn MultipleCriticalPaths src/`` = 0; the snake-case field appears only as
+    ``exhibits/payload.py:53``'s unpopulated ``FileEntry.multiple_critical_paths``;
+    flipping it on identical task data leaves every timing byte-identical) and ``import_notes``
+    stay empty. Served (verifier P5's witness, asserted here beside the engine leg): ``/path``
+    prints "a critical path of 2 activities" and the KPI "Critical-path activities 2" while the
+    SAME session's ``/analysis`` and ``/card`` print "Critical (incomplete) 4" from the stored
+    flag and ``/api/analysis`` serves C and D ``is_critical`` True beside ``total_float_days``
+    6.0 -- the product contradicts itself on one file. Verifier P5 recorded ``/card`` beside
+    ``/analysis`` at 4; measured here, ``/card``'s KPI reads 2 on the pristine tree (its
+    ``critical`` is counted on the recomputed float, ``web/card.py:126``, not the stored flag), so
+    it sides with ``/path`` and is asserted below, not preconditioned. Consumers of the pure set
+    (verifier P2's narrowing, re-grepped): ``cpm.critical_path`` is read only by ``web/path.py:51``
+    and ``engine/metrics/dcma14.py:595``; the KPI on ``/card`` reaches the same set through the
+    timings' float.
+
+    Authority: A1 -- Microsoft Learn, "MultipleCriticalPaths Element",
+    https://learn.microsoft.com/office-project/xml-data-interchange/multiplecriticalpaths-element?view=project-client-2016
+    (retrieved 2026-09-30): "Indicates whether Microsoft Office Project calculates and displays a
+    critical path for each independent network of tasks within a project ... 0 | False. 1 |
+    True"; "Project.MultipleCriticalPaths property",
+    https://learn.microsoft.com/office/vba/api/project.project.multiplecriticalpaths (2026-09-30):
+    "True if Project calculates multiple critical paths for the project. False if only one
+    critical path is calculated." Hand arithmetic: a critical path for EACH independent network
+    means network 2's backward pass starts at its own finish, D's early finish 1920 (Thu 01-08
+    17:00), so D LF = 1920, TF(C) = TF(D) = 0 and all four activities are critical -- the values
+    the ON file stores. A2 -- ``web/help.py:392-398`` defines the served "Critical" count on "the
+    STORED Critical flag where the file carries one", which is why /analysis and /card read 4.
+    UNVERIFIED (ASK-19): the exact late-date convention MS Project applies under the option (LF =
+    EF at each independent network's end task, the standard reading; whether a network with two
+    end tasks retreats each from its own finish or from the network's) -- no learn.microsoft.com
+    page states it (three searches, 2026-09-30) and the support.microsoft.com options page is
+    egress-blocked; an MS Project save of the ON file (D's stored LateFinish / TotalSlack) would
+    settle it. The 4-vs-2 criticality follows from the definition alone and is not UNVERIFIED.
+
+    Controls (preconditions): the same two networks saved with the option OFF (stored C/D
+    TotalSlack 28800 tenths = 6 d, Critical 0, D LateFinish Fri 01-16 17:00 -- MS Project's
+    single-path values) are reproduced exactly today (C/D 2880, D LF 4800, path (1, 2)); the
+    importer reads the ON file's stored Critical flag on C and D; the stored-flag surfaces
+    (/analysis, /api/analysis is_critical) agree with the file's marking of 4.
+    Independence: the oracle is Microsoft's definition of the option plus arithmetic, never an
+    engine output; the app is consulted only for the served figures. Runtime ~2 s (one upload).
+    """
+    _, off = _a0923_cpm_050_solve(
+        _a0923_cpm_050_mspdi(0, 28800, 0, "2026-01-16T17:00:00"), "a0923_a0923_cpm_050_off.xml"
+    )
+    if _a0923_cpm_050_figures(off) != (2880, 2880, 4800, (1, 2)):
+        pytest.fail(
+            "precondition (control): the option-OFF file no longer reproduces MS Project's "
+            f"single-path values (C/D 2880, D LF 4800, path (1, 2)): {_a0923_cpm_050_figures(off)}"
+        )
+    on_text = _a0923_cpm_050_mspdi(1, 0, 1, "2026-01-08T17:00:00")
+    sch, on = _a0923_cpm_050_solve(on_text, "a0923_a0923_cpm_050_on.xml")
+    stored_flags = tuple(sch.tasks_by_id[u].stored_is_critical for u in (1, 2, 3, 4))
+    if stored_flags != (True, True, True, True):
+        pytest.fail(
+            f"precondition: the importer no longer reads the stored Critical flags: {stored_flags}"
+        )
+    served = _a0923_cpm_050_served(on_text)
+    rows = served["rows"]
+    if any(u not in rows for u in (1, 2, 3, 4)):
+        pytest.fail(
+            f"precondition: /api/analysis no longer serves the four activities: {sorted(rows)}"
+        )
+    flagged = tuple(bool(rows[u].get("is_critical")) for u in (1, 2, 3, 4))
+    if (served["analysis_kpi"], flagged) != ("4", (True,) * 4):
+        pytest.fail(
+            "precondition (witness): the stored-flag surfaces no longer agree with the file's "
+            f"marking of 4 -- /analysis {served['analysis_kpi']!r}, /api/analysis is_critical "
+            f"{flagged}"
+        )
+    if None in (served["path_takeaway_n"], served["path_kpi"], served["card_kpi"]):
+        pytest.fail(f"precondition: /path or /card no longer prints its Critical KPI: {served}")
+
+    wrong: dict[str, str] = {}
+    c_tf, d_tf, d_lf, path = _a0923_cpm_050_figures(on)
+    if (c_tf, d_tf) != (0, 0):
+        wrong["engine C / D total_float (min)"] = f"{(c_tf, d_tf)} (hand 0, 0)"
+    if d_lf != 1920:
+        wall = offset_to_datetime(sch.project_start, d_lf, sch.calendar)
+        wrong["engine D late_finish"] = (
+            f"{d_lf} = {wall:%a %Y-%m-%d %H:%M} (hand 1920 = Thu 2026-01-08 17:00)"
+        )
+    if set(path) != {1, 2, 3, 4}:
+        wrong["engine critical_path"] = f"{path} (the option marks all four: (1, 2, 3, 4))"
+    _, flipped = _a0923_cpm_050_solve(
+        on_text.replace("<MultipleCriticalPaths>1<", "<MultipleCriticalPaths>0<"),
+        "a0923_a0923_cpm_050_flipped.xml",
+    )
+    if flipped.timings == on.timings:
+        wrong["the option is read"] = (
+            "flipping <MultipleCriticalPaths> on identical task data leaves every timing "
+            "byte-identical (the element is never read)"
+        )
+    served_tf = tuple(rows[u].get("total_float_days") for u in (3, 4))
+    if served_tf != (0.0, 0.0):
+        flags_cd = tuple(rows[u].get("is_critical") for u in (3, 4))
+        wrong["/api/analysis C / D total_float_days"] = (
+            f"{served_tf} beside is_critical {flags_cd} (hand 0.0, 0.0)"
+        )
+    if (served["path_takeaway_n"], served["path_kpi"], served["card_kpi"]) != (4, "4", "4"):
+        wrong["/path critical path and /card Critical (incomplete)"] = (
+            f"/path takeaway 'a critical path of {served['path_takeaway_n']} activities', KPI "
+            f"'Critical-path activities' {served['path_kpi']!r}; /card 'Critical (incomplete)' "
+            f"{served['card_kpi']!r} -- the same session's /analysis prints 'Critical "
+            f"(incomplete)' {served['analysis_kpi']} from the stored flag"
+        )
+    assert not wrong, (
+        "a file declaring MS Project's 'Calculate multiple critical paths' option is scheduled "
+        "against one project-wide late anchor: the second independent network carries float, "
+        f"its late dates and the /path chain disagree with the file's own marking: {wrong}"
+    )
+
+
+# --- A0923-CPM-051 fragment -------------------------------------------------------------------
+# Relies on the module header of tests/audit/test_audit_20260923_cpm.py:
+#   imports    re, pytest, typing.Any, quote (urllib.parse), TestClient (fastapi.testclient),
+#              compute_cpm (schedule_forensics.engine.cpm),
+#              parse_mspdi_text (schedule_forensics.importers.mspdi),
+#              SessionState / create_app (schedule_forensics.web.app)
+#   helpers    the module-level _visible
+#   fixture    the module-level autouse _air_gapped
+# Input: inline MSPDI text (built below: the same network saved under two values of the option).
+# No fixture file; nothing CUI.
+
+_A0923_CPM_051_BLOCKS = (
+    "<WorkingTimes><WorkingTime><FromTime>08:00:00</FromTime><ToTime>12:00:00</ToTime>"
+    "</WorkingTime><WorkingTime><FromTime>13:00:00</FromTime><ToTime>17:00:00</ToTime>"
+    "</WorkingTime></WorkingTimes>"
+)
+#: MS Project's Standard calendar (UID 1): Mon-Fri 08-12 / 13-17 (MSPDI DayType 1 = Sunday).
+_A0923_CPM_051_CALENDAR = (
+    "<Calendars><Calendar><UID>1</UID><Name>Standard</Name><IsBaseCalendar>1</IsBaseCalendar>"
+    "<BaseCalendarUID>-1</BaseCalendarUID><WeekDays>"
+    + "".join(
+        f"<WeekDay><DayType>{d}</DayType><DayWorking>{int(2 <= d <= 6)}</DayWorking>"
+        + (_A0923_CPM_051_BLOCKS if 2 <= d <= 6 else "")
+        + "</WeekDay>"
+        for d in range(1, 8)
+    )
+    + "</WeekDays></Calendar></Calendars>"
+)
+#: A KPI card as ``_stat_cards`` renders it.
+_A0923_CPM_051_STAT = r"<div class=stat-value>([^<]*)</div><div class=stat-label>{label}</div>"
+#: A served sentence naming the file's declared limit: MS Project's option name (the dialog's
+#: "critical slack limit" wording or the MSPDI element) with its neighbourhood, for the value.
+_A0923_CPM_051_LIMIT = re.compile(
+    r"[^.]{0,160}(?:critical\s+slack\s+limit|CriticalSlackLimit)[^.]{0,200}", re.IGNORECASE
+)
+
+
+def _a0923_cpm_051_task(
+    uid: int, name: str, hours: int, start: str, finish: str, pred: int | None, stored: str
+) -> str:
+    """One fixed-duration, unstarted task on the project calendar; ``stored`` carries the
+    Critical flag and TotalSlack (tenths of a minute) MS Project records for it."""
+    link = (
+        f"<PredecessorLink><PredecessorUID>{pred}</PredecessorUID><Type>1</Type>"
+        "<CrossProject>0</CrossProject><LinkLag>0</LinkLag><LagFormat>7</LagFormat>"
+        "</PredecessorLink>"
+        if pred is not None
+        else ""
+    )
+    return (
+        f"<Task><UID>{uid}</UID><ID>{uid}</ID><Name>{name}</Name><Type>1</Type><IsNull>0</IsNull>"
+        f"<OutlineLevel>1</OutlineLevel><Duration>PT{hours}H0M0S</Duration>"
+        f"<DurationFormat>7</DurationFormat><Start>{start}</Start><Finish>{finish}</Finish>"
+        "<Summary>0</Summary><Milestone>0</Milestone><Active>1</Active><Manual>0</Manual>"
+        "<Estimated>0</Estimated><ConstraintType>0</ConstraintType>"
+        f"<PercentComplete>0</PercentComplete><FreeSlack>0</FreeSlack>{stored}{link}</Task>"
+    )
+
+
+def _a0923_cpm_051_mspdi(limit: int, cd_critical: int) -> str:
+    """Standard calendar, start Mon 2026-01-05 08:00, FinishDate Fri 01-16 17:00: A (UID 1, 5 d)
+    -FS0-> B (UID 2, 5 d) is the 10-day longest chain ending Fri 01-16 17:00; C (UID 3, 4 d)
+    -FS0-> D (UID 4, 4 d) ends Wed 01-14 17:00 with 2 working days (960 min, stored TotalSlack
+    9600 tenths) of total slack. The header declares ``<CriticalSlackLimit>limit</...>``; C and D
+    carry the Critical flag the caller names (1 = what MS Project's rule marks under a 2-day
+    limit, 0 = under the default 0). A and B are stored critical either way."""
+    ab = "<Critical>1</Critical><TotalSlack>0</TotalSlack>"
+    cd = f"<Critical>{cd_critical}</Critical><TotalSlack>9600</TotalSlack>"
+    tasks = (
+        _a0923_cpm_051_task(1, "A", 40, "2026-01-05T08:00:00", "2026-01-09T17:00:00", None, ab)
+        + _a0923_cpm_051_task(2, "B", 40, "2026-01-12T08:00:00", "2026-01-16T17:00:00", 1, ab)
+        + _a0923_cpm_051_task(3, "C", 32, "2026-01-05T08:00:00", "2026-01-08T17:00:00", None, cd)
+        + _a0923_cpm_051_task(4, "D", 32, "2026-01-09T08:00:00", "2026-01-14T17:00:00", 3, cd)
+    )
+    return (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<Project xmlns="http://schemas.microsoft.com/project"><SaveVersion>14</SaveVersion>'
+        "<Name>a0923-cpm-051</Name><Title>a0923-cpm-051</Title>"
+        "<ScheduleFromStart>1</ScheduleFromStart><StartDate>2026-01-05T08:00:00</StartDate>"
+        "<FinishDate>2026-01-16T17:00:00</FinishDate><CurrentDate>2026-01-05T08:00:00</CurrentDate>"
+        "<StatusDate>2026-01-05T08:00:00</StatusDate><DefaultStartTime>08:00:00</DefaultStartTime>"
+        "<DefaultFinishTime>17:00:00</DefaultFinishTime><MinutesPerDay>480</MinutesPerDay>"
+        "<MinutesPerWeek>2400</MinutesPerWeek><DaysPerMonth>20</DaysPerMonth>"
+        "<CalendarUID>1</CalendarUID><HonorConstraints>1</HonorConstraints>"
+        f"<CriticalSlackLimit>{limit}</CriticalSlackLimit>"
+        + _A0923_CPM_051_CALENDAR
+        + "<Tasks><Task><UID>0</UID><ID>0</ID><Name>a0923-cpm-051</Name><Summary>1</Summary>"
+        "<OutlineLevel>0</OutlineLevel><Start>2026-01-05T08:00:00</Start>"
+        "<Finish>2026-01-16T17:00:00</Finish></Task>"
+        + tasks
+        + "</Tasks><Resources/><Assignments/></Project>"
+    )
+
+
+def _a0923_cpm_051_solve(text: str, name: str) -> tuple[Any, Any]:
+    """(schedule, CPMResult) from parse_mspdi_text + compute_cpm."""
+    sch = parse_mspdi_text(text, source_file=name)
+    return sch, compute_cpm(sch)
+
+
+def _a0923_cpm_051_figures(res: Any) -> tuple[int, int, int, tuple[int, ...]]:
+    """(C total float, D total float, project finish, critical_path) -- working minutes."""
+    return (
+        res.timings[3].total_float,
+        res.timings[4].total_float,
+        res.project_finish,
+        tuple(res.critical_path),
+    )
+
+
+def _a0923_cpm_051_served(text: str) -> dict[str, Any]:
+    """Upload the file to a one-file session and read what is served: /path's takeaway count and
+    its 'Critical-path activities' KPI (both ``cpm.critical_path``, web/path.py:51); /analysis's
+    'Critical (incomplete)' KPI (the STORED flag, help.py 'critical'); /api/analysis's rows by
+    unique id; and, per page, the visible sentence naming the file's critical slack limit."""
+    state = SessionState()
+    client = TestClient(create_app(state))
+    up = client.post("/upload", files={"files": ("a0923_cpm_051.xml", text.encode(), "text/xml")})
+    if up.status_code != 200 or len(state.schedules) != 1:
+        pytest.fail(f"precondition: upload answered {up.status_code} ({list(state.schedules)})")
+    key = quote(next(iter(state.schedules)), safe="")
+    pages: dict[str, str] = {}
+    for route in ("/path", f"/analysis/{key}"):
+        got = client.get(route)
+        if got.status_code != 200:
+            pytest.fail(f"precondition: {route} answered {got.status_code}")
+        pages[route] = got.text
+    api = client.get(f"/api/analysis/{key}")
+    if api.status_code != 200:
+        pytest.fail(f"precondition: /api/analysis answered {api.status_code}")
+
+    def stat(page: str, label: str) -> str | None:
+        m = re.search(_A0923_CPM_051_STAT.format(label=re.escape(label)), page)
+        return m.group(1) if m else None
+
+    take = re.search(r"rides on a critical path of (\d+) activit", pages["/path"])
+    named: dict[str, str | None] = {}
+    for route, page in pages.items():
+        m = _A0923_CPM_051_LIMIT.search(_visible(page))
+        named[route] = m.group(0).strip() if m else None
+    return {
+        "path_takeaway_n": int(take.group(1)) if take else None,
+        "path_kpi": stat(pages["/path"], "Critical-path activities"),
+        "analysis_kpi": stat(pages[f"/analysis/{key}"], "Critical (incomplete)"),
+        "rows": {a.get("unique_id"): a for a in api.json().get("activities", [])},
+        "limit_named": named,
+    }
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason=(
+        "A0923-CPM-051: importers/mspdi.py never reads <CriticalSlackLimit> and compute_cpm's "
+        "critical_path is the pure total_float <= 0 set (cpm.py:3305-3309), so a file declaring "
+        "a 2-day limit (C 4d -> D 4d with 2.0 d of slack beside A 5d -> B 5d) serves a /path "
+        "chain of 2 (and DCMA-12's target set, dcma14.py:595) where MS Project's declared "
+        "criterion marks 4 -- while the same session's /analysis and /api/analysis read 4 "
+        "Critical from the stored flag -- and no served page names the limit"
+    ),
+)
+def test_a0923_cpm_051_a_declared_critical_slack_limit_widens_the_path_and_is_named() -> None:
+    """A0923-CPM-051 (finder id F-MODE-004) · CPM · T2 (latent, option-gated:
+    ``<CriticalSlackLimit>`` is 0 on 44 of the 44 corpus files and non-zero on 0 of the 13 tree
+    XMLs; the disclosure half is T3).
+
+    Claim: at 78e20308 a hand MSPDI declaring ``<CriticalSlackLimit>2</CriticalSlackLimit>``
+    (Standard, start Mon 2026-01-05 08:00, FinishDate Fri 01-16 17:00; A 5 d -FS0-> B 5 d = the
+    10-day longest chain; C 4 d -FS0-> D 4 d ending Wed 01-14 17:00 with 2.0 d of slack, stored
+    TotalSlack 9600 tenths = 960 min and Critical = 1 on C and D, as MS Project's rule marks
+    them under the limit) via ``parse_mspdi_text`` + ``compute_cpm`` yields ``critical_path``
+    (1, 2), and the served ``/path`` prints "a critical path of 2 activities" / KPI
+    "Critical-path activities 2", while the SAME session's ``/analysis`` prints "Critical
+    (incomplete) 4" from the stored flag and ``/api/analysis`` serves C and D ``is_critical``
+    True beside ``total_float_days`` 2.0. The element is never read (0 readers in ``src/``;
+    ``exhibits/payload.py:52``'s ``critical_slack_limit_minutes`` is declared with no producer):
+    flipping it on identical task data leaves every timing and the path byte-identical,
+    ``import_notes`` stay empty and no served page names a slack limit. No date or float figure
+    is wrong -- C/D's 960 min is MS Project's own slack. What diverges is the pure critical set
+    and what reads it (verifiers P2 and P5, adopted: the only readers of ``cpm.critical_path`` in
+    ``src/`` are ``web/path.py:51``, the /path chain, and ``engine/metrics/dcma14.py:595``, the
+    DCMA-12 target set -- whose injected target is UID 1 under either criterion on this file, so
+    its PASS outcome is not asserted; the target set is ``critical_path`` itself), and the
+    missing disclosure of the declared limit.
+
+    Authority: A1 -- Microsoft Learn, "CriticalSlackLimit Element",
+    https://learn.microsoft.com/office-project/xml-data-interchange/criticalslacklimit-element?view=project-client-2016
+    (retrieved 2026-09-30): "The number of days past its end date that a task can go before
+    Microsoft Office Project marks that task as a critical task."; "Project.ShowCriticalSlack
+    property (Project)", https://learn.microsoft.com/office/vba/api/project.project.showcriticalslack
+    (2026-09-30): "If the slack time of a task does not exceed the number of days returned by
+    the ShowCriticalSlack property, Project displays the task as critical."; the default,
+    https://learn.microsoft.com/dotnet/api/websvcproject.projectdataset.projectrow.proj_opt_critical_slack_limit?view=office-project-server
+    (2026-09-30): "the default value is zero days, which is the default slack value in Project
+    Professional (on the Calculation tab in the Options dialog box)". Hand arithmetic (working
+    minutes from the start): A 0..2400, B 2400..4800 = the project finish; C 0..1920, D
+    1920..3840; TS(C) = TS(D) = 4800 - 3840 = 960 min = 2.0 d, which does not exceed 2 -> C and
+    D are critical: the critical set is {A, B, C, D}. Microsoft's rule is explicit, so the
+    4-critical expectation is NOT unverified. A2 -- ``web/help.py:392-398`` defines the served
+    "Critical" count on the STORED Critical flag where the file carries one (why /analysis reads
+    4); ``model/schedule.py`` (``import_notes``, ADR-0312): an interpretation the analyst could
+    not otherwise see "has to reach the page".
+
+    UNVERIFIED (no committed MS Project save declares a non-zero limit): the hand file's stored
+    Critical = 1 on C/D was written to Microsoft's rule by the audit, not by an MS Project save
+    -- it illustrates the rule and cannot validate it; which day length MS Project converts the
+    limit on when the calendar's day differs from ``<MinutesPerDay>`` (equal, 480, here); MS
+    Project's late-date convention is ASK-19's and is not asserted (the limit moves no date).
+
+    Correct behaviour asserted: the engine's ``critical_path`` under the declared limit is
+    {1, 2, 3, 4} with every timing unchanged (the limit classifies, it never schedules); the same
+    data under limit 0 keeps the pure set {1, 2}; /path prints a chain of 4 and the KPI 4; and
+    /path or /analysis names the file's critical slack limit with its value (2). Controls
+    (preconditions): the limit-0 file (C/D Critical 0) reproduces MS Project's own values today
+    (C/D 960, finish 4800, path (1, 2)); the limit-2 file's floats and finish agree with the hand
+    arithmetic; the importer reads the stored Critical flags; the stored-flag surfaces (/analysis
+    KPI 4; /api/analysis is_critical True with 2.0 d on C and D) agree with the file's marking of
+    4. Independence: the expectation is Microsoft's criterion plus arithmetic, never an engine
+    output; the app is consulted only for the served figures. Runtime ~2 s (one upload).
+    """
+    _, off = _a0923_cpm_051_solve(_a0923_cpm_051_mspdi(0, 0), "a0923_cpm_051_limit0.xml")
+    if _a0923_cpm_051_figures(off) != (960, 960, 4800, (1, 2)):
+        pytest.fail(
+            "precondition (control): the limit-0 file no longer reproduces MS Project's own "
+            f"values (C/D 960 min, finish 4800, path (1, 2)): {_a0923_cpm_051_figures(off)}"
+        )
+    on_text = _a0923_cpm_051_mspdi(2, 1)
+    sch, on = _a0923_cpm_051_solve(on_text, "a0923_cpm_051_limit2.xml")
+    c_tf, d_tf, finish, path = _a0923_cpm_051_figures(on)
+    if (c_tf, d_tf, finish) != (960, 960, 4800):
+        pytest.fail(
+            "precondition: the limit-2 file's floats / finish no longer match the hand "
+            f"arithmetic (C/D 960 min, finish 4800): {(c_tf, d_tf, finish)}"
+        )
+    stored = tuple(sch.tasks_by_id[u].stored_is_critical for u in (1, 2, 3, 4))
+    if stored != (True, True, True, True):
+        pytest.fail(
+            f"precondition: the importer no longer reads the stored Critical flags: {stored}"
+        )
+    served = _a0923_cpm_051_served(on_text)
+    rows = served["rows"]
+    if any(u not in rows for u in (1, 2, 3, 4)):
+        pytest.fail(
+            f"precondition: /api/analysis no longer serves the four activities: {sorted(rows)}"
+        )
+    flagged = tuple(bool(rows[u].get("is_critical")) for u in (1, 2, 3, 4))
+    served_tf = tuple(rows[u].get("total_float_days") for u in (3, 4))
+    if (served["analysis_kpi"], flagged, served_tf) != ("4", (True,) * 4, (2.0, 2.0)):
+        pytest.fail(
+            "precondition (witness): the stored-flag surfaces no longer agree with the file's "
+            f"marking of 4 -- /analysis {served['analysis_kpi']!r}, /api/analysis is_critical "
+            f"{flagged}, C/D total_float_days {served_tf}"
+        )
+    if served["path_takeaway_n"] is None or served["path_kpi"] is None:
+        pytest.fail(f"precondition: /path no longer prints its takeaway count / KPI: {served}")
+
+    wrong: dict[str, str] = {}
+    if set(path) != {1, 2, 3, 4}:
+        wrong["engine critical_path (the /path chain and DCMA-12's target set)"] = (
+            f"{path} (Microsoft: slack 2.0 d does not exceed the declared 2 -> C and D are "
+            "critical: (1, 2, 3, 4))"
+        )
+    _, flipped = _a0923_cpm_051_solve(
+        on_text.replace("<CriticalSlackLimit>2<", "<CriticalSlackLimit>0<"),
+        "a0923_cpm_051_flipped.xml",
+    )
+    if flipped.timings != on.timings:
+        wrong["the limit moved a figure"] = (
+            "the same task data under limit 0 and limit 2 must carry identical dates and floats "
+            "(the limit classifies, it never schedules)"
+        )
+    if set(flipped.critical_path) != {1, 2}:
+        wrong["limit 0 on the same data"] = (
+            f"{flipped.critical_path} (the pure set (1, 2): a stored flag is not the limit)"
+        )
+    if (served["path_takeaway_n"], served["path_kpi"]) != (4, "4"):
+        wrong["/path critical path"] = (
+            f"takeaway 'a critical path of {served['path_takeaway_n']} activities', KPI "
+            f"'Critical-path activities' {served['path_kpi']!r} -- the same session's /analysis "
+            f"prints 'Critical (incomplete)' {served['analysis_kpi']}"
+        )
+    named = {r: s for r, s in served["limit_named"].items() if s and re.search(r"\b2\b", s)}
+    if not named:
+        wrong["disclosure"] = (
+            "neither /path nor /analysis names the file's critical slack limit and its value: "
+            f"{served['limit_named']}"
+        )
+    assert not wrong, (
+        "a file declaring MS Project's critical slack limit (CriticalSlackLimit = 2 days) is "
+        "read on the pure total_float <= 0 criterion: the engine's critical set and /path's "
+        "chain hold 2 activities where the declared criterion (and the same session's /analysis "
+        f"Critical count) marks 4, and no served page names the limit: {wrong}"
+    )

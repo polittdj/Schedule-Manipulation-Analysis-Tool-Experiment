@@ -20280,3 +20280,23 @@ commit, not a rebase. The resolution:
   (A0923-IMP-005 and A0923-DOC-003 still strict-xfail). **`-m parity` 271 passed, 0 skipped, exit 0 (13 min 44 s).** The browser census ran inside the full
   suite (Chromium); the LibreOffice interop test is one of the 9 skips (no Impress in the container — CI installs it).
   On the final tree: `tests/installer` + the LODESTAR lockstep + `tests/test_state_docs.py` 112 passed.
+
+## 2026-09-30 (b) — AUDIT-2026-09-23 session 8 (WP-CPM round 4): the scheduling options a file declares are never read; the CPM lane closes on the evidence — 5 classes confirmed, 9 instances widen 7 units, ADR-0542 (v1.0.297 unchanged; the operator's README ask rides as its own commit)
+
+- **Branch** `claude/awesome-clarke-g4uy4s` from `main` @ `78e20308` (#728, ADR-0541, v1.0.297, 827 commits; CI #2029 green
+  on all six jobs, read from the jobs). §0 agreed on every point; mode (B) because the kickoff's (A) block was the
+  unfilled template; no ask answered.
+- **WP0.** Corpus rebuilt (44 files, 22,105 by two methods); tree censused (43 MSPDI / 1 XER / 3 JSON — the XER sniff
+  fixed once); the 102 reproducers 1 passed · 101 xfailed (3.11 + Playwright), 1 · 2 skipped · 99 (3.13) — no XPASS; the
+  base's full suite on a clean worktree 6,620 passed · 9 skipped · 101 xfailed, exit 0, 1 h 30 min; `-m parity` 271 passed, 0 skipped, exit 0 (23 min 17 s);
+  statics green at ruff 0.16.9 (`python -m ruff`).
+- **The plan (R1–R14) attacked first:** R7 fell (a re-pass), R10 fell and was replaced (the Microsoft Learn connector),
+  R13 held after the fix, R2 fell in part (a cited line moved).
+- **Waves.** 11: F-MODE (4 candidates), F-ROLE (0; 2 instances of CPM-034), F-24X7 (1, ruled an instance of CPM-040),
+  F-LEADS2 (1; 3 instances; 1 lead refuted). 12: six claim-only packets, 16 of 16 REPRODUCED (P5 the second verifier for
+  the lead-observation classes). 13: five assemblers; the lead's teeth on fresh trees — LEAD-TEETH-PENDING.
+- **Result.** CPM-048 (T1), CPM-049 (T1), CPM-050 (T2), CPM-051 (T2), WEB-005 (T4) CONFIRMED-DEFERRED; retained 102 →
+  107; units U69–U71; U07 / U29 / U38 / U51 / U55 / U57 / U59 / U60 widened; ASK-19. **WP-CPM CLOSED on the evidence**
+  (two consecutive new families with no new class under the pre-set rule; the stricter reading recorded). Next lane: MET.
+- **Deviations:** four sub-agents in flight for ~30 min (one over the cap); three assemblers died on a provider credit limit — the operator switched the model and directed "continue" (Ultracode on); a workflow resumed them from disk (conflict with charter §7.4 / §12 recorded); the README rebuilt as a 564-line front page with a 15-step "How to use POLARIS² — step by step" guide, troubleshooting and a "Known issues before you cite a figure" pointer; drafted, attacked by two adversarial lenses (claims against the tree; guards and pins), 23 defects applied, every guard re-run on the final text; eight test-pinned sentences kept verbatim.
+- **Gate on the final tree:** the full gate on a clean worktree of the final commit — recorded in this session's gate commit (the last commit of the pull request). Draft PR: the draft pull request of `claude/awesome-clarke-g4uy4s`.

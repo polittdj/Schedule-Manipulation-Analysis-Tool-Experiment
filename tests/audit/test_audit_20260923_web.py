@@ -502,3 +502,261 @@ def test_a0923_web_003_evm_names_a_refused_version_instead_of_hiding_it() -> Non
         f"siblings do; a refused newer version silently shifts the page to the older one's "
         f"figures): {wrong}"
     )
+
+
+# --- A0923-WEB-005 fragment -------------------------------------------------------------------
+# Relies on the module header of tests/audit/test_audit_20260923_web.py and on the A0923-WEB-003
+# fragment above it (_WEB_003_GOLDEN, _web_003_cyclic, _web_003_cpm_refusal, _web_003_client,
+# _web_003_named); it adds NOTHING at module level but its own constants and helpers.
+# Input: the committed, non-CUI goldens evm/EVM1.mspdi.xml and evm/EVM2.mspdi.xml; EVM2 with the
+# WEB-003 back-link 23 -> 18 inserted in memory (EVM2_cycle, refused as a logic cycle), and that
+# copy re-dated to 2012-09-20 (EVM3_cycle: a NEWER refused version beside TWO solvable ones --
+# the verifier's sharper witness). No new fixture file.
+
+#: one wall tile (web/mission.py ``tile()``): from its class attribute to its close
+_WEB_005_TILE = re.compile(r'<section class="tile panel[^"]*"[^>]*>(.*?)</section>', re.S)
+_WEB_005_TITLE = re.compile(r"<h3[^>]*>([^<]*)</h3>")
+#: the panel-contract chip every tile carries (web/mission.py:91-96): 'SOURCE: <file> · DD <date>'
+_WEB_005_CHIP = re.compile(r"<span class=prov-chip data-no-i18n>([^<]*)</span>")
+_WEB_005_KPI = re.compile(
+    r"<div class=k-label>([^<]*)</div><div class=k-value data-no-i18n>([^<]*)</div>"
+)
+#: the Quality Trend host's stamp (web/mission.py:283), which trend.js copies onto every lifted
+#: per-metric tile
+_WEB_005_DATA_PROV = re.compile(r'id=trendCharts[^>]*data-prov="([^"]*)"')
+#: each wall tile -> the API its script draws from and that payload's version list: scurve.js:265,
+#: cei.js:292, drift.js:199, curves.js:510 (three tiles), path_evolution.js:455, trend.js:1020 (two
+#: tiles). The tile's population is READ from these lists, never from the chip under test.
+_WEB_005_TILE_API = {
+    "S-Curve": ("/api/scurve", "versions"),
+    "Bow Wave / CEI": ("/api/cei", "snapshots"),
+    "Forecast Drift": ("/api/forecast", "versions"),
+    "Finishes": ("/api/curves", "versions"),
+    "Data-date Finishes": ("/api/curves", "versions"),
+    "Slippage": ("/api/curves", "versions"),
+    "Critical-Path Evolution": ("/api/evolution", "snapshots"),
+    "Quality Offenders": ("/api/trend", "versions"),
+    "Quality Trend": ("/api/trend", "versions"),
+}
+_WEB_005_FINISH = "Schedule-logic finish (CPM)"
+
+
+def _web_005_redated(text: str, status_date: str) -> str:
+    """The MSPDI ``text`` with its one project StatusDate replaced (a later data date orders the
+    version last, so it is the NEWEST loaded file)."""
+    if text.count("<StatusDate>") != 1:
+        pytest.fail("precondition: the golden no longer carries exactly one project <StatusDate>")
+    return re.sub(
+        r"<StatusDate>[^<]*</StatusDate>", f"<StatusDate>{status_date}</StatusDate>", text, count=1
+    )
+
+
+def _web_005_tiles(page: str) -> dict[str, tuple[str | None, bool]]:
+    """title -> (its provenance chip text, or None; degraded to a note) for every tile served."""
+    tiles: dict[str, tuple[str | None, bool]] = {}
+    for body in _WEB_005_TILE.findall(page):
+        title = _WEB_005_TITLE.search(body)
+        chip = _WEB_005_CHIP.search(body)
+        if title is not None:
+            tiles[title.group(1)] = (chip.group(1) if chip else None, "chart-note" in body)
+    return tiles
+
+
+def _web_005_served(client: TestClient, api: str, key: str) -> list[str] | None:
+    """The version labels ``api`` serves under ``key``, oldest first (None when it answers non-200
+    -- below its population threshold)."""
+    resp = client.get(api)
+    if resp.status_code != 200:
+        return None
+    return [str(v.get("label")) for v in resp.json().get(key, [])]
+
+
+def _web_005_miscredits(text: str | None, served: list[str], loaded: list[str]) -> bool:
+    """True unless the provenance ``text`` names the newest file ``served`` draws from and no
+    loaded file outside ``served`` (a single-file chip or a series chip both qualify)."""
+    if text is None or f"{served[-1]} " not in f"{text} ":
+        return True
+    return any(f"{name} " in f"{text} " for name in loaded if name not in served)
+
+
+# --------------------------------------------------------------------------------------------
+# A0923-WEB-005 (T4): /mission stamps the newest LOADED file's chip on the four tiles drawn from
+# the CPM-solvable population, so a refused newer version is credited with data it never
+# contributed -- and the wall never names the refusal
+# --------------------------------------------------------------------------------------------
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason=(
+        "A0923-WEB-005: GET /mission builds ONE provenance chip from the newest LOADED version "
+        "(web/app.py:2413 latest=ordered[-1]; web/mission.py:84-96) and stamps it on all nine "
+        "tiles and on the Quality Trend host's data-prov -- right for the five stored-date tiles "
+        "(/api/scurve, /api/cei, /api/curves serve every loaded version), wrong for the four CPM "
+        "tiles (Forecast Drift, Critical-Path Evolution, Quality Offenders, Quality Trend), whose "
+        "APIs (/api/forecast, /api/evolution, /api/trend) skip a refused version -- so beside a "
+        "refused NEWER version they render the older versions' data under 'SOURCE: <refused "
+        "file>' (EVM1 + EVM2_cycle: Forecast Drift draws EVM1 alone; EVM1 + EVM2 + EVM3_cycle: "
+        "all four draw EVM1 + EVM2), and the wall never names the refused file (app.py:2389 / "
+        ":2398 discard both skipped lists)"
+    ),
+)
+def test_a0923_web_005_mission_credits_each_tile_to_the_population_it_draws_from() -> None:
+    """A0923-WEB-005 (finder id F-LEADS2-001) · WEB · T4 (latent on the committed corpus, which
+    solves 44/44; live on any refused newer upload -- measured: a logic cycle; a summary-only
+    export is UNVERIFIED on this wall).
+
+    Claim (as VERIFIED -- verifier P6's narrowing adopted, and corrected by the assembler's
+    measurement): at 78e20308 ``GET /mission`` renders ONE provenance chip, ``SOURCE: <newest
+    LOADED file> · DD <its data date>`` (``mission_view``, ``web/app.py:2413``
+    ``latest=ordered[-1]``; the chip at ``web/mission.py:84-96``), on every tile of the wall and
+    in the Quality Trend host's ``data-prov`` stamp (``mission.py:283``, copied by trend.js onto
+    every lifted per-metric tile). The wall draws from TWO populations. The five stored-date
+    tiles (S-Curve, Bow Wave / CEI, Finishes, Data-date Finishes, Slippage) draw from every
+    loaded version -- ``/api/scurve``, ``/api/cei`` and ``/api/curves`` iterate ``st.ordered()``
+    -- so for them the chip is right even when the newest file is refused. The four CPM tiles
+    draw from the CPM-solvable population -- ``/api/forecast`` (Forecast Drift, never degraded)
+    through ``_solvable_versions`` (``app.py:4218``), ``/api/trend`` (Quality Offenders, Quality
+    Trend) through ``_solvable_versions_full`` and ``/api/evolution`` (Critical-Path Evolution)
+    through ``_pair_versions``, each skipping a refused version -- so for them the chip credits a
+    file their data never came from. (P6 counted Forecast Drift among the stored-date tiles from
+    ``/api/scurve`` alone; ``/api/forecast`` serves the solvable list -- measured.) Witness 1
+    (the verifier's sharper shape): the committed EVM1 and EVM2 goldens beside EVM3_cycle (EVM2
+    plus one back-link 23 -> 18, ``CPMError: schedule logic contains a cycle``, re-dated to
+    2012-09-20): the four CPM APIs serve exactly EVM1 + EVM2 and all four tiles, like the other
+    five, chip 'SOURCE: EVM3_cycle.mspdi.xml · DD 2012-09-20'. Witness 2 (the finder's): EVM1
+    beside EVM2_cycle: the verdict band and the five KPI cards (which carry NO chip) quote EVM1's
+    briefing (finish 'Wednesday, September 12, 2012' -- EVM1-alone's own figure; EVM2-alone reads
+    October 3); the live Forecast Drift tile draws EVM1 alone under 'SOURCE: EVM2_cycle.mspdi.xml
+    · DD 2012-09-12'; the other three CPM tiles degrade to 'Needs at least two analyzable
+    versions' (nameless); the Sources line lists both files; and no 'Skipped (...)' notice
+    appears (``app.py:2389`` and ``:2398`` compute both resolvers' skipped lists and discard
+    them -- that half is the /mission instance of A0923-WEB-003, U59) while /briefing on the same
+    session prints 'Skipped (...): EVM2_cycle'. No figure is wrong; the attribution is.
+
+    Authority: A2 -- ``src/schedule_forensics/web/mission.py:44-50`` (the wall's own contract):
+    "a per-tile provenance chip, and a one-line takeaway fed only from already-computed figures
+    (the version manifest + the Executive Briefing's own banner) — plus the ctl KPI tiles and the
+    verdict band, both quoting ``briefing`` verbatim"; ``web/components.py:124-126``
+    (``_sources_line``): "The provenance line every multi-file visual carries (ADR-0150): which
+    loaded file(s) the data on this page is drawn from, so the operator always knows what they
+    are looking at"; ``web/components.py:88`` (``_prov_chip``): "The panel-contract provenance
+    chip — ``SOURCE: file · DD date``"; ``docs/adr/0467-...md:23`` (row CPM-04): "every
+    multi-version resolver (...) skips a FILE with no schedulable activity by name (the skipped
+    notice names it)". (Read at 78e20308, 2026-09-30.) Independent because each tile's population
+    is read from the payload its own script fetches, and the version behind the KPI figures from
+    one-file sessions -- not from the chip under test. Deliberate-decision screen: ADR-0372 (the
+    extraction) records byte-identity only; ADR-0262 / 0258 / 0368 / 0150 say nothing of a
+    refused version; not HELD. Not an instance of A0923-WEB-003: its sketch (the notice) applied
+    to /mission leaves every chip on the refused file; the mechanism is a different line
+    (``app.py:2413``) and the remedy a different one (a chip per population). The lead ruled a
+    new class (RULINGS, session 8): T4 latent, unit U71 after U59.
+
+    Correct = every LIVE tile's chip (and the Quality Trend stamp) names the newest file its own
+    API serves and no loaded file outside that list, and /mission names the refused file. A fix
+    of the form ``latest=schedules[-1]`` mislabels the five stored-date tiles and stays red here.
+    Control (precondition): EVM1 beside the UNMODIFIED EVM2 -> nine live tiles, every API serves
+    both files, every chip names EVM2, the KPIs are EVM2-alone's, no notice -- the check passes
+    there, so it cannot fire spuriously. Census (finder): ``grep 'ordered[-1]'`` in app.py ->
+    /mission is the one page whose chip is the newest loaded rather than the newest solvable; the
+    home shell's chip (app.py:1739) is UNVERIFIED as a sibling.
+    """
+    evm1 = (_WEB_003_GOLDEN / "EVM1.mspdi.xml").read_text(encoding="utf-8-sig")
+    evm2 = (_WEB_003_GOLDEN / "EVM2.mspdi.xml").read_text(encoding="utf-8-sig")
+    evm2_cycle = _web_003_cyclic("EVM2")
+    evm3_cycle = _web_005_redated(evm2_cycle, "2012-09-20T17:00:00")
+    for name, text in (("EVM2_cycle", evm2_cycle), ("EVM3_cycle", evm3_cycle)):
+        reason = _web_003_cpm_refusal(text)
+        if reason is None or "cycle" not in reason:
+            pytest.fail(f"precondition: the CPM no longer refuses {name} as a cycle ({reason!r})")
+    if _web_003_cpm_refusal(evm1) is not None or _web_003_cpm_refusal(evm2) is not None:
+        pytest.fail("precondition: the committed EVM1 / EVM2 goldens no longer solve")
+
+    # -- each solvable version's own CPM finish, from a one-file session: the version behind the
+    #    KPI figures is identified independently of the page under test ------------------------
+    finish_of: dict[str, str] = {}
+    for name, text in (("EVM1.mspdi.xml", evm1), ("EVM2.mspdi.xml", evm2)):
+        kpis = dict(_WEB_005_KPI.findall(_web_003_client({name: text}).get("/mission").text))
+        if not kpis.get(_WEB_005_FINISH):
+            pytest.fail(f"precondition: {name} alone shows no '{_WEB_005_FINISH}' KPI ({kpis})")
+        finish_of[name] = kpis[_WEB_005_FINISH]
+    if len(set(finish_of.values())) != 2:
+        pytest.fail(f"precondition: EVM1 and EVM2 share one CPM finish ({finish_of})")
+
+    cases = (
+        # (key, the loaded files oldest-first, the refused NEWEST file or None, the solvable list)
+        (
+            "control",
+            {"EVM1.mspdi.xml": evm1, "EVM2.mspdi.xml": evm2},
+            None,
+            ["EVM1.mspdi.xml", "EVM2.mspdi.xml"],
+        ),
+        (
+            "EVM2_cycle",
+            {"EVM1.mspdi.xml": evm1, "EVM2_cycle.mspdi.xml": evm2_cycle},
+            "EVM2_cycle.mspdi.xml",
+            ["EVM1.mspdi.xml"],
+        ),
+        (
+            "EVM3_cycle",
+            {"EVM1.mspdi.xml": evm1, "EVM2.mspdi.xml": evm2, "EVM3_cycle.mspdi.xml": evm3_cycle},
+            "EVM3_cycle.mspdi.xml",
+            ["EVM1.mspdi.xml", "EVM2.mspdi.xml"],
+        ),
+    )
+    wrong: dict[str, list[str]] = {}
+    for key, files, refused, solvable in cases:
+        loaded = list(files)
+        client = _web_003_client(files)
+        page = client.get("/mission").text
+        tiles = _web_005_tiles(page)
+        if set(tiles) != set(_WEB_005_TILE_API):
+            pytest.fail(f"precondition: the wall no longer renders nine tiles ({sorted(tiles)})")
+        # the populations, read from each tile's own API (never from the chip under test)
+        served: dict[str, list[str] | None] = {
+            title: _web_005_served(client, api, list_key)
+            for title, (api, list_key) in _WEB_005_TILE_API.items()
+        }
+        for title, (_chip, degraded) in tiles.items():
+            got = served[title]
+            if not degraded and (got is None or not got):
+                pytest.fail(f"precondition: the live {title} tile's API serves nothing ({got})")
+            if got is not None and got not in (loaded, solvable):
+                pytest.fail(f"precondition: {title}'s API serves {got}, not {loaded} / {solvable}")
+        if served["S-Curve"] != loaded or served["Forecast Drift"] != solvable:
+            pytest.fail(
+                f"precondition: /api/scurve no longer serves every loaded file {loaded} or "
+                f"/api/forecast no longer serves exactly the solvable ones {solvable} ({served})"
+            )
+        finish = dict(_WEB_005_KPI.findall(page)).get(_WEB_005_FINISH)
+        if finish != finish_of[solvable[-1]]:
+            pytest.fail(f"precondition: the KPI finish {finish!r} is not {solvable[-1]}'s own")
+        if refused is not None:
+            if f"<b>{refused}</b>" not in page:
+                pytest.fail(f"precondition: /mission's Sources line no longer lists {refused}")
+            if key not in _web_003_named(client.get("/briefing").text):
+                pytest.fail(f"precondition: /briefing no longer names the refused {key}")
+
+        problems: list[str] = []
+        for title, (chip, degraded) in tiles.items():
+            got = served[title]
+            if not degraded and got and _web_005_miscredits(chip, got, loaded):
+                problems.append(f"{title} tile chip {chip!r} (its API serves {got})")
+        trend = served["Quality Trend"]
+        if not tiles["Quality Trend"][1] and trend:
+            stamp = _WEB_005_DATA_PROV.search(page)
+            stamped = stamp.group(1) if stamp else None
+            if _web_005_miscredits(stamped, trend, loaded):
+                problems.append(f"Quality Trend data-prov {stamped!r} (stamped on each metric)")
+        if refused is not None and key not in _web_003_named(page):
+            named = _web_003_named(page) or None
+            problems.append(f"no 'Skipped (...)' notice names {key} (notice names: {named!r})")
+        if key == "control" and (problems or _web_003_named(page)):
+            pytest.fail(f"precondition (control): EVM1 + EVM2 already fails the check: {problems}")
+        if problems:
+            wrong[key] = problems
+
+    assert not wrong, (
+        "GET /mission credits the CPM tiles (and the Quality Trend stamp) to the newest LOADED "
+        "file -- a refused version their APIs skip -- and never names the refusal, while the "
+        f"verdict band and KPI cards quote the newest solvable version's briefing: {wrong}"
+    )
