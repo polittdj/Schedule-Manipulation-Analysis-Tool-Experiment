@@ -420,5 +420,5 @@ gate) before every push.
 
 QC-1 / QC-2 (ADR-0393) and QC-3 (ADR-0509) bind every session; they are pinned by `tests/test_standing_rules.py`.
 Run the session-token-guardian's `scripts/token_audit.py` as the FIRST action (copy it to the scratchpad) and before
-each operator prompt. `git fetch origin` before you branch, number an ADR, or commit. Highest ADR 0540. Version
-1.0.296. Schema 2.17.0.
+each operator prompt. `git fetch origin` before you branch, number an ADR, or commit. Highest ADR 0541. Version
+1.0.297. Schema 2.17.0.

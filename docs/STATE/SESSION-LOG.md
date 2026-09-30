@@ -20271,5 +20271,12 @@ commit, not a rebase. The resolution:
   mutant that fails it by name.
 - **Re-derived pins:** the pristine digest (once, two reasons); `Today` → `Data date` shape names; the frozen "generated"
   date; review seed 105 → the mechanism; gutter-ledger seeds 12 / 13 → 103 / 110; the member pin 34 → 42.
-- **Measured at close:** _recorded in the artifact commit (the static gate, the FULL suite and `-m parity` on a clean
-  worktree of the source commit)._
+- **Measured at close (clean worktree of the source commit, Python 3.11):** Static gate green on the final tree at the PINNED ruff 0.16.9 (`ruff check .`, `ruff format --check .` 1,398 files),
+  `mypy` 180 files, `bandit` exit 0, `node --check` per file; `build_lodestar.py --check` current (816,775 bytes, 42
+  members). **The FULL suite on a clean worktree of the source commit `b736ca38`: 2 failed, 6,618 passed, 9 skipped,
+  101 xfailed, exit 1 in 1 h 07 min 46 s** — the two failures the Law-1 transport census (`lodestar/shortcut.py`'s
+  `subprocess.run`, now a pinned module with its reason) and the kickoff prompt's closing line (`Highest ADR 0541.
+  Version 1.0.297.`), both fixed in the third commit and their modules re-run green (14 passed, 16 xfailed); no XPASS
+  (A0923-IMP-005 and A0923-DOC-003 still strict-xfail). **`-m parity` 271 passed, 0 skipped, exit 0 (13 min 44 s).** The browser census ran inside the full
+  suite (Chromium); the LibreOffice interop test is one of the 9 skips (no Impress in the container — CI installs it).
+  On the final tree: `tests/installer` + the LODESTAR lockstep + `tests/test_state_docs.py` 112 passed.
