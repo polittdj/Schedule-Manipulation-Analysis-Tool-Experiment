@@ -1,4 +1,8 @@
-# AUDIT-2026-09-23 — Operator asks (one batched list; every live ask has a default; re-issued after the session-2 falsification pass, re-based onto 6bc3138b in session 3, and extended in session 5 (WP-CPM, base 19173728) with ASK-12–ASK-14 and in session 6 (WP-CPM continued, base 13b13f38) with ASK-15)
+# AUDIT-2026-09-23 — Operator asks (one batched list; every live ask has a default; re-issued after the session-2 falsification pass, re-based onto 6bc3138b in session 3, and extended in session 5 (WP-CPM, base 19173728) with ASK-12–ASK-14 and in session 6 (WP-CPM continued, base 13b13f38) with ASK-15, in session 7 with ASK-16–ASK-18 and in session 8 (WP-CPM round 4, base 78e20308) with ASK-19)
+- **T1 (latent, option-gated) — A0923-CPM-048:** a schedule saved with "Split in-progress tasks" OFF (`<SplitsInProgressTasks>0</SplitsInProgressTasks>`) has every out-of-sequence started task's remaining work split off its actual work and restarted at its predecessor's finish anyway — the element is never read — so that task's finish, its successors' dates and the served project finish (`/analysis`, `/path`) read later than the file's own, undisclosed (the hand file: 01/14/2026 for 01/13/2026). Since c18dcd24 (the tree's first commit; the current restart shape since 85f0c6ce, #702, v1.0.278, ADR-0513). Every committed file is saved with the option ON. Until fixed, check the option on an operator file before citing its finish.
+- **T1 (latent, mode-gated) — A0923-CPM-049:** a STARTED manually scheduled task (`<Manual>1</Manual>` with actuals) is re-spanned by logic from its predecessor's finish and by the R-72 restart — MS Project keeps a manual task at its stored dates, and ADR-0034 / the served explainer promise the pin only for unstarted tasks — so its finish, its successors and the served project finish move, undisclosed. Since 7d893f6c (#91, v1.0.0, ADR-0034). No committed file carries a started manual task. Until fixed, read a started manual task's dates from the file's own Start / Finish.
+- **T2 (latent, option-gated) — A0923-CPM-050 / 051:** "Calculate multiple critical paths" and the critical slack limit are never read: on a file declaring either, `/path`'s "What drives the date" chain and the DCMA-12 target set hold the single-terminus, slack ≤ 0 set (2 activities for the file's 4) while `/analysis` prints the stored count beside them, an independent network's end gets the project finish as its late finish and days of float, and no page names the option. Until fixed, read Critical from the file's own flag on such a file.
+- **An instance of A0923-CPM-040 in the SHIPPED DEMO (T4):** "Load example" then a posted target makes `/export/{xlsx,docx}/path` answer 500 (undated tasks only; every committed schedule file is 200). U57 widens.
 
 - **T1 — A0923-CPM-042 (in committed corpus):** an ELAPSED activity's "Remaining duration" is served over the project's 480-minute working day, three times its own duration on an 8-hour day: on the committed Hard_File_updated3 / Hard_File_updated4_24h goldens UID 146 reads 6.0 d beside its Duration 2.0 (elapsed) — Acumen Fuse's Remaining Duration shows 2 — and Jacked_Up_Schedule_1's UID 20 reads 96.0 for 32; the figure reaches the Task Information dialog, the unrestricted Ask table and the activities exports that name the column (`web/state.py:1775`). Since 7eb8708a (#314, v1.0.4, 2026-07-10, ADR-0183). Until fixed, read an elapsed activity's remaining work from its Duration line, never from "Remaining duration".
 - **T1 (option-gated) — A0923-CPM-036 / 038 (family B — the counterfactual pages; in committed corpus):** with a trace option on ("Ignore constraints" / "Ignore leveling delay" on /driving-path, /evolution and their exports), the pages do not show the re-solve their banner promises: with no focus UID /evolution's critical path, its entered / left counts and its docx / xlsx exports are the source file's STORED Critical flags drawn at the re-solved dates (CPM-036 — the drawn set moves on 0 of 44 corpus files where the re-solved set differs on 24), and "Ignore constraints" ticked ALONE changes nothing on a fully-dated file — the tiers, driving slack and focus path are the stored schedule's (CPM-038 — inert on 44 of 44; Hard_File target 411's 88 rows unchanged). Since 140aed3a (#292, v1.0.4, 2026-07-08, ADR-0155). Until fixed, do not cite a family-B page's path, tiers or counts as a counterfactual; tick both options together and read the re-solved FINISH only.
@@ -523,3 +527,34 @@ An ask you skip takes its default. A second round of asks happens only if an ans
   U65 / U67's sketches match MS Project or only the engine's own definitions.
 - **Default if unanswered.** The reproducers keep the hand values (Microsoft's published rule + the declared calendar,
   A1 by the charter's definition); the four keep T1 latent.
+
+## Session 8 (2026-09-30) — one new ask (ASK-19); every earlier ask is carried with its default
+
+### ASK-19 — MS Project's own output for the four scheduling-option shapes and the started manual task (settles the exact-placement legs of A0923-CPM-048 / 049 / 050 / 051)
+
+- **Why.** Session 8 confirmed that the tool never reads four things an MSPDI file declares — `SplitsInProgressTasks`,
+  `MultipleCriticalPaths`, `CriticalSlackLimit` and, for a STARTED task, `Manual` — and serves CPM figures that differ
+  from what Microsoft's published definitions of those options give, with no disclosure. Each class rests on Microsoft
+  Learn's element / property definition plus hand arithmetic (A1 by the charter's definition); Microsoft's rule pages on
+  support.microsoft.com are egress-blocked from a build session, so MS Project's EXACT placement (the non-split
+  in-progress task's dates and slack; a pushed started manual task's dates; the late dates at an independent network's
+  end) is UNVERIFIED by observation. The reproducers pin the definition-derived values.
+- **Steps (MS Project, a new blank project each; Standard calendar; project start Mon 2026-01-05 08:00; save each as
+  XML).** (048) File → Options → Schedule → UNTICK "Split in-progress tasks"; tasks A 3d (no predecessor), B 5d with
+  predecessor A (FS), C 2d with predecessor B; give B an Actual Start of Mon 2026-01-05 08:00 and 40 % complete (B starts
+  out of sequence, before A finishes); read B's Start / Finish / Total Slack, C's dates and the project finish. (049) the
+  same three tasks with "Split in-progress tasks" ON, but make B **Manually Scheduled** (Task Mode) with Start Mon
+  2026-01-05 and Finish Fri 2026-01-09, then give it the same Actual Start and 40 %; read B's dates, C's dates, the
+  project finish and any warning indicator. (050) File → Options → Advanced → tick "Calculate multiple critical paths";
+  two independent chains A 5d → B 5d and C 2d → D 2d; read Late Finish and Total Slack of C and D and the Critical flag of
+  all four. (051) File → Options → Advanced → "Tasks are critical if slack is less than or equal to" **2** days; A 5d → B
+  5d and C 4d → D 4d; read Total Slack and Critical of C and D.
+- **Artifact expected.** The four `.xml` saves (non-CUI, synthetic) uploaded under `00_REFERENCE_INTAKE/references/`,
+  or the values typed as four short lines.
+- **Settles.** Whether the reproducers' definition-derived expectations are MS Project's own (then the tiers stand and
+  U69 / U70's sketches are re-checked against the stored values), or whether MS Project places any of them differently
+  (then the expectation moves to the observed value and the class keeps its "undisclosed option" leg).
+- **Default if unanswered.** The reproducers keep the definition-derived values; CPM-048 / 049 keep T1 latent, CPM-050 /
+  051 keep T2 latent; U69 / U70 ship the option reads with the ADR-0312 import-note disclosure and re-derive nothing
+  from an assumed MS Project value.
+- Answer: (none yet — the default applies)

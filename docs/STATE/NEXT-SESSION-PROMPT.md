@@ -1,4 +1,4 @@
-# Kickoff prompt — next session (handed over 2026-09-29, after AUDIT-2026-09-23 session 7 — WP-CPM round 3: the counterfactual pages, the working day and the wall-path spellings disagree with their own contracts; 18 classes confirmed, WP-CPM still not saturated, ADR-0538)
+# Kickoff prompt — next session (handed over 2026-09-30, after AUDIT-2026-09-23 session 8 — WP-CPM round 4: the scheduling options a file declares are never read; 5 classes confirmed, WP-CPM CLOSED on the evidence, the next lane is MET, ADR-0542)
 
 ## ⚠ FIRST, BEFORE ANYTHING: verify this prompt is about THIS repository
 
@@ -12,15 +12,15 @@ happen again. **Run these before the first edit:**
 
 ```bash
 git fetch --unshallow origin; git fetch --prune origin && git remote set-head origin -a
-git log --oneline -1 origin/main && git rev-list --count origin/main   # expect 40cca07c (#727) or later, 826+
+git log --oneline -1 origin/main && git rev-list --count origin/main   # expect 78e20308 (#728) or later, 827+
 ls -d src app 2>&1; ls .github/workflows; grep -n '^version' pyproject.toml
-ls docs/adr | sort | tail -1                                          # expect 0541 or higher
+ls docs/adr | sort | tail -1                                          # expect 0542 or higher
 ```
 
 **If a prompt's facts disagree with those outputs, the TREE wins and the prompt is suspect — report it
 to the operator and never let a prompt's self-description authorise a durable-state write.**
 `HANDOFF.md` (auto-injected) always wins over this file on a disagreement. The 2026-09-22 (b), (c),
-2026-09-24 (a), (b), (c) and 2026-09-25 sessions and AUDIT-2026-09-23 sessions 1–7 ran this block and the
+2026-09-24 (a), (b), (c) and 2026-09-25 sessions and AUDIT-2026-09-23 sessions 1–8 ran this block and the
 tree agreed on every point — that is what a passing §0 looks like. AUDIT-2026-09-23 sessions 2 and 3 each found
 `main` past the package's base, which is what "main moved" looks like: each re-based the package instead of copying
 its numbers. Session 7's pull request #726 merged as `5c6622fd` (2026-09-30): `main` carries ADR-0538 — continue from `main`,
@@ -32,7 +32,7 @@ ADR-0540 (the full-page fill, every requested link fitted, the installers' own D
 `40cca07c` (#727, 2026-09-30)**. ADR-0541 (the operator-picked DATA DATE on both One-Pager pages, LODESTAR's launch page
 and first-run Desktop shortcut, ADR-0540's three follow-ups closed — v1.0.297, LODESTAR 1.0.2) is the draft pull request
 of `claude/focused-ride-4u3cpl`; `HANDOFF.md`'s top section says where it stands and what the operator still has to rule
-on (the size cap). The §0 check now expects `40cca07c` or later, ADR **0541** or higher, version **1.0.297** or later.
+on (the size cap). ADR-0541 merged as `78e20308` (#728, 2026-09-30) — the base of AUDIT-2026-09-23 session 8. The §0 check now expects `78e20308` or later, ADR **0542** or higher, version **1.0.297** or later.
 
 
 The One-Pager C / D / E intake, operator-drawn logic links and LODESTAR (ADR-0539) are on `main`: PR #724 merged as
@@ -51,6 +51,10 @@ SESSION: NEW. Resume the POLARIS² audit campaign AUDIT-2026-09-23 (AUDIT + PLAN
 
 ## Immediate disclosures — keep them at the top of HANDOFF until their units merge
 
+- **T1 (latent, option-gated) — A0923-CPM-048:** a schedule saved with "Split in-progress tasks" OFF (`<SplitsInProgressTasks>0</SplitsInProgressTasks>`) has every out-of-sequence started task's remaining work split off its actual work and restarted at its predecessor's finish anyway — the element is never read — so that task's finish, its successors' dates and the served project finish (`/analysis`, `/path`) read later than the file's own, undisclosed (the hand file: 01/14/2026 for 01/13/2026). Since c18dcd24 (the tree's first commit; the current restart shape since 85f0c6ce, #702, v1.0.278, ADR-0513). Every committed file is saved with the option ON. Until fixed, check the option on an operator file before citing its finish.
+- **T1 (latent, mode-gated) — A0923-CPM-049:** a STARTED manually scheduled task (`<Manual>1</Manual>` with actuals) is re-spanned by logic from its predecessor's finish and by the R-72 restart — MS Project keeps a manual task at its stored dates, and ADR-0034 / the served explainer promise the pin only for unstarted tasks — so its finish, its successors and the served project finish move, undisclosed. Since 7d893f6c (#91, v1.0.0, ADR-0034). No committed file carries a started manual task. Until fixed, read a started manual task's dates from the file's own Start / Finish.
+- **T2 (latent, option-gated) — A0923-CPM-050 / 051:** "Calculate multiple critical paths" and the critical slack limit are never read: on a file declaring either, `/path`'s "What drives the date" chain and the DCMA-12 target set hold the single-terminus, slack ≤ 0 set (2 activities for the file's 4) while `/analysis` prints the stored count beside them, an independent network's end gets the project finish as its late finish and days of float, and no page names the option. Until fixed, read Critical from the file's own flag on such a file.
+- **An instance of A0923-CPM-040 in the SHIPPED DEMO (T4):** "Load example" then a posted target makes `/export/{xlsx,docx}/path` answer 500 (undated tasks only; every committed schedule file is 200). U57 widens.
 - **T1 — A0923-CPM-042 (in committed corpus):** an ELAPSED activity's "Remaining duration" is served over the project's 480-minute working day, three times its own duration on an 8-hour day: on the committed Hard_File_updated3 / Hard_File_updated4_24h goldens UID 146 reads 6.0 d beside its Duration 2.0 (elapsed) — Acumen Fuse's Remaining Duration shows 2 — and Jacked_Up_Schedule_1's UID 20 reads 96.0 for 32; the figure reaches the Task Information dialog, the unrestricted Ask table and the activities exports that name the column (`web/state.py:1775`). Since 7eb8708a (#314, v1.0.4, 2026-07-10, ADR-0183). Until fixed, read an elapsed activity's remaining work from its Duration line, never from "Remaining duration".
 - **T1 (option-gated) — A0923-CPM-036 / 038 (family B — the counterfactual pages; in committed corpus):** with a trace option on ("Ignore constraints" / "Ignore leveling delay" on /driving-path, /evolution and their exports), the pages do not show the re-solve their banner promises: with no focus UID /evolution's critical path, its entered / left counts and its docx / xlsx exports are the source file's STORED Critical flags drawn at the re-solved dates (CPM-036 — the drawn set moves on 0 of 44 corpus files where the re-solved set differs on 24), and "Ignore constraints" ticked ALONE changes nothing on a fully-dated file — the tiers, driving slack and focus path are the stored schedule's (CPM-038 — inert on 44 of 44; Hard_File target 411's 88 rows unchanged). Since 140aed3a (#292, v1.0.4, 2026-07-08, ADR-0155). Until fixed, do not cite a family-B page's path, tiers or counts as a counterfactual; tick both options together and read the re-solved FINISH only.
 - **T1 (latent — no committed file exercises them) — A0923-CPM-043 / 044 / 046 / 047:** CPM dates and floats are wrong on an operator file that carries a task on a calendar with non-working weekdays (e.g. a 24-hour Monday–Friday crew calendar) whose late finish falls at its week's end — negative total float and a late start before the project start (CPM-043); a lagged FF or SF link from a 24-hour-calendar or elapsed activity — that activity shown with negative float, critical (CPM-044); a lagged SS or SF link into an activity on its own calendar — that activity and the project finish up to 15 hours later than the equivalent FS / FF link (CPM-046); or a lag-0 SS / SF link from a project-calendar task that starts after a mid-day break into a 24-hour or elapsed activity — scheduled up to an hour before its predecessor starts, float an hour high (CPM-047). Since afb8e729 (#497, v1.0.140, 2026-07-31). Check an operator file for these shapes before citing its CPM figures.
@@ -76,6 +80,8 @@ The last five were re-attacked in session 2 (the falsification pass) and NOT REF
 at `13b13f38` (session 6's branch, `src/` unchanged: 1 passed · 83 xfailed once its 28 were added).
 
 ## Where we are
+
+**Session 8 (2026-09-30, ADR-0542) ran WP-CPM round 4 on base `78e20308`** (#728, ADR-0541, v1.0.297; 827 commits; `engine/` / `importers/` / `model/` byte-identical to sessions 5–7's bases) and committed on `claude/awesome-clarke-g4uy4s` as one draft pull request. It rebuilt the 44-file corpus first (22,105 by two methods), censused the tree beside it (43 MSPDI / 1 XER / 3 JSON), re-ran the 102 reproducers on both Pythons (no XPASS), ran the base's full suite on a clean worktree (6,620 passed · 9 skipped · 101 xfailed, exit 0), wrote and attacked its plan (R1–R14; R7 fell, R10 fell and was replaced, R13 held after an instrument fix) before any finder ran, then ran three NEW families and one lead-settling family (F-MODE, F-ROLE, F-24X7, F-LEADS2): 6 candidates → 1 DUPLICATE (an instance of CPM-040, in the shipped demo) → 5 claims → **5 REPRODUCED** by claim-only verifiers (a second verifier for the four grown from the lead's observation) → **5 CONFIRMED-DEFERRED** (T1 × 2: CPM-048 / 049 latent · T2 × 2: CPM-050 / 051 latent · T4: WEB-005 latent) + 9 instance extensions widening U07 / U29 / U38 / U51 / U55 / U57 / U59 / U60. Retained classes **102 → 107**; reproducers **1 passed · 106 xfailed** (3.11 + Playwright); repair units **U69–U71**; ask **ASK-19**. **WP-CPM CLOSED on the evidence** — F-ROLE (0 candidates) and F-24X7 (0 new classes) are two consecutive new families with no new class under the rule set before the wave; the stricter reading (any candidate filed) is recorded and the lane may be reopened on it without a re-audit. If you are reading this on `main`, session 8's pull request merged.
 
 **`main` also took ADR-0539 (v1.0.295: the One-Pager C/D/E intake, operator-drawn logic links → PowerPoint, LODESTAR; #724 / #725) while session 7's PR was open — the next campaign session's base is that `main`; re-run the 102 reproducers there first (ADR-0539 changed `src/`).** **Session 7 (2026-09-29, ADR-0538) ran WP-CPM round 3 on base `0b45eb28`** (#723 — session 6's documents; v1.0.294; 822
 commits) and committed on `claude/modest-cori-iit4zh` as one draft pull request. It rebuilt the 44-file corpus first (22,105 by two
@@ -145,7 +151,7 @@ carries the 24 rows of the 2026-08-27 register still open at `6bc3138b` unchange
    Project's displayed day on a declared / derived mismatch (CPM-041, U63's oracle), MS Project runs of the four wall-path
    shapes (CPM-043 / 044 / 046 / 047); defaults: keep the code's stated contracts, U63 corrects the ADRs' premise to the
    derived day, the reproducers keep the hand values. Never wait for a reply.
-2. **Default next session: WP-CPM round 4, or close the lane on the evidence** (the rule: two consecutive probe families
+2. **Default next session: open WP-MET** (the charter's lane order after CPM: the four-way agreement table per metric — formula in code · `.aft` formula · help / dictionary text · UI label and caption —, populations and denominators against the authority's filter, N/A vs 0 and "—" vs a fabricated 0.0 on every surface and export, thresholds and PASS direction, SRA determinism; oracles the `.aft` formulas verbatim from every committed library, the committed Fuse / SSI exports and goldens, the `metric-parity` skill). Rebuild the corpus first (22,105), census the tree beside it, re-run the 107 reproducers on your base (expect 1 passed · 106 xfailed with Playwright; 2 skipped where it is absent): any strict XPASS is FIXED-UPSTREAM or CHANGED — record which. Carry the ledger's **"UNVERIFIED leads — session 8"** (the home dashboard's SOURCE chip; `/export/{fmt}/mission`; the "days" label on a calendar-day span; a file skipped by one resolver; the manual-task shapes; the XER importer's P6 critical-path options; the exhibits payload's unproduced option fields). The CPM lane is CLOSED on the evidence; reopen it only on the stricter saturation reading (recorded in the ledger's session-8 section) or on a new premise — never as a fifth pass of the nineteen families run so far. (Superseded — session 7's item 2 follows, kept as the record:) **Session 7's default: WP-CPM round 4, or close the lane on the evidence** (the rule: two consecutive probe families
    with no new CANDIDATE — sessions 5, 6 and 7 each produced candidates from every family). Rebuild the corpus first
    (22,105), census the tree beside it, re-run the 102 reproducers on your base (expect 1 passed · 101 xfailed with
    Playwright; 2 skipped where it is absent). Then: (a) the ledger's **"UNVERIFIED leads — session 7"** — the CPM-034
@@ -203,6 +209,8 @@ kickoff.
 
 ## What's done — do NOT re-open
 
+**Session 8 (ADR-0542):** the five classes CPM-048, CPM-049, CPM-050, CPM-051 and WEB-005 are CONFIRMED-DEFERRED — an independent claim-only verifier each (two for CPM-048..051), the lead's re-run of every red, an assembler each, the lead's teeth on all 5 on fresh trees. Do not re-audit them; fix them through U69–U71. The nine instance rulings are rulings, not open questions (CPM-034 + `:2941` / `:3153`; IMP-002 + the ruler's fallback; CPM-040 + the crash leg and the demo; WEB-003 + `/mission`; WEB-004 = 7 sites, the two pptx routes FIXED upstream; CPM-037 + the volatility export; IMP-007 + a from-finish file; CPM-018 + `/path` on 7 × 24; MET-002). F-LEADS2 lead 4 was REFUTED (Chromium names a Latin-1 download correctly); the `:2563` premise was REFUTED (`es_floor` is SNET / FNET only). **WP-CPM is CLOSED on the evidence.**
+
 **Session 7 (ADR-0538):** the eighteen classes CPM-035..047, IMP-011, UI-002, EXP-001, WEB-003 and WEB-004 are
 CONFIRMED-DEFERRED — an independent claim-only verifier each (two for CPM-038, CPM-039 and EXP-001), the lead's re-run of
 every red, an assembler each, the lead's teeth on all 18 on fresh trees. Do not re-audit them; fix them through U55–U68.
@@ -247,6 +255,7 @@ flag half (ADR-0527), R-13 (ADR-0528).
 
 ## Measured-false / deliberately held — do NOT re-chase
 
+(Session 8, ADR-0542:) **the download file name for a Latin-1 key** (REFUTED: Chromium takes it from the URL path) · **`cpm.py:2563` as a CPM-034 sibling** (REFUTED: unreachable by any floor but SNET / FNET-with-date; wrap or delete it in U51) · **`HonorConstraints=0`** (HELD-BY ADR-0322 §2, screened again) · **the corpus's manual milestone UID 6150** (HELD-BY ADR-0505) · **the night-shift 22:00 project start normalised to 00:00** (HELD-BY ADR-0310 §5 / ADR-0028; the note is served) · the constructed negatives: the engine exact on F-24X7's 74 hand rows, 113 served surfaces per file identical to the control, `Estimated` and 13 inert header options inert, F-ROLE's 17 covered sites and the corpus's 0 boundary needs.
 (Session 7, ADR-0538:) **LD-A** — a started task losing its actual start under ignore_leveling (REFUTED: kept, ADR-0391's
 floor; the finish leg HELD-BY ADR-0108 D2 / ADR-0391) · **F-CALG-002 as a class** (DUPLICATE-OF CPM-006 — the extras-blind
 ruler at a consumer site) · CPM-042's baseline leg (Fuse's Baseline Duration 6 vs DurationFormat 8's 2 ed — the authorities
@@ -302,7 +311,7 @@ wait lives in the test) · R-22's encodings (verbatim table) · a frozen pane ag
 (ADR-0529:) relabelling SPI / TCPI as banded (the 2-dp pin already existed) · widening R-39 to the eleven other
 400-answering exports. Plus every earlier ADR's held items (see previous kickoffs in git log).
 
-## Environment (re-measured 2026-09-29 — session 7's container: the same shape as session 6's — 4 CPUs, 15 GB, TZ UTC, Python 3.11.15 + a 3.13.12 venv, ruff 0.16.9 via `python3 -m ruff` with a stale 0.15.8 first on PATH, OpenJDK 21.0.10, node 22.22.2, playwright 1.63.0 / chromium-1194, `flock`, no `xxd`; the bullets below are carried)
+## Environment (re-measured 2026-09-30 — session 8's container: 4 CPUs, 15 GB, TZ UTC, Python 3.11.15 + a 3.13.12 venv (`uv venv`), ruff 0.16.9 via `python -m ruff` with a stale 0.15.8 first on PATH again, OpenJDK 21.0.10, node 22.22.2, playwright 1.63.0 / chromium-1194, `flock`, no `xxd`, no `rsync`; `learn.microsoft.com` / `support.microsoft.com` egress-blocked over HTTPS — the Microsoft Learn connector serves the MSPDI element pages, not the support rule pages; the bullets below are carried)
 
 ```bash
 git fetch --unshallow origin                     # the clone arrives SHALLOW (50 commits)
@@ -352,7 +361,7 @@ which -a ruff; python3 -m ruff --version         # 0.16.9 via python3 -m ruff in
 
 ## Traps this campaign paid for, by name
 
-**(2026-09-29 (a), ADR-0538 — session 7)** A `while pgrep -f <pattern>` waiter matches its own command line — three
+**(2026-09-30 (b), ADR-0542 — session 8)** A census sniff on the first bytes misses a fixture that opens with a comment line (the one committed XER read as 0) — control every count with a second method · a recorded red command carrying a literal `$S` exits 2 on a re-run for a path reason — export the variable before judging an exit code · a brief's premise about a code site is testimony until a sentinel proves the limb reachable · set a tier after BOTH verifications and write it once (a rulings file written earlier carried a draft an assembler flagged) · a finder's own hand walk can be the wrong party — a control the engine disagrees with is a question, not a finding · count the in-flight set before every launch (four for half an hour) · close a lane only on the rule written before the wave, and record the stricter reading beside it. **(2026-09-29 (a), ADR-0538 — session 7)** A `while pgrep -f <pattern>` waiter matches its own command line — three
 queued runs waited on themselves for 40 minutes; kill by PID and write the pattern so it cannot match itself
 (`run\.py A0923-CPM-04[0]`) · a fragment that needs a module-level import NameErrors when appended alone, and the strict
 marker reports FAILED, not XFAIL (the guard's job) — integrate such a module from the assembler's tree · a monitor that greps
@@ -420,5 +429,5 @@ gate) before every push.
 
 QC-1 / QC-2 (ADR-0393) and QC-3 (ADR-0509) bind every session; they are pinned by `tests/test_standing_rules.py`.
 Run the session-token-guardian's `scripts/token_audit.py` as the FIRST action (copy it to the scratchpad) and before
-each operator prompt. `git fetch origin` before you branch, number an ADR, or commit. Highest ADR 0541. Version
+each operator prompt. `git fetch origin` before you branch, number an ADR, or commit. Highest ADR 0542. Version
 1.0.297. Schema 2.17.0.

@@ -495,6 +495,50 @@ corpus battery (88 runs, 44,210 activity-runs) 0 on REF, R6 undated, R8, R9, R10
 premise holds for link-driven and FNET / MFO-bound milestones (the filed class is the SNET / MSO one, CPM-027); the
 session-5 mechanism for the −960 second day ("a skipped Thanksgiving") REFUTED — the real mechanism is IMP-010.
 
+## Session 8 (2026-09-30): WP-CPM round 4 — the lane closes on the evidence
+
+**Base `78e20308`** (#728, ADR-0541; v1.0.297; 827 commits; `engine/`, `importers/` and `model/` byte-identical to
+sessions 5–7's bases, `src/` changed elsewhere by ADR-0539 / 0540 / 0541). AUDIT + PLAN ONLY; one draft pull request on
+`claude/awesome-clarke-g4uy4s`; ADR-0542. The §0 check agreed with the tree on every point (main's CI #2029 read to
+conclusion by its six jobs, all green); the 102 reproducers read session 7's line on both Pythons before anything (1
+passed · 101 xfailed; 1 · 2 skipped · 99 on the 3.13 venv — no XPASS, so the three feature PRs fixed no retained class);
+the 44-file corpus was rebuilt to 22,105 activities by two methods and the committed tree censused beside it (43 MSPDI —
+40 at 480, TP2 ×2 at 600, one without the field; 1 XER; 3 Save-format JSON); the full suite ran on a clean worktree of
+the base (6,620 passed, 9 skipped — all environment-gated or by design — 101 xfailed, exit 0 in 1 h 30 min).
+
+**The round.** Three NEW probe families and one lead-settling family, planned and attacked on the pristine tree before
+any finder ran (14 assumptions; R7 fell — a "task states" family was a re-pass of session 6's F-EDGE2 cells; R10 fell and
+was replaced — Microsoft's documentation is egress-blocked over HTTPS and the Learn connector is the channel; R13 held
+after an instrument fix — a "starts with ERMHDR" sniff missed the one committed XER): F-MODE (the 36 project-header
+options and the task-level modes; the importer reads 8 elements and none of the scheduling options; every option at
+its default on 44 / 44 corpus files) · F-ROLE (the wall-role spelling call-site census: 22 `_offset_to_wall` sites, 17
+covered, 2 instances of CPM-034, 1 unreachable, 1 inert) · F-24X7 (a 7 × 24 project calendar and a shift ending at 24:00:
+the engine exact on 74 hand rows, 113 served surfaces per file identical to the control) · F-LEADS2 (session 7's four
+leads: one new class, three instances, one refuted). **6 candidates → 1 DUPLICATE (an instance of CPM-040) → 5 claims →
+5 REPRODUCED** by fresh-context claim-only verifiers (a second verifier for the four grown from the lead's observation),
+0 refuted; 6 instance extensions reproduced by a second party; the lead re-ran all 8 recorded reds (8 exit 1 on both
+Pythons), one assembler per class produced the reproducer, teeth, fix sketch, blast radius and exposure window, and the
+lead's own teeth on fresh trees are on record (below).
+
+**Yield: 5 new classes — T1 × 2 · T2 × 2 · T4 × 1; retained 102 → 107** (106 open + DOC-014 fixed upstream). The T1s:
+a file that declares "Split in-progress tasks" OFF has its out-of-sequence started work split and restarted anyway, and
+its served project finish reads a working day past the file's own (CPM-048, option-gated, latent); a STARTED manually
+scheduled task is re-spanned by logic and by the R-72 restart, against MS Project's definition of the mode and the
+tool's own ADR-0034 contract (CPM-049, latent). The T2s: "Calculate multiple critical paths" unread — an independent
+network's end gets the project finish as its late finish, 6 days of float and no critical flag on `/path` and the
+DCMA-12 target set while `/analysis` prints "4 Critical" from the stored flag beside it (CPM-050); the file's critical
+slack limit unread — `/path` and DCMA-12 hold 2 critical for the file's 4 with no page naming the limit (CPM-051). T4:
+`/mission` shows the older version's briefing under a source chip naming the newer, refused file (WEB-005). **WP-CPM
+closes on the evidence** under the rule set before the wave (two consecutive new families — F-ROLE and F-24X7 — with no
+new class once the class-boundary rule is applied); the stricter reading is recorded beside it. Repairs: **U69–U71** (3
+units; seven earlier units widen). Asks: **ASK-19** (MS Project runs of the four option shapes). The state documents,
+ADR-0542 and this section were written by the lead; the register's §3.1 count line and the yield table gain a session-8
+row; nothing else in this report was edited.
+
+**Outside the campaign.** The operator asked mid-session for a more descriptive README with a how-to-use guide; it is
+built as its own commit on the campaign branch, flagged in the pull request body (README.md is outside the charter's
+allowlist; the operator outranks the charter; the conflict is recorded in the ledger).
+
 ## Session 7 (2026-09-29): WP-CPM round 3
 
 **Base `0b45eb28`** (#723, session 6's documents; v1.0.294; 822 commits; `src/` byte-identical to sessions 5–6's
@@ -788,7 +832,7 @@ downgraded (no haiku `worker`, no `qc-checker`).
 
 ## 3. The register — every row, its verdict, what it carries forward
 
-### 3.1 The 56 retained classes (tier order; session 6: 84; session 7: 102)
+### 3.1 The 56 retained classes (tier order; session 6: 84; session 7: 102; session 8: 107)
 
 Each row's full evidence — the verbatim authority, the red command and its output, the control, the class census,
 both session-1 verifications, every refutation attempt and the teeth proof — is the finding's block in the ledger
@@ -1302,3 +1346,4 @@ their home lanes (IMP 8, DOC 17 — §1) and named in the session-6 CPM row.
 | DOC | 468 present-tense claims in 25 documents (the finder's claims table): 364 TRUE, 82 FALSE, 22 not checkable here | each claim checked by command or render and batched by document into classes; every document re-read by eye in session 2 | 16 (15 open; DOC-014 fixed upstream) | 15 NOT-REFUTED, DOC-004 NARROWED 6 → 5; DOC-014 NOT-REFUTED at the base, FIXED-UPSTREAM at `f1b691f3` (R05–R08) | 56 across the 16 classes (session 1's 57 less DOC-004's dropped `:17`); the verifiers narrowed DOC-004 to 6 and DOC-015 to 1, the refuter DOC-004 to 5 | in-app help text (`web/help.py`) and ADR decisions in force beyond the 55 ADRs Scout C read — budget; no listed work package owns them yet |
 | PERF | — | — | 0 | — | — | not probed — budget (WP-PERF) |
 | CPM (session 7, WP-CPM round 3) | ADR-0251's family B (`/driving-path`, `/evolution`, their exports and `_optioned_versions`), the "Separate parallel paths" decomposition and the two session-6 route leads; every served surface on 420 / 480 / 600 / 1440-minute days (281 URLs per day length, every GET route from `create_app`, exports parsed) plus the committed TP2 (600) and the Hard_File_updated3 golden; the calendar arithmetic (`cpm.py` converters and wall helpers, `model/calendar.py`) under a 14-property seeded battery on synthetic and real calendars; session 6's unrun designs (R8 duality on a reflection-symmetric week, the wall-path variants of CPM-030 / 031, the twin sites of CPM-032 / 034, the lagged SF into a 24-hour task); the Save `.json` round trip on 76 files / 22,992 activities by model, figure and served page | hand arithmetic written out, Microsoft Learn (MinutesPerDay, DurationFormat, PROJ_OPT_*, Total Slack; retrieved 2026-09-29), the files' own declared fields, two committed Fuse exports, the code's own contracts (docstrings, ADR-0251, banners, tooltips), an engine-independent brute-force oracle for the calendar battery, MPXJ 16.2.0 as an alternative witness only; claim-only verifiers P1–P6 (P6 a second verifier), the lead's re-run of every red, one assembler per class, the lead's teeth on 3.11.15 and 3.13.12 | 13 (CPM-035 … CPM-047); the same finders also found IMP-011 (IMP), UI-002 (UI), EXP-001 (EXP), WEB-003 / 004 (WEB) | — (session 7: 18 REPRODUCED by claim-only verifiers, 0 REFUTED; F-CALG-002 DUPLICATE-OF CPM-006; LD-A REFUTED as a lead) | CPM-042: 15 of 1,142,988 served corpus fields (two Fuse exports disagree); CPM-036: the drawn set moves on 0 / 44 files where the re-solved set differs on 24; CPM-038: inert on 44 / 44 (the constraints move 25 / 44); CPM-039: 23 of 49 traces over-split, 18 / 44 files at a finish target; CPM-040: Project5 target 67 under any reducing filter (32 vs 18 rows; 43 vs 29); CPM-041: 0 of 71 committed MSPDI mismatch (latent); CPM-035: one committed fixture (`commercial_construction.xml` UID 5), 0 corpus inactive tasks; CPM-043: 0 triggers in 12,566 walker calls; CPM-044 / 046 / 047: 1 / 11 / 11 corpus links of the shape, none binding (latent); CPM-045: 0 committed files with summary logic; IMP-011: 0 committed JSON; UI-002: 79,140 custom durations, all on 480-minute files; EXP-001: the only committed payload's threshold is 0; WEB-003: 0 refused corpus files; WEB-004: 0 of 106 tracked names outside Latin-1 | the CPM-034 start-role siblings at `cpm.py:2941` / `:3153` / `:2563`; a browser render of the parallel-path output, the band and the tooltips (P6 rendered the branch headers); SSI's own parallel-path semantics (ASK-16); MS Project's rendering of a declared / derived day mismatch (ASK-17) and of the four wall-path shapes (ASK-18); `/mission`'s discarded skipped list; POST routes under a non-480 day; a 7-day 24-hour project calendar; a non-8-hour XER; WEB-004's ~40 export siblings; a full-suite run (CI's); the saturation rule is still NOT met — every family produced a candidate |
+| CPM (session 8, WP-CPM round 4) | the 36 project-header options over the 44 corpus files and the task-level modes (F-MODE: one hand MSPDI per option; the importer reads 8 elements and none of the scheduling options; every option at its default on 44 / 44); every `_offset_to_wall` call in `engine/cpm.py` (F-ROLE: 22 sites by AST, a hand network per uncovered site with a forward-pass bisection as the oracle); a 7 × 24 project calendar and a shift ending at 24:00 (F-24X7: 4 hand networks / 74 rows; 111 GET routes, 185 URLs per file, 113 surfaces × 2 files, plus 57 URLs after two versions and four POST states); session 7's four UNVERIFIED leads (F-LEADS2) | Microsoft Learn's element / property definitions (via the connector; the support.microsoft.com rule pages egress-blocked) + hand arithmetic written out; the engine's own contracts (ADR-0034, ADR-0513, ADR-0150 / 0199, cpm.py:1403); the class-boundary rule against every retained class; claim-only verifiers (six packets, a second verifier for the lead-observation classes); the lead's re-run of every red; assemblers; the lead's teeth on fresh trees on 3.11.15 and 3.13.12 | 5 new: CPM-048, CPM-049 (T1 latent), CPM-050, CPM-051 (T2 latent), WEB-005 (T4 latent) | — (reproduced at `78e20308`) | 9 instance extensions (CPM-034 + 2 sites, IMP-002 + 1 consumer, CPM-040 + the crash leg and the shipped demo, WEB-003 + `/mission`, WEB-004 = 7 sites, CPM-037 + the volatility export, IMP-007, CPM-018, MET-002); 2 leads refuted; the engine exact on 74 hand rows | the R8 battery extended to progress / leveling / constraints (budget); MPXJ witnesses (the base suite held the JVM); MS Project's own output for the option shapes (ASK-19); a browser render of the 7 × 24 surfaces; the home dashboard's SOURCE chip and `/export/{fmt}/mission`; the manual-task shapes not run (oracle-gated). **WP-CPM CLOSED on the evidence** — two consecutive new families with no new class under the pre-set rule; the stricter reading recorded |

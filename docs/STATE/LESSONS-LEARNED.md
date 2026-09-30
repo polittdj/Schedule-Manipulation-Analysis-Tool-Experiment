@@ -435,6 +435,51 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-30 (b) — A rule you set before the wave is the only rule you may close a lane on, a tier set before the second verifier is a draft, and a sniff that reads the first bytes is a guess (ADR-0542)
+
+- **What happened.** Session 8 ran WP-CPM's fourth round: three new families, one lead-settling family, five classes
+  confirmed (four latent scheduling-option / mode classes the importer never reads; one mixed-provenance page), nine
+  instance extensions, and the lane closed on the evidence.
+- **Close a lane only on the rule you wrote before the results came in.** F-24X7 filed one candidate that a verifier then
+  ruled an instance of CPM-040. Whether that counts as "a new CANDIDATE" decides whether the lane closes. The honest move
+  was to apply the class-boundary rule set before the wave, state both readings side by side in the ledger, and let the
+  next session reopen without a re-audit if it reads the rule the other way. A rule re-read after the data is a rule
+  written after the data.
+- **A tier is set after BOTH verifications, and written once.** The rulings file carried T2 for CPM-048 / 049 from the
+  first verifier's opinion; the second verifier argued T1; the lead raised it in chat but not in the file; an assembler
+  read the file and flagged the conflict. Two sources of truth for a tier is one too many.
+- **A census instrument is a claim — again.** "Starts with ERMHDR" read 0 XER for the tree's 1: the synthetic fixture
+  opens with a comment line. Session 7's count was right. The second method (a regex anywhere in the head) caught it;
+  without the control count the ledger would have carried a wrong number with a confident method beside it.
+- **The finder can be the wrong party.** F-24X7's first run showed six engine failures; three were the finder's own hand
+  walks. A hand oracle is only as good as the hand, so a red whose control also fails is a question, not a finding — and
+  the engine being exact on 74 rows after the corrections is the real result of that family.
+- **A brief's premise about a code site is testimony.** The lead attributed the stored-date floors to `cpm.py:2563`; the
+  finder put a sentinel in the limb and it never fired over 886 entries. Hand a finder the question, not the answer, and
+  expect the premise to fall.
+- **Count the in-flight set before every launch.** Two verifiers were still out when two assemblers launched: four
+  agents, one over the operator's cap, for half an hour. Nothing broke; the deviation is recorded because a cap that is
+  exceeded in silence is not a cap.
+- **A provider limit killed a wave again, and the files on disk were the recovery.** Three assemblers died mid-work; because every deliverable was written to disk as it completed, a resumed agent could re-verify its predecessor's reproducer and fix sketch instead of starting over — and one resumed agent inherited a live defect (a reproducer that FAILED instead of XFAILing) that its predecessor had just noticed. Disk-first is not bookkeeping; it is the only thing that survives a death.
+- **The identity trap bit again, and the check before the push caught it.** The container's environment sets the operator's
+  name as the git author and committer, and the environment beats the repo's config; both local commits carried it. They
+  were re-authored before any push (a non-interactive rebase with the identity exported for author and committer, the tree
+  proven byte-identical). Read `git log --format='%an <%ae> | %cn <%ce>'` before every push, not the config.
+- **The lead's own teeth runner had three defects, and each one lied in a different direction.** Its marker strip matched
+  nothing on a two-deep reason string (it stopped, exit 2 — the honest failure); its verdicts accepted ANY failure that
+  named the test as "strict XPASS" and "failed by name" (a false pass); and a PYTHONPATH-only interpreter in a clean
+  worktree has no package metadata, so the app's Law-1 net guard refused to start and every test failed for that reason. The
+  tightened checks (exactly one FAILED, the named test, the marker's exception on an E line) were first proven to REJECT the
+  invalid logs and ACCEPT the valid ones, then every log on disk was re-judged. An instrument is a claim like any other.
+- **Editing the tree while a guard set reads it voids that run, even for one bullet.** The README gained a line mid-run;
+  the result was superseded by the full gate on a clean worktree of the committed head, not argued away.
+- **The authority channel is part of the plan.** Raw HTTPS to Microsoft is egress-blocked; the Learn connector serves
+  the element definitions but not the support.microsoft.com rule pages. Every "MS Project does X" leg that only a rule
+  page states is marked UNVERIFIED and routed to ASK-19, rather than asserted from memory.
+- **A mid-session ask outside the charter is handled the same way as one inside it:** stress-test it (the how-to guide
+  already exists in the user guide; three strict-xfail reproducers pin README sentences as open findings; the allowlist
+  gate would list the file), then do it as its own commit on the operator's word with the conflict written down.
+
 ### 2026-09-30 — A recorded corner is a claim about a population, and the population disagreed (ADR-0541)
 
 - **What happened.** One session gave the One-Pager an operator-picked data date, LODESTAR a launch page of its own and a
