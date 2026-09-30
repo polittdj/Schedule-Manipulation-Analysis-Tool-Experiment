@@ -48,6 +48,8 @@ class OnePagerSession(Protocol):
     onepager_title: str
     onepager_msg: str | None
     onepager_is_error: bool
+    #: the operator's DATA DATE — the red line both slides draw (ADR-0541); ``None`` is the
+    #: computer's date
     onepager_today: dt.date | None
     onepager_window: tuple[dt.date, dt.date] | None
     onepager_prior: OnePagerDoc | None

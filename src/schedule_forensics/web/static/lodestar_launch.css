@@ -1,0 +1,49 @@
+/* lodestar_launch.css — what makes LODESTAR's launch page LODESTAR's (ADR-0541).
+ *
+ * Loaded by /launch of LODESTAR only, AFTER launch.css (the boot screen's one sanctioned
+ * departure from theme-following, DESIGN-SYSTEM §7a: a dark ground in every view, the particles
+ * coloured from the --boot-accent / --boot-warm pair). This sheet re-points ONE of that pair —
+ * the accent — to the lodestar's gold in every view, daylight included, so the same lightshow
+ * is unmistakably this program's; --boot-warm keeps following each view's --warn, so the four
+ * views still differ. Nothing below hard-codes a colour at a call site: the accent is declared
+ * once, here, on :root, exactly as launch.css declares its own.
+ */
+:root,
+html[data-theme=daylight], html[data-theme=light] {
+  --boot-accent: #f0c24b; /* the lodestar's gold, in every view */
+}
+
+/* the brand block: the ✦ mark, the name and its line, above the hero copy */
+.ls-boot-brand {
+  display: flex;
+  align-items: baseline;
+  gap: .5em;
+  margin: 0 0 6px;
+  font-family: ui-monospace, "IBM Plex Mono", Consolas, monospace;
+  letter-spacing: .3em;
+  text-transform: uppercase;
+  color: var(--boot-ink);
+  pointer-events: none;
+}
+.ls-boot-mark { color: var(--boot-accent); font-size: 30px; letter-spacing: 0; line-height: 1; }
+.ls-boot-name { font-size: 22px; font-weight: 700; }
+.ls-boot-tagline { font-size: 11px; color: var(--boot-muted); letter-spacing: .2em; }
+
+/* the credit the frame carries on every page (§7c): under the version line and above the
+   bottom marking bar — the boot page has no header or footer to hold it */
+.ls-boot-credit {
+  margin: 0;
+  padding: 2px 12px 0;
+  text-align: center;
+  font-size: 11px;
+  color: var(--boot-muted);
+  flex: 0 0 auto;
+}
+.ls-boot-credit a { color: var(--boot-accent); }
+.ls-boot-foot { padding: 4px 12px 6px; }
+
+@media (max-width: 480px) {
+  .ls-boot-brand { flex-wrap: wrap; justify-content: center; letter-spacing: .2em; }
+  .ls-boot-mark { font-size: 24px; }
+  .ls-boot-name { font-size: 18px; }
+}

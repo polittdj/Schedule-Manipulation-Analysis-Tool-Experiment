@@ -655,6 +655,24 @@ def test_no_leg_crosses_a_glyph_on_the_one_pager_at_any_density(
     assert CROWDED_NOTE in onepager_sweep[-1].link_notes  # the count check above is not vacuous
 
 
+def test_mutation_an_escalation_blind_to_touches_lays_legs_on_labels_at_the_densest_sweep(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """ADR-0541: with every leg checked against new heads, the densest sweep slide's base
+    attempt left ONE link no route clears; the reorder step (the footnote band reserved)
+    re-packed the slide 0.15 pt tighter, past the point where adjacent labels overlap, and
+    `_better` — collisions only — accepted six clean legs through labels for one drawn link.
+    The report now counts such touches and a step (or a reserved last resort) that adds one is
+    refused. Blind the count, and the pin above goes red by name."""
+    from schedule_forensics.reports import onepager_links as links_mod
+
+    monkeypatch.setattr(links_mod, "_touches", lambda drawn, grid: 0)
+    n_lanes, per_lane = DENSITIES[-1]
+    its = _sweep_items(n_lanes, per_lane)
+    lay = build_layout(its, TODAY, "T", links=_sweep_links([i.key for i in its]))
+    assert _leg_hits(lay) != []
+
+
 def test_no_leg_crosses_a_glyph_on_an_uncrowded_compare_and_a_crowded_one_says_so(
     compare_sweep: list[CompareLayout],
 ) -> None:

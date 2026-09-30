@@ -20245,3 +20245,38 @@ commit, not a rebase. The resolution:
 - **UNVERIFIED:** Windows / macOS hosts (the `.lnk`, the `.app`, `gio`); PowerPoint itself; Firefox / WebKit.
 - **Out of scope, recorded:** UIP-3, ROUTES-5, "1 row(s) skipped", Excel percent formats, the hook's blindness to a
   shebang-prefixed ZIP. **Next:** the operator's review of the draft PR and the cap ruling.
+
+## 2026-09-30 — ADR-0541: the One-Pager draws the operator's DATA DATE, LODESTAR opens on a launch page of its own and writes its Desktop shortcut on its first run; ADR-0540's three loose ends closed — v1.0.297
+
+- **Branch** `claude/focused-ride-4u3cpl` from `main` @ `40cca07c` (#727, ADR-0540, v1.0.296). The kickoff's ruling
+  field for the size cap was an unfilled template — **KEEP AS SHIPPED assumed**, said so, the renders delivered (contact
+  sheets of 3 / 10 / 40 / 144 items × four views × 1440 / 390 px on both pages, LODESTAR's launch page, the side-by-side).
+- **The plan was attacked first (QC-3, ADR-0541's second table).** The caption's 0.66-pt overlap HELD in Chromium
+  (0.661 on both pages at 3 and 40 items). **"2 of 600 gutter slides" FELL**: a triangle-exact probe over 600 seeds of each
+  of three populations found no gutter case at all, and a clean-judged head on an earlier plain horizontal leg on
+  66 / 34 / 22 of 100 seeds (a box-based first probe had over-counted, 300 of 484); the fix was measured in-process on 300
+  slides before it was chosen (the class gone; dashed links +1.4 % at most; time unchanged). "Prepared may stay the data
+  date" FELL (a false statement on the slide) — `prepared` threads through the subtitles and the decks.
+- **Built.** `set_today` and `POST /onepager/today`, `/onepager-compare/today` (both servers), `today_form` on both pages,
+  `DATA DATE` wording everywhere the line is named, `_onepager_dates` / `_Handler._dates`; `TODAY_CAPTION_DY` 5.5;
+  `_head_legs` and `RouteReport.touches` (a step or a reserved last resort that lays a clean leg on a glyph is refused);
+  `spare_row_footnote` + `disclose_fit(spare_row=)`; `web/lodestar_launch.py`, `lodestar_launch.css`, the
+  parametrized `launch.js` (Polaris² defaults unchanged), LODESTAR `/launch` and its icon; `desktop_icon.lodestar_ico_bytes`
+  + `web/static/lodestar.ico`; `lodestar/shortcut.py` + `--shortcut` / `--no-shortcut`; LODESTAR 1.0.2, 42 members; the
+  READMEs, USER-GUIDE 12c, DESIGN-SYSTEM §7c; version 1.0.297.
+- **The build was attacked after it was written (QC-1, ADR-0541's third table):** the connector names the deck test could
+  not see; the launch fixture that froze the data date instead of the clock; the drawer slice; a JS comment read by a
+  text pin; a reused `entries` name; `winreg` under a non-Windows checker. Every new pin red on the pristine tree by
+  construction (8 data-date tests, the caption pin, the head-on-leg property and seed, the spare-row pin) and each with a
+  mutant that fails it by name.
+- **Re-derived pins:** the pristine digest (once, two reasons); `Today` → `Data date` shape names; the frozen "generated"
+  date; review seed 105 → the mechanism; gutter-ledger seeds 12 / 13 → 103 / 110; the member pin 34 → 42.
+- **Measured at close (clean worktree of the source commit, Python 3.11):** Static gate green on the final tree at the PINNED ruff 0.16.9 (`ruff check .`, `ruff format --check .` 1,398 files),
+  `mypy` 180 files, `bandit` exit 0, `node --check` per file; `build_lodestar.py --check` current (816,775 bytes, 42
+  members). **The FULL suite on a clean worktree of the source commit `b736ca38`: 2 failed, 6,618 passed, 9 skipped,
+  101 xfailed, exit 1 in 1 h 07 min 46 s** — the two failures the Law-1 transport census (`lodestar/shortcut.py`'s
+  `subprocess.run`, now a pinned module with its reason) and the kickoff prompt's closing line (`Highest ADR 0541.
+  Version 1.0.297.`), both fixed in the third commit and their modules re-run green (14 passed, 16 xfailed); no XPASS
+  (A0923-IMP-005 and A0923-DOC-003 still strict-xfail). **`-m parity` 271 passed, 0 skipped, exit 0 (13 min 44 s).** The browser census ran inside the full
+  suite (Chromium); the LibreOffice interop test is one of the 9 skips (no Impress in the container — CI installs it).
+  On the final tree: `tests/installer` + the LODESTAR lockstep + `tests/test_state_docs.py` 112 passed.

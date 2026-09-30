@@ -588,6 +588,13 @@ class _InkIndex:
         return sorted(found)
 
 
+def _head_legs(e: _Ink) -> Sequence[Box]:
+    """The legs of an earlier link a new HEAD may not sit on: every leg of its shaft (ADR-0541;
+    the vertical ones only before it — a horizontal leg through a head's base mis-joins just
+    the same, and the review's 2-in-600 gutter case was the visible tip of it)."""
+    return e.seg_boxes
+
+
 def _conflicts(
     segs: Sequence[Seg],
     head: Box | None,
@@ -602,8 +609,12 @@ def _conflicts(
     looked at; without it every link is.
 
     ``erased`` names what it would cover or mis-join: each arrowhead (its halo within reach, or
-    its head or tag on top), each ``keep`` ink (a move arrow's head), and each VERTICAL line its
-    head would sit on — a line running into another link's head reads as that link ending there.
+    its head or tag on top), each ``keep`` ink (a move arrow's head), and each line its head
+    would sit on — a line running into another link's head reads as that link ending there.
+    EVERY leg, since ADR-0541: the vertical legs only until then, so a later head's base could
+    rest on an earlier horizontal leg — the gutter leg the ADR-0540 review saw twice in 600
+    slides, and the plain channel leg it did not: 66 of 100 review-generator slides carried a
+    clean-judged head on one (:func:`_head_legs`).
     ``tags`` are the links whose TYPE TAG it would cover (such a tag may move to its other spot).
     ``soft``: it would only lie on another link's line — its tag written over a line, or a
     vertical leg run along another's — legible, but the slide is short of room there."""
@@ -636,7 +647,7 @@ def _conflicts(
             any(_within(sb, e_tag, _REACH) for sb in sboxes) or any(_meet(b, e_tag) for b in boxes)
         ):
             tags.append(i)
-        if head is not None and any(_within(vb, head, _TOUCH) for _x, _lo, _hi, vb in e.verticals):
+        if head is not None and any(_within(lb, head, _TOUCH) for lb in _head_legs(e)):
             erased.append(f"the line of {e.name}")
         if tag is not None and any(_within(eb, tag, _TOUCH) for eb in e.seg_boxes):
             soft = True
@@ -1058,6 +1069,9 @@ class RouteReport:
     #: attached there, the side being the one the route's own first leg leaves on (ADR-0540
     #: review F5: a gutter route was recorded by the SUCCESSOR's channel and could share a point)
     points: dict[tuple[str, bool], list[float]] = field(default_factory=dict)
+    #: how many CLEAN links have a horizontal leg lying on a glyph — a label, a bar, a diamond —
+    #: the crowded regime's touch (ADR-0541): the escalation never takes a step that adds one
+    touches: int = 0
 
 
 def route_links(
@@ -1213,7 +1227,31 @@ def route_all(
                 overlap,
             )
         )
-    return RouteReport(drawn, notes, crowded, collisions, counter[0], points)
+    return RouteReport(drawn, notes, crowded, collisions, counter[0], points, _touches(drawn, grid))
+
+
+def _touches(drawn: Sequence[PlacedLink], grid: Grid) -> int:
+    """The clean links whose horizontal leg's stroke lies on a glyph of the slide (ADR-0541).
+    At the densest packings a channel's free band inverts — adjacent rows' labels overlap — and
+    a leg through it touches a label (the crowded note says so). The escalation (ADR-0540) must
+    not BUY a drawn link with such a touch: a step whose slide carries more of them than the
+    best so far is refused, whatever it did for the collisions."""
+    n = 0
+    for ln in drawn:
+        if ln.flagged:
+            continue
+        for (xa, ya), (xb, yb) in pairwise(ln.shaft):
+            if abs(ya - yb) > 1e-9:
+                continue
+            lo, hi = min(xa, xb), max(xa, xb)
+            if any(
+                b.x1 >= lo and b.x0 <= hi and ya + LINK_W / 2 > b.y0 and ya - LINK_W / 2 < b.y1
+                for band in grid.bands
+                for b in band
+            ):
+                n += 1
+                break
+    return n
 
 
 def links_table(links: Sequence[Link], drawn: Sequence[PlacedLink], notes: Sequence[str]) -> Table:

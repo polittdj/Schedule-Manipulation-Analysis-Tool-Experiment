@@ -65,6 +65,7 @@ from schedule_forensics.reports.onepager import (
     MS_F,
     SUB_Y,
     TITLE_Y,
+    TODAY_CAPTION_DY,
     X0,
     YEAR_Y0,
     YEAR_Y1,
@@ -102,6 +103,7 @@ from schedule_forensics.reports.onepager import (
     plot_window,
     reordered_names,
     size_notes,
+    spare_row_footnote,
     status_label,
     text_w,
     timescale,
@@ -1193,8 +1195,6 @@ def build_compare_layout(
         link_notes.append(CROWDED_NOTE)
     reordered = reordered_names(best, names)
     fitted = fit_notes(fit, reordered)
-    disclose_fit(fit, footnote_entries(drawn, names), fitted, notes)
-    notes += fitted
     bar_h, ms_w = best.bar_h, best.ms
 
     def x_of(d: dt.date) -> float:
@@ -1216,7 +1216,7 @@ def build_compare_layout(
         ("new", "NEW", -1),
         ("removed", "REMOVED (ghost only)", -1),
         *([("done", complete_legend(doc.status_label), -1)] if doc.completion else []),
-        ("today", f"Today ({mdy(today)})", -1),
+        ("today", f"Data date ({mdy(today)})", -1),
         *([("link", link_legend(drawn), -1)] if drawn else []),
     ] + [("lane", ln.name, ln.color) for ln in lanes]
     for _ in range(3):
@@ -1236,6 +1236,15 @@ def build_compare_layout(
             break
         legend_pt -= 0.75
     foot = footnote_text(drawn, fit, reordered, SUMMARY_X1 - LANE_COL_X0, names) if fit.foot else ""
+    foot_y = LEGEND_Y0 - 2.5
+    foot_entries = footnote_entries(drawn, names)
+    spare = spare_row_footnote(
+        fit, foot_entries, reordered, names, SUMMARY_X1 - LANE_COL_X0, row + 1, legend_pt
+    )
+    if spare is not None:
+        foot, foot_y = spare
+    disclose_fit(fit, foot_entries, fitted, notes, spare is not None)
+    notes += fitted
     return CompareLayout(
         W,
         H,
@@ -1269,9 +1278,9 @@ def build_compare_layout(
         years,
         today.isoformat(),
         today_x,
-        f"TODAY {mdy(today)}",
+        f"DATA DATE {mdy(today)}",
         tl_x,
-        lanes_y1 + 4.5,
+        lanes_y1 + TODAY_CAPTION_DY,
         tl_anchor,
         today_note,
         legend,
@@ -1286,7 +1295,7 @@ def build_compare_layout(
         fitted,
         foot,
         LANE_COL_X0,
-        LEGEND_Y0 - 2.5,
+        foot_y,
         FOOT_PT,
         (x1 + 0.5, X1 - 0.5) if fit.gutter else None,
     )
@@ -1452,10 +1461,19 @@ def compare_layout_json(layout: CompareLayout) -> dict[str, Any]:
     return asdict(layout)
 
 
-def compare_subtitle(doc: CompareDoc, today: dt.date, window: Window | None = None) -> str:
+def compare_subtitle(
+    doc: CompareDoc,
+    today: dt.date,
+    window: Window | None = None,
+    prepared: dt.date | None = None,
+) -> str:
+    """As :func:`~schedule_forensics.reports.onepager.subtitle_for`: ``today`` is the data date
+    the slide draws, ``prepared`` the day it was made, both named when they differ (ADR-0541)."""
     t = doc.totals
+    made = today if prepared is None else prepared
     return (
-        f"Prior {doc.prior_source} → current {doc.current_source} · prepared {today.isoformat()} · "
+        f"Prior {doc.prior_source} → current {doc.current_source} · prepared {made.isoformat()} · "
+        + (f"data date {today.isoformat()} · " if made != today else "")
         + (f"window {window_text(window)} · " if window is not None else "")
         + f"{t.slipped} slipped · {t.pulled_in} pulled in · {t.new} new · {t.removed} removed · "
         f"{t.unchanged} unchanged · "

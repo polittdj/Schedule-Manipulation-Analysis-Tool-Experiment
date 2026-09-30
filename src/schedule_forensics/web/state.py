@@ -769,7 +769,9 @@ class SessionState:
     #: Whether :attr:`onepager_msg` reports a FAILURE (the ADR-0313 rule: a failure never renders
     #: in the success style).
     onepager_is_error: bool = False
-    #: Test seam: the "today" the one-pager draws. ``None`` is the real clock.
+    #: The operator's DATA DATE for both One-Pager pages (ADR-0541): the red line each slide
+    #: draws, its caption and its legend entry. ``None`` is the computer's date. (Before
+    #: ADR-0541 this was a test seam only — the tests that freeze it now freeze the data date.)
     onepager_today: dt.date | None = None
     #: The operator's date window on /onepager — ``(first day, last day)``, both inclusive — or
     #: ``None`` for the whole list (ADR-0527). Kept across a replaced list; cleared with the list.

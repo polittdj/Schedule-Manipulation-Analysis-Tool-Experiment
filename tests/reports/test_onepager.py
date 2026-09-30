@@ -211,7 +211,7 @@ def test_past_the_last_floor_it_is_still_one_slide_and_says_to_split_the_list() 
 def test_today_is_drawn_when_near_the_data_and_named_when_not(twin: OnePagerDoc) -> None:
     near = build_layout(twin.items, TODAY, "Twin")
     assert near.today_x is not None and near.x0 <= near.today_x <= near.x1
-    assert near.today_label == "TODAY 9/1/26" and near.today_note == ""
+    assert near.today_label == "DATA DATE 9/1/26" and near.today_note == ""
     far = build_layout(twin.items, dt.date(2040, 1, 1), "Twin")
     assert far.today_x is None and "outside the plotted window" in far.today_note
     # a today at the far right flips its caption to the left of the line
@@ -395,7 +395,7 @@ def test_every_layout_element_is_a_named_native_shape(deck: tuple[op.Layout, byt
     assert sum(n.startswith("Month line") for n in names) == len(lay.months)
     assert sum(n.startswith("Lane name: ") for n in names) == len(lay.lanes)
     assert sum(n.startswith("Year band") for n in names) == len(lay.years)
-    assert names.count("Today") == 1 and names.count("Today label") == 1
+    assert names.count("Data date") == 1 and names.count("Data date label") == 1
     assert sum(n.startswith("Legend") for n in names) >= 2 * len(lay.legend)
     assert names.count("CUI marking (top)") == 1 and names.count("CUI marking (bottom)") == 1
 
@@ -414,7 +414,7 @@ def test_shape_geometry_is_the_layout_in_emu(deck: tuple[op.Layout, bytes]) -> N
             assert (y, cy) == (round((p.y - lay.bar_h / 2) * EMU), round(lay.bar_h * EMU))
         assert _text(by_name[f"Label: {p.name}"]) == p.label
     assert lay.today_x is not None
-    tx, ty, _tcx, tcy = _xfrm(by_name["Today"])
+    tx, ty, _tcx, tcy = _xfrm(by_name["Data date"])
     assert (tx, ty, tcy) == (
         round(lay.today_x * EMU),
         round(lay.year_y0 * EMU),
@@ -433,7 +433,7 @@ def test_presets_dashes_and_colours_match_the_one_pager_language(
     assert ms.find(f".//{_A}prstGeom").get("prst") == "diamond"
     month = next(s for n, s in by_name.items() if n.startswith("Month line"))
     assert month.find(f".//{_A}ln/{_A}prstDash").get("val") == "sysDot"
-    today = by_name["Today"]
+    today = by_name["Data date"]
     assert today.find(f".//{_A}ln/{_A}solidFill/{_A}srgbClr").get("val") == "C00000"
     assert today.find(f".//{_A}ln").get("w") == str(round(1.5 * EMU))
     assert (

@@ -422,7 +422,8 @@ def test_today_is_drawn_inside_the_window_and_the_window_is_whole_months(
     lay: CompareLayout,
 ) -> None:
     assert lay.today_x is not None and lay.x0 <= lay.today_x <= lay.x1
-    assert lay.today_label == "TODAY 6/1/27" and lay.t0.endswith("-01") and lay.t1.endswith("-01")
+    assert lay.today_label == "DATA DATE 6/1/27"
+    assert lay.t0.endswith("-01") and lay.t1.endswith("-01")
     assert lay.t0 == "2027-01-01" and lay.t1 == "2028-02-01"
 
 

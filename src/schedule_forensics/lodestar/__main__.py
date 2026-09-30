@@ -12,6 +12,7 @@ import argparse
 import sys
 import webbrowser
 
+from schedule_forensics.lodestar import shortcut
 from schedule_forensics.lodestar.server import serve
 from schedule_forensics.web.lodestar_shell import AUTHOR, CONTACT, NAME, TAGLINE, VERSION
 
@@ -51,6 +52,12 @@ def _parser() -> argparse.ArgumentParser:
         description=f"{NAME} {VERSION} - {TAGLINE}. Created by {AUTHOR} ({CONTACT}).",
     )
     parser.add_argument("--no-browser", action="store_true", help="do not open a browser tab")
+    parser.add_argument(
+        "--shortcut",
+        action="store_true",
+        help="write the Desktop shortcut again (it is written once, on the first run)",
+    )
+    parser.add_argument("--no-shortcut", action="store_true", help="never write a Desktop shortcut")
     parser.add_argument("--port", type=int, default=PREFERRED_PORT, help="the port to try first")
     parser.add_argument("--version", action="version", version=f"{NAME} {VERSION}")
     return parser
@@ -64,8 +71,14 @@ def main(argv: list[str] | None = None) -> int:
         server = serve(0)
     url = f"http://127.0.0.1:{server.server_port}/onepager"
     _say(banner(url))
+    # the Desktop shortcut, on the first run (ADR-0541): a sentence either way, never a stop
+    made = shortcut.ensure(force=args.shortcut, skip=args.no_shortcut)
+    if made.note:
+        _say(made.note)
     if not args.no_browser:
-        webbrowser.open(url)
+        # the browser opens on the LAUNCH page (ADR-0541), the studio's front door; the banner
+        # names the Timeline page, the address that stays useful once the browser is open
+        webbrowser.open(f"http://127.0.0.1:{server.server_port}/launch")
     try:
         server.serve_forever(poll_interval=0.5)
     except KeyboardInterrupt:

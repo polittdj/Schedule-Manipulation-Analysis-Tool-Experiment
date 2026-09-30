@@ -170,7 +170,7 @@ def test_shipped_static_assets_are_not_mislabelled() -> None:
     explicit decision rather than something that slips in under a glob.
     """
     assets = sorted(p for p in STATIC.iterdir() if p.is_file())
-    assert len(assets) == 72
+    assert len(assets) == 74  # ADR-0541: + lodestar.ico, lodestar_launch.css
     wrong = {
         p.name: tool.detect_family(p.read_bytes())
         for p in assets

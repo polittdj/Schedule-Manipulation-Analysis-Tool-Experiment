@@ -7,7 +7,10 @@ slide, built from native, editable shapes. It has two pages:
 
 * **Timeline** — one list becomes one slide: a tinted band per swimlane, a bar per activity, a
   diamond per milestone, each labelled with its name and finish date, a check beside what is
-  complete, a month/year header and a red line at today.
+  complete, a month/year header and a red line at the **data date** — your computer's date unless
+  you set one with the **Data date** control above the slide (one setting for both pages; the
+  slide's caption and legend follow it, and the subtitle says both the data date and the day the
+  slide was prepared when they differ).
 * **Compare** — two lists (a PRIOR and a CURRENT) on one slide: what slipped, what pulled in, what
   is new and what was removed, every move in calendar days.
 
@@ -40,8 +43,22 @@ Keep all the files of this folder together.
   under System Settings → Privacy & Security.
 * **Linux** — run `sh lodestar.sh` (or `python3 LODESTAR.pyz`).
 
-A small window opens and your browser shows LODESTAR. **Leave that window open while you work.** To
-stop, press **Quit** on the page, or close the window.
+A small window opens and your browser shows LODESTAR's launch page — take a star fix, or skip
+straight to the studio (tick *Go straight to the studio next time* and it will). **Leave the small
+window open while you work.** To stop, press **Quit** on the page, or close the window.
+
+### The Desktop shortcut
+
+The first time it runs, LODESTAR puts a shortcut named **LODESTAR**, with its own ✦ icon, on your
+Desktop — double-click it to start LODESTAR from then on. It is written once: delete it and it stays
+deleted (start LODESTAR with `--shortcut` to make it again; `--no-shortcut` never makes one). It
+carries nothing but the path to `LODESTAR.pyz` and the Python that made it, so keep the folder where
+it is (move it and make the shortcut again). On Windows it is a `.lnk` that runs the Python launcher
+`py` where there is one; on macOS a `LODESTAR.app` that opens with no window of its own — stop it
+with **Quit** on the page; on Linux a `LODESTAR.desktop` entry (a desktop that asks you to *allow
+launching* the first time is being careful, not broken). The icon and a one-line record live in
+LODESTAR's own folder under your user profile (`%LOCALAPPDATA%\LODESTAR`, `~/Library/Application
+Support/LODESTAR`, `~/.local/share/lodestar`), never beside the archive.
 
 ## The Excel list
 
@@ -72,4 +89,4 @@ list is not CUI.
 ---
 
 LODESTAR is built from the same modules as the One-Pager pages of POLARIS², so both draw the same
-slide from the same list. Version 1.0.1.
+slide from the same list. Version 1.0.2.

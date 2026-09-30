@@ -81,7 +81,7 @@ def test_upload_draws_the_slide_and_names_every_decision(client: TestClient) -> 
     # the panel contract: export wired, ▦ DATA drawer with the parsed rows, provenance chip
     assert 'data-export="/export/xlsx/onepager"' in page and "data-sf-data" in page
     assert "<div class=sf-drawer hidden>" in page and page.count("<tr><td>") == 16
-    assert "SOURCE: Politte_PowerPoint_FINAL.xlsx · TODAY 2026-09-01" in page
+    assert "SOURCE: Politte_PowerPoint_FINAL.xlsx · DATA DATE 2026-09-01" in page
     assert 'href="/export/pptx/onepager"' in page
 
 
@@ -130,7 +130,10 @@ def test_the_powerpoint_export_is_the_same_slide(client: TestClient, state: Sess
     assert slide.count('name="Milestone: ') == sum(i["milestone"] for i in lay["items"])
     assert slide.count('name="Activity: ') == sum(not i["milestone"] for i in lay["items"])
     assert "Controlled Unclassified Information • CUI" in slide  # the page's own marking
-    assert "Source: Politte_PowerPoint_FINAL.xlsx · 16 items · generated 2026-09-01" in slide
+    # ADR-0541: the frozen date is the DATA DATE; "generated" is the computer's date
+    assert re.search(
+        r"Source: Politte_PowerPoint_FINAL\.xlsx · 16 items · generated \d{4}-\d{2}-\d{2} by", slide
+    )
 
 
 def test_the_excel_export_is_the_parsed_list(client: TestClient) -> None:

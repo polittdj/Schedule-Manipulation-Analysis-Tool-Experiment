@@ -278,6 +278,10 @@ TRANSPORT_SITES = frozenset(
         "launcher.py",
         "web/system.py",
         "importers/mpp_mpxj.py",
+        # ADR-0541: LODESTAR's first-run Desktop shortcut runs the desktop's own tools
+        # (PowerShell's WScript.Shell, gio) with a fixed argv — a path and an icon, never
+        # schedule content, no network
+        "lodestar/shortcut.py",
     }
 )
 
