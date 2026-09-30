@@ -20128,6 +20128,28 @@ commit, not a rebase. The resolution:
   `tests/guards/test_loopback_allowlist.py:309`'s pre-existing parametrised cases).
 - **The full gate** on the committed tree: not run to completion locally — the static gate is green on this tree (`python -m ruff check .`, `python -m ruff format --check .`, `python -m mypy src/` — no issues in 165 source files, `bandit -q -r src` exit 0, `node --check` on each of the 64 static files — 0 failures) and so are the document-sensitive guards (`tests/test_state_docs.py tests/test_standing_rules.py tests/web/test_docs.py tests/audit/test_audit_20260923_doc.py tests/guards`: 428 passed, 2 skipped, 16 xfailed); the full pytest suite reached 81 % with no failure before a container restart killed it, so the whole suite is CI's on the documents pull request (both Pythons, read to conclusion by its jobs). The reproducer commit's CI (#722 at `7d91926a`): 6 of 6 checks green.
 
+## 2026-09-29 (a) — AUDIT-2026-09-23 session 7: WP-CPM round 3 — five NEW probe families, 19 candidates, 1 duplicate, 18 REPRODUCED → 18 CONFIRMED-DEFERRED (T1 × 8, T2 × 6, T3 × 1, T4 × 3); the counterfactual pages, the working day and the wall-path spellings disagree with their own contracts (ADR-0538)
+
+- **Base and mode.** `origin/main` = `0b45eb28` (#723, session 6's documents; v1.0.294; 822 commits; `src/`
+  byte-identical to sessions 5–6's bases). AUDIT + PLAN ONLY; branch `claude/modest-cori-iit4zh`; one draft pull
+  request. §0 passed; the 84 reproducers read session 6's line on 3.11.15 and the 3.13 venv; the corpus rebuilt to
+  22,105 by two methods; the tree censused (43 MSPDI, 2 at 600 min/day). No ask answered.
+- **Plan and attack (QC-3).** Thirteen assumptions R1–R13 attacked on the pristine tree before any finder: R7 fell
+  (no converter-default 480 exists — measure rendered figures), R10 held with drift, R13 UNVERIFIED by design. Rules
+  set before verification: the class-boundary rule; a second claim-only verifier for lead-grown classes.
+- **Waves.** 9: five finders (F-FAMB, F-DAY, F-CALG, F-TWIN, F-RT), 2 in flight → 19 candidates, 0 deaths; the lead's
+  re-run of all 19 reds exit 1. 10a: six claim-only packets → 22 of 22 REPRODUCED (18 claims + the DUPLICATE instance +
+  3 second verifications), 0 refuted; F-DAY-003's "HELD — premises contested" → a PREMISE finding (CPM-041). 10b:
+  eighteen assemblers; **ten died on a provider weekly limit**; the harness resumed the session on a different model;
+  the operator's "Try again" → the workflow resumed (eight replayed from cache, ten re-ran); every assembly on record.
+  Lead teeth on fresh trees for all 18 (3.11 + 3.13; UI-002 3.11 + Chromium).
+- **Result.** Retained 84 → 102; reproducers 84 → 102 (new `test_audit_20260923_exp.py`); units U55–U68; ASK-16 / 17 /
+  18; ADR-0538; the state-doc ritual. WP-CPM still not saturated (every family produced a candidate); F-RT and F-CALG
+  recorded as saturation evidence for their sub-questions.
+- **Not done.** A fourth round or the lane's closure; the CPM-034 start-role siblings; `/mission`'s skipped list;
+  WEB-004's export siblings; the queue's Q renumbering; ADR-0538's "Deliberately NOT done".
+- **Measured by the lead on the campaign branch:** **1 passed · 101 xfailed** on Python 3.11.15 with Playwright (the lead's post-integration run of all ten modules: "1 failed, 101 xfailed, 1 warning in 178.46s" — the one failure was DOC-014's own pin, red because the ADR file existed before the state docs named it, exactly its purpose; re-run inside the fast guard set after the state docs were written: 101 xfailed with DOC-014 green) and **1 passed · 2 skipped · 99 xfailed** on the 3.13.12 venv ("1 failed, 2 skipped, 99 xfailed, 1 warning in 110.32s", the same pin); the charter's fast guard set "449 passed, 2 skipped, 101 xfailed, 1 warning in 239.73s (0:03:59)" (the two skips are `tests/guards/test_loopback_allowlist.py`'s pre-existing parametrised cases; DOC-014's pin passes once the state docs name ADR-0538); the allowlist
+  gate clean; the static gate `python -m ruff check .` and `python -m ruff format --check .` clean, `python -m mypy src/` "Success: no issues found in 165 source files", `bandit -q -r src` exit 0, `node --check` on each of the 64 static files 0 failures.
 ## 2026-09-29 (a) — WORK IN PROGRESS (stopped on the operator's word before the token budget ran out): the One-Pager reads C start · D finish · E complete, the operator draws logic links (FS / SS / FF / SF) that export to PowerPoint, and the two One-Pager pages ship on their own as LODESTAR (ADR-0539, v1.0.295)
 
 - **Branch** `claude/youthful-ritchie-fqsz9x` on `main` @ `0b45eb28`; one WIP commit and a DRAFT pull request. A feature

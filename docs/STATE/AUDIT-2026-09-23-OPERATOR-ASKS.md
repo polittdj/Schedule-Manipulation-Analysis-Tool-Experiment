@@ -1,5 +1,9 @@
 # AUDIT-2026-09-23 — Operator asks (one batched list; every live ask has a default; re-issued after the session-2 falsification pass, re-based onto 6bc3138b in session 3, and extended in session 5 (WP-CPM, base 19173728) with ASK-12–ASK-14 and in session 6 (WP-CPM continued, base 13b13f38) with ASK-15)
 
+- **T1 — A0923-CPM-042 (in committed corpus):** an ELAPSED activity's "Remaining duration" is served over the project's 480-minute working day, three times its own duration on an 8-hour day: on the committed Hard_File_updated3 / Hard_File_updated4_24h goldens UID 146 reads 6.0 d beside its Duration 2.0 (elapsed) — Acumen Fuse's Remaining Duration shows 2 — and Jacked_Up_Schedule_1's UID 20 reads 96.0 for 32; the figure reaches the Task Information dialog, the unrestricted Ask table and the activities exports that name the column (`web/state.py:1775`). Since 7eb8708a (#314, v1.0.4, 2026-07-10, ADR-0183). Until fixed, read an elapsed activity's remaining work from its Duration line, never from "Remaining duration".
+- **T1 (option-gated) — A0923-CPM-036 / 038 (family B — the counterfactual pages; in committed corpus):** with a trace option on ("Ignore constraints" / "Ignore leveling delay" on /driving-path, /evolution and their exports), the pages do not show the re-solve their banner promises: with no focus UID /evolution's critical path, its entered / left counts and its docx / xlsx exports are the source file's STORED Critical flags drawn at the re-solved dates (CPM-036 — the drawn set moves on 0 of 44 corpus files where the re-solved set differs on 24), and "Ignore constraints" ticked ALONE changes nothing on a fully-dated file — the tiers, driving slack and focus path are the stored schedule's (CPM-038 — inert on 44 of 44; Hard_File target 411's 88 rows unchanged). Since 140aed3a (#292, v1.0.4, 2026-07-08, ADR-0155). Until fixed, do not cite a family-B page's path, tiers or counts as a counterfactual; tick both options together and read the re-solved FINISH only.
+- **T1 (latent — no committed file exercises them) — A0923-CPM-043 / 044 / 046 / 047:** CPM dates and floats are wrong on an operator file that carries a task on a calendar with non-working weekdays (e.g. a 24-hour Monday–Friday crew calendar) whose late finish falls at its week's end — negative total float and a late start before the project start (CPM-043); a lagged FF or SF link from a 24-hour-calendar or elapsed activity — that activity shown with negative float, critical (CPM-044); a lagged SS or SF link into an activity on its own calendar — that activity and the project finish up to 15 hours later than the equivalent FS / FF link (CPM-046); or a lag-0 SS / SF link from a project-calendar task that starts after a mid-day break into a 24-hour or elapsed activity — scheduled up to an hour before its predecessor starts, float an hour high (CPM-047). Since afb8e729 (#497, v1.0.140, 2026-07-31). Check an operator file for these shapes before citing its CPM figures.
+- **T1 (data-gated) — A0923-IMP-011:** a hand-written or third-party `.json` schedule whose calendar repeats a holiday, lists its day blocks out of order, or declares blocks that contradict its day length is accepted with no error and no note and computed wrong (a repeated holiday costs one working day per extra listing: a 3-day task finishes 01/09/2026 for 01/08). Since e5a67518 (#70, v1.0.0, 2026-06-11). Only the tool's own JSON format reaches it (0 committed files); check such a calendar before citing the file's dates.
 - **T1 — A0923-CPM-016 / 017 / 018 / 019 / 021 (drag and Path Analysis days; in committed corpus):** the Path Analysis "Drag (d)" figure (the /path grid after "Run Drag Analysis", /api/driving?drag=1, /export/{fmt}/path?drag=1) is not the target-finish pull-in of removing the activity's remaining work that `engine/drag.py:3-4` defines and that SSI's exports and a removal on the engine's own CPM give: it is capped by any overlapping traced activity's driving slack (CPM-016 — Large_Test_File focus 152: UID 6513 36.0 d for SSI's 0.5 d; an SS- or lead-linked activity 0.0 d for 10 d), counts an elapsed or 24-hour-calendar duration in its own unit (CPM-017 — Hard_File UID 146 6.0 d for SSI's 2 d, beside its own Duration 2.0), changes with the Dependency Range filter (CPM-019 — Large_Test_File focus 152 at SSI's own "≤ 0 d": 10 of 76 rows inflated, UIDs 7442 / 7443 1.0 → 15.0 d) and gives the target's own descendants a drag under Path Direction Successors / Both (CPM-021 — Project5 target 67: UID 82 25.0 d for 0); and on a schedule whose working day is not 480 minutes every Path Analysis day figure divides by a fixed 480 (CPM-018 — the committed TP2_Bridge_4x10_Calendar.xml, a 600-minute day: Drag 25.0 for 20 file-days, "longest single activity … at 56.25 working days" for 45, and with one added FNLT a path float of −2.5 d for −2). Since 140aed3a (#292, v1.0.4, 2026-07-08, ADR-0155), where drag and the range filter were born (CPM-018's /path header since 6d71f813, v1.0.9; CPM-017's 24-hour leg from afb8e729, v1.0.140). Until fixed, read drag from SSI's own Directional Path export, not from the tool, and on a file whose day is not 480 minutes read Path Analysis days as working minutes ÷ the file's MinutesPerDay.
 - **T1 — A0923-CPM-010:** the what-if counterfactual and the per-change effect (/integrity, /evolution, the Ask-the-AI counterfactual fact) restore a STARTED activity's duration but not its remaining duration — the field the CPM schedules a started activity from (ADR-0517) — so a duration cut on in-progress work reads as 0 working days of recovery (the hand pair: +0 for +2; Large_Test_File2 → Large_Test_File: the target line for UID 5539 reads 0 where its restored remaining alone moves it ≥ 623 working days). Since 601be5d3 (#706, v1.0.281, 2026-09-20, ADR-0517). Until fixed, do not cite a counterfactual or a per-change effect that restores the duration of an activity that had started; unstarted reverts are right (214 of 214 constructed cuts).
 - **T1 — A0923-CPM-022 (option-gated):** with either SSI-parity option ticked on /path ("Ignore constraints" / "Ignore leveling delay"; the same flags on /api/driving and /export/{fmt}/path) the driving-slack trace of a fully-dated multi-calendar schedule changes, although the page's tooltip says it is unchanged: Hard_File target 155 moves 13 of 96 served rows (12 activities 1 → 0 d join DRIVING, tier 10 → 22); on Large_Test_File_Leveled the options-ON trace matches SSI's options-ON export on 777 of 783 rows where the un-flagged trace matches 783 of 783. The mechanism since 140aed3a (v1.0.4, 2026-07-08); the tooltip's promise since d1980d31 (v1.0.60, 2026-07-17, ADR-0251). Until fixed, leave both options OFF on a fully-dated file — the un-flagged trace is the one that matches SSI.
@@ -462,3 +466,60 @@ An ask you skip takes its default. A second round of asks happens only if an ans
   and without a reproducer — F-LEADS-005 unchanged under ADR-0118; A0923-CPM-022 keeps its T1 tier as filed; no repair
   unit is built for them.
 - Answer: (none yet — the default applies)
+
+## Session 7 (2026-09-29) — three new asks (ASK-16 … ASK-18); every earlier ask is carried with its default
+
+### ASK-16 — an SSI Directional Path run with Output = "Separate parallel paths" (settles the semantics behind A0923-CPM-039)
+
+- **Why.** The tool's "Separate parallel paths" output (`web/driving.py:340-379`) splits a single serial driving chain
+  wherever a non-driving link joins two on-path activities: the committed EVM2 golden at target 29 is served as three
+  "parallel" branches ([17–20], [22], [23–29]) for one chain, and the Project5 golden at target 67 as 9 branches where
+  a driving-link decomposition gives 7. The finding stands on the code's own contract ("parallel branches", a "serial
+  branch" per the builder's comment) — SSI's definition of the output could not be read (ssitools.com is egress-blocked
+  from the build session; none of the 24 committed Directional Path workbooks was produced with that output).
+- **Steps (on the machine with SSI's Directional Path Tool).** Open `Project5.mpp` (or the `Project5.mspdi.xml` golden
+  re-saved as `.mpp`); target UID 67, Path Direction Predecessors, Get all dependencies, both Ignore options OFF; set
+  Output to **Separate parallel paths**; export the result to `.xlsx`. Repeat for EVM2 (`EVM2.mspdi.xml`, target 29).
+- **Artifact expected.** Two SSI `.xlsx` exports (non-CUI: both schedules are committed reference inputs), uploaded
+  through the GitHub web UI under `00_REFERENCE_INTAKE/ssi/`.
+- **Settles.** Whether SSI splits on every link or on driving links only — i.e. whether CPM-039's fix is the
+  driving-link rule the reproducer pins or SSI's own rule; how SSI numbers and orders the paths (the tool's "Path 01
+  (n)" labels, an UNVERIFIED lead).
+- **Default if unanswered.** CPM-039 keeps its T2 tier and the driving-link rule (the code's stated contract); the
+  labels stay UNVERIFIED.
+
+### ASK-17 — MS Project's displayed days on a file whose Hours-per-day setting differs from its calendar (settles A0923-CPM-041)
+
+- **Why.** The tool prints every day figure over the calendar's derived day (`web/state.py:1703`,
+  `float_analysis.py:78`) and never reads the file's declared `MinutesPerDay`; ADR-0516 decision 3 holds that as "the
+  convention MS Project's own slack display follows (its hours-per-day setting)" — a premise the code contradicts
+  whenever the two differ (MPXJ 16.2.0 reads the hand file's 9,000-minute task as 18.75 d, the tool serves 15.0 d).
+  0 of 71 committed MSPDI documents carry such a mismatch, so the class is latent; MS Project's own rendering of it is
+  UNVERIFIED.
+- **Steps (MS Project, any small file).** File → Options → Schedule: set Hours per day to **8** while the project
+  calendar (Project → Change Working Time) works **10** hours (07:00–12:00, 13:00–18:00) Monday–Friday; give one task
+  a duration of 150 h (typed as `150h`) and an FS successor; read the Duration and Total Slack columns; Save As
+  **XML** (MSPDI).
+- **Artifact expected.** The `.xml` and a screenshot (or a typed note) of the Duration and Total Slack columns.
+- **Settles.** Whether MS Project displays 18.75 d (over the 8-hour setting) or 15 d (over the 10-hour calendar) —
+  which decides whether U63 changes the divisor to `declared_minutes_per_day` or re-words ADR-0516 decision 3 and
+  ADR-0355:67-69 to the derived day.
+- **Default if unanswered.** U63 keeps the derived day and corrects the two ADRs' stated premise (the smaller change,
+  fidelity UNVERIFIED); CPM-041 keeps T2 latent.
+
+### ASK-18 — a hand-built MSPDI through MS Project for the wall-path link spellings (settles the MS Project side of A0923-CPM-043 / 044 / 046 / 047)
+
+- **Why.** Four latent T1 classes rest on hand arithmetic under Microsoft's published Total Slack rule and the file's
+  declared calendars; no committed save carries their shapes, and MS Project's own stored dates / slack for them are
+  UNVERIFIED (the reproducers pin the hand values).
+- **Steps.** In MS Project (Standard calendar 08:00–12:00 / 13:00–17:00; project start Mon 2026-01-05 08:00), build
+  and save as XML (MSPDI) four tiny files: (043) task A 112 h on a **24 Hours Mon–Fri** task calendar (copy "24 Hours",
+  make Sat/Sun non-working) → FS0 → task C 24 h on the same calendar; (044) P 600 min on "24 Hours" → **FF +480 min**
+  → S 480 min (Standard), plus Q 480 min → FS0 → S; (046) P 480 min (Standard) → **SS +960 min** → S 480 min on "24
+  Hours"; and the same pair with FS +480 min; (047) Q 240 min → FS0 → P 480 min (Standard) → **SS 0** → S 480 min on
+  "24 Hours". Read Late Start / Late Finish / Total Slack / Free Slack (and Start / Finish for 046 / 047).
+- **Artifact expected.** The four `.xml` saves (non-CUI, synthetic) uploaded under `00_REFERENCE_INTAKE/references/`.
+- **Settles.** Each class's expected value against MS Project's stored fields rather than hand arithmetic; whether
+  U65 / U67's sketches match MS Project or only the engine's own definitions.
+- **Default if unanswered.** The reproducers keep the hand values (Microsoft's published rule + the declared calendar,
+  A1 by the charter's definition); the four keep T1 latent.

@@ -257,3 +257,269 @@ def test_a0923_ui_001_no_page_scrolls_sideways_at_1440_in_any_theme(served: str)
         f"{len(over)} of {len(seen)} page states scroll sideways at innerWidth "
         f"{VIEWPORT['width']}: " + "; ".join(over)
     )
+
+
+# --- A0923-UI-002 fragment -------------------------------------------------------------------
+# Relies on the module header of tests/audit/test_audit_20260923_ui.py:
+#   imports    threading, time, Iterator, pytest, TestClient (fastapi.testclient), SessionState
+#              and create_app (schedule_forensics.web.app)
+#   names      VIEWPORT, chrome_kwargs (tests/web/browser_chrome.py loaded by path), _free_port
+#   fixture    the module-level autouse _air_gapped
+# Inputs: two hand-built MSPDI documents written inline below (synthetic, non-CUI; no fixture
+# file): the 600-minute-day witness and the 480-minute-day control. Gated exactly as UI-001 is:
+# pytest.importorskip on the playwright PACKAGE in the fixture; a Chromium that cannot launch is
+# an ERROR, never a skip.
+
+#: Working day in minutes -> the calendar's working-time blocks (Mon-Fri). 600 is the witness
+#: (MS Project's "Hours per day" = 10); 480 is the control the shipped 8-hour reading happens
+#: to match.
+_UI_002_BLOCKS: dict[int, tuple[tuple[str, str], ...]] = {
+    600: (("07:00:00", "12:00:00"), ("13:00:00", "18:00:00")),
+    480: (("08:00:00", "12:00:00"), ("13:00:00", "17:00:00")),
+}
+_UI_002_DAYS: tuple[int, ...] = (600, 480)
+#: The task that carries the custom fields, and its file-day quantities: Duration2 'Compare
+#: Duration' (FieldID 188743784) = 15 file-days, Duration3 'ME Compare Duration' (188743785) = 4
+#: file-days -- the field ids the committed LTF conversions use, both DurationFormat 7 (days).
+_UI_002_UID = 14
+_UI_002_FIELDS: tuple[tuple[str, str, float], ...] = (
+    ("188743784", "Compare Duration", 15.0),
+    ("188743785", "ME Compare Duration", 4.0),
+)
+
+
+def _ui_002_pt(minutes: int) -> str:
+    hours, mins = divmod(int(minutes), 60)
+    return f"PT{hours}H{mins}M0S"
+
+
+def _ui_002_mspdi(mpd: int) -> str:
+    """Start (ms) -> Build UID 14 (15 file-days) -> Inspect (4 file-days) -> End (ms) on a Mon-Fri
+    calendar whose working day is ``mpd`` minutes, ``MinutesPerDay`` = ``mpd``; UID 14 carries the
+    two Duration custom fields, each holding its file-day quantity in the ISO form MS Project
+    stores (15 x mpd minutes and 4 x mpd minutes, DurationFormat 7)."""
+    blocks = _UI_002_BLOCKS[mpd]
+    start = f"2026-03-02T{blocks[0][0]}"
+    times = "".join(
+        f"<WorkingTime><FromTime>{a}</FromTime><ToTime>{b}</ToTime></WorkingTime>"
+        for a, b in blocks
+    )
+    weekdays = "".join(
+        f"<WeekDay><DayType>{d}</DayType><DayWorking>0</DayWorking></WeekDay>"
+        if d in (1, 7)
+        else f"<WeekDay><DayType>{d}</DayType><DayWorking>1</DayWorking>"
+        f"<WorkingTimes>{times}</WorkingTimes></WeekDay>"
+        for d in range(1, 8)
+    )
+    custom = "".join(
+        f"<ExtendedAttribute><FieldID>{fid}</FieldID><Value>{_ui_002_pt(int(days * mpd))}</Value>"
+        f"<DurationFormat>7</DurationFormat></ExtendedAttribute>"
+        for fid, _label, days in _UI_002_FIELDS
+    )
+    tasks = (
+        (11, "Start", 0, None, ""),
+        (_UI_002_UID, "Build", 15 * mpd, 11, custom),
+        (16, "Inspect", 4 * mpd, _UI_002_UID, ""),
+        (19, "End", 0, 16, ""),
+    )
+    task_xml = []
+    for row_id, (uid, name, minutes, pred, extra) in enumerate(tasks, 1):
+        link = (
+            f"<PredecessorLink><PredecessorUID>{pred}</PredecessorUID><Type>1</Type>"
+            "<LinkLag>0</LinkLag><LagFormat>7</LagFormat></PredecessorLink>"
+            if pred is not None
+            else ""
+        )
+        task_xml.append(
+            f"<Task><UID>{uid}</UID><ID>{row_id}</ID><Name>{name}</Name><Active>1</Active>"
+            f"<Manual>0</Manual><Type>1</Type><OutlineLevel>1</OutlineLevel>"
+            f"<Start>{start}</Start><Finish>{start}</Finish>"
+            f"<Duration>{_ui_002_pt(minutes)}</Duration><DurationFormat>7</DurationFormat>"
+            f"<RemainingDuration>{_ui_002_pt(minutes)}</RemainingDuration>"
+            f"<Milestone>{1 if minutes == 0 else 0}</Milestone><Summary>0</Summary>"
+            f"<PercentComplete>0</PercentComplete><ConstraintType>0</ConstraintType>"
+            f"{link}{extra}</Task>"
+        )
+    defs = "".join(
+        f"<ExtendedAttribute><FieldID>{fid}</FieldID><FieldName>Duration{i}</FieldName>"
+        f"<Alias>{label}</Alias></ExtendedAttribute>"
+        for i, (fid, label, _days) in enumerate(_UI_002_FIELDS, 2)
+    )
+    return (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+        "<!-- SYNTHETIC, NON-CUI audit input (AUDIT-2026-09-23, A0923-UI-002). -->\n"
+        '<Project xmlns="http://schemas.microsoft.com/project">'
+        f"<Name>ui002_day{mpd}.xml</Name><ScheduleFromStart>1</ScheduleFromStart>"
+        f"<StartDate>{start}</StartDate><CalendarUID>1</CalendarUID>"
+        f"<DefaultStartTime>{blocks[0][0]}</DefaultStartTime>"
+        f"<MinutesPerDay>{mpd}</MinutesPerDay><MinutesPerWeek>{mpd * 5}</MinutesPerWeek>"
+        f"<DaysPerMonth>20</DaysPerMonth><StatusDate>{start}</StatusDate>"
+        f"<ExtendedAttributes>{defs}</ExtendedAttributes>"
+        "<Calendars><Calendar><UID>1</UID><Name>Site</Name><IsBaseCalendar>1</IsBaseCalendar>"
+        f"<BaseCalendarUID>-1</BaseCalendarUID><WeekDays>{weekdays}</WeekDays>"
+        "</Calendar></Calendars>"
+        f"<Tasks>{''.join(task_xml)}</Tasks></Project>"
+    )
+
+
+def _ui_002_wd_hours(text: str) -> tuple[float, float] | None:
+    """'18.8 wd (150h)' -> (18.8, 150.0); None when the text is not the dialog's humanized form."""
+    head, sep, tail = text.partition(" wd (")
+    if not sep or not tail.endswith("h)"):
+        return None
+    try:
+        return float(head), float(tail[:-2])
+    except ValueError:
+        return None
+
+
+#: The dt/dd pairs of the dialog's current tab, as the operator reads them.
+_UI_002_PAIRS = """() => Array.from(document.querySelectorAll('.ti-body dt')).map(
+  (dt) => [dt.textContent, dt.nextElementSibling ? dt.nextElementSibling.textContent : null])"""
+
+
+@pytest.fixture
+def _ui_002_served(_air_gapped: None) -> Iterator[tuple[str, dict[int, str]]]:
+    """The app over loopback with the two inline A0923-UI-002 files loaded through the real
+    ``/upload`` route (built after the state dirs are set, as ``served`` is); yields the base URL
+    and each file's session key by its working day."""
+    pytest.importorskip(
+        "playwright.sync_api", reason="playwright not installed (runtime stays stdlib-only)"
+    )
+    import uvicorn
+
+    state = SessionState()
+    app = create_app(state)
+    with TestClient(app) as c:
+        files = [
+            ("files", (f"ui002_day{d}.xml", _ui_002_mspdi(d).encode("utf-8"), "text/xml"))
+            for d in _UI_002_DAYS
+        ]
+        up = c.post("/upload", files=files)
+        if up.status_code != 200:
+            pytest.fail(f"precondition: the two-file upload answered {up.status_code}")
+    keys: dict[int, str] = {}
+    for key, sch in state.schedules.items():
+        for d in _UI_002_DAYS:
+            if sch.source_file == f"ui002_day{d}.xml":
+                keys[d] = key
+    if sorted(keys) != sorted(_UI_002_DAYS):
+        pytest.fail(f"precondition: the session holds {sorted(keys)}, not {sorted(_UI_002_DAYS)}")
+    port = _free_port()
+    server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="error"))
+    threading.Thread(target=server.run, daemon=True).start()
+    for _ in range(150):
+        if server.started:
+            break
+        time.sleep(0.1)
+    if not server.started:
+        pytest.fail("precondition: the loopback server never started")
+    yield f"http://127.0.0.1:{port}", keys
+    server.should_exit = True
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason=(
+        "A0923-UI-002: the Task Information dialog's Custom Fields tab converts every PT-form "
+        "custom value to 'wd' at a hard-coded 8-hour day (taskinfo.js:44 'var wd = hours / 8'), "
+        "so on a 600-minute-day file 'Compare Duration' PT150H0M0S reads '18.8 wd (150h)' and "
+        "'ME Compare Duration' PT40H0M0S '5 wd (40h)' beside the same dialog's 'Duration: 15 d' "
+        "-- the file's own day requires 15 wd and 4 wd, and nothing in the served row carries "
+        "that day"
+    ),
+)
+def test_a0923_ui_002_a_custom_duration_field_reads_in_the_files_own_working_day(
+    _ui_002_served: tuple[str, dict[int, str]],
+) -> None:
+    """A0923-UI-002 · UI · T2.
+
+    Claim (the class as VERIFIED -- verifier P3's scope): at 0b45eb28 the Task Information
+    dialog's Custom Fields tab converts EVERY PT-form custom value to 'wd' at a hard-coded 8 h
+    (``src/schedule_forensics/web/static/taskinfo.js:44`` -- ``var wd = hours / 8;``), so on any
+    file whose working day is not 480 minutes the 'wd' figure is wrong by day/480 while the
+    '(150h)' part is right, and nothing in the served row tells the dialog the file's day
+    (``openFrom`` caches only ``data.activities``; the payload's
+    ``calendar.working_minutes_per_day`` never reaches the dialog). On the inline 600-minute-day
+    file (07-12 / 13-18 Mon-Fri, MinutesPerDay 600) UID 14 'Build' (15 file-days) carries
+    Duration2 'Compare Duration' PT150H0M0S and Duration3 'ME Compare Duration' PT40H0M0S, both
+    DurationFormat 7 (days): the dialog prints 'Compare Duration: 18.8 wd (150h)' and
+    'ME Compare Duration: 5 wd (40h)' beside the same dialog's General tab 'Duration: 15 d' --
+    the file's own day requires 15 wd (150 h x 60 / 600) and 4 wd (40 x 60 / 600). The
+    480-minute-day control (PT120H0M0S / PT32H0M0S) prints 15 wd / 4 wd today.
+
+    Authority: ``src/schedule_forensics/web/static/taskinfo.js:7`` -- "Every value is the file's
+    own data; nothing is derived client-side."; ``src/schedule_forensics/model/units.py:31-32`` --
+    "A non-8-hour calendar carries its own ``working_minutes_per_day`` and is passed explicitly
+    to the converters below."; Microsoft Learn (read 2026-09-29) -- MinutesPerDay Element: "The
+    default number of minutes per day."; ProjectDataSet.ProjectRow.PROJ_OPT_MINUTES_PER_DAY:
+    "PROJ_OPT_MINUTES_PER_DAY maps to 60 * the Hours per day option on the Calendar tab of the
+    Options dialog box in Project Professional."; DurationFormat Element: "7 | d (days)". Hand
+    arithmetic: 150 x 60 / 600 = 15 and 40 x 60 / 600 = 4; the shipped 150 / 8 = 18.75 -> 18.8
+    and 40 / 8 = 5.
+
+    Rendered in real Chromium against the served app -- ``SFTaskInfo.openFrom(<key>, 14)`` on
+    ``/``, the tab buttons clicked, the ``dt``/``dd`` pairs read -- never by executing the
+    function alone. Every precondition is a ``pytest.fail``; only the 600-minute-day 'wd' figures
+    are asserted.
+    """
+    from playwright.sync_api import sync_playwright
+
+    base, keys = _ui_002_served
+    seen: dict[int, dict[str, str | None]] = {}
+    with sync_playwright() as p:
+        browser = p.chromium.launch(**chrome_kwargs())
+        page = browser.new_page(viewport=VIEWPORT)
+        try:
+            resp = page.goto(base + "/", wait_until="load")
+            if resp is None or resp.status != 200:
+                pytest.fail(f"precondition: GET / answered {resp and resp.status}")
+            for mpd in _UI_002_DAYS:
+                page.evaluate("([f, u]) => SFTaskInfo.openFrom(f, u)", [keys[mpd], _UI_002_UID])
+                page.wait_for_selector(".ti-dialog", timeout=10_000)
+                head = page.inner_text(".ti-dialog h3")
+                if f"Task {_UI_002_UID}: Build" not in head:
+                    pytest.fail(f"precondition: the dialog opened is {head!r}, not UID 14 'Build'")
+                general = dict(page.evaluate(_UI_002_PAIRS))
+                if general.get("Duration") != "15 d":
+                    pytest.fail(
+                        f"precondition: the General tab of the {mpd}-minute-day file prints "
+                        f"Duration {general.get('Duration')!r}, not '15 d' -- the same-dialog "
+                        "witness (web/state.py duration_days on the schedule's own day) moved"
+                    )
+                page.click(".ti-tabs button:has-text('Custom Fields')")
+                custom = dict(page.evaluate(_UI_002_PAIRS))
+                page.evaluate("() => SFTaskInfo.close()")
+                seen[mpd] = {label: custom.get(label) for _fid, label, _days in _UI_002_FIELDS}
+        finally:
+            browser.close()
+    # the hours part is the file's own quantity on both files (the claim's right half); the
+    # control's 'wd' figures equal its file-day quantities on the pristine tree -- when either
+    # moves, the mechanism under test is no longer the one the finding names
+    for mpd in _UI_002_DAYS:
+        for _fid, label, days in _UI_002_FIELDS:
+            parsed = _ui_002_wd_hours(seen[mpd][label] or "")
+            if parsed is None or abs(parsed[1] - days * mpd / 60) > 0.05:
+                pytest.fail(
+                    f"precondition: the {mpd}-minute-day file's {label!r} reads "
+                    f"{seen[mpd][label]!r}, not '<wd> wd ({days * mpd / 60:g}h)' -- the "
+                    "custom value is no longer humanized from its own hours"
+                )
+            if mpd == 480 and abs(parsed[0] - days) > 0.05:
+                pytest.fail(
+                    f"precondition (control): the 480-minute-day file's {label!r} reads "
+                    f"{seen[mpd][label]!r}, not {days:g} wd -- the harness moved"
+                )
+    wrong = {
+        label: f"{seen[600][label]!r} for {days:g} file-days ({days * 600 / 60:g} h over a "
+        f"600-minute day)"
+        for _fid, label, days in _UI_002_FIELDS
+        if (parsed := _ui_002_wd_hours(seen[600][label] or "")) is None
+        or abs(parsed[0] - days) > 0.05
+    }
+    assert not wrong, (
+        "the Task Information dialog converts a Duration custom field to working days at a "
+        "hard-coded 8-hour day, not the file's own 600-minute day (the same dialog prints "
+        f"'Duration: 15 d' for the task itself): {wrong}"
+    )

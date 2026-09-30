@@ -1,5 +1,5 @@
 """Executable reproducers for the AUDIT-2026-09-23 findings in the IMP lane
-(A0923-IMP-001..007 · session 6: A0923-IMP-010).
+(A0923-IMP-001..007 · session 6: A0923-IMP-010 · session 7: A0923-IMP-011).
 
 Campaign: AUDIT-2026-09-23, a read-only audit of base 8c71c639 (v1.0.289). AUDIT + PLAN ONLY:
 the audit changed nothing under ``src/``; these tests are the evidence a fixing PR inherits.
@@ -32,6 +32,7 @@ from __future__ import annotations
 import datetime as dt
 import gzip
 import io
+import json
 import logging
 import re
 import socket
@@ -47,12 +48,14 @@ from fastapi.testclient import TestClient
 from schedule_forensics.engine.cpm import (
     CPMError,
     compute_cpm,
+    datetime_to_offset,
     offset_to_datetime,
     offset_to_start_datetime,
     working_minutes_between,
 )
 from schedule_forensics.engine.driving_slack import compute_driving_slack
 from schedule_forensics.importers._common import ImporterError
+from schedule_forensics.importers.json_schedule import parse_json_text
 from schedule_forensics.importers.mspdi import parse_mspdi, parse_mspdi_text
 from schedule_forensics.importers.xer import parse_xer_text
 from schedule_forensics.model import ConstraintType
@@ -1118,5 +1121,213 @@ def test_a0923_imp_010_a_recurring_holiday_ends_at_its_occurrence_count() -> Non
         problems.append(
             f"UID 6123 driving slack to focus 152: engine {slack[6123].driving_slack_minutes} "
             f"min; SSI {ssi[6123]} d = {want} min"
+        )
+    assert problems == [], "\n".join(problems)
+
+
+# --- A0923-IMP-011 fragment -------------------------------------------------------------------
+# Relies on the module header of tests/audit/test_audit_20260923_imp.py:
+#   imports    datetime as dt, re, pytest, Any (typing), TestClient (fastapi.testclient),
+#              compute_cpm, offset_to_datetime (schedule_forensics.engine.cpm),
+#              ImporterError (schedule_forensics.importers._common),
+#              SessionState, create_app (schedule_forensics.web.app)
+#   fixture    the module-level autouse _air_gapped
+# and on THREE names the header does not carry today -- merge them into its import block:
+#   import json
+#   from schedule_forensics.engine.cpm import datetime_to_offset
+#   from schedule_forensics.importers.json_schedule import parse_json_text
+# Inputs: inline JSON text in the tool's own friendly format only. No fixture file, no Java.
+
+#: Mon-Fri 08:00-12:00 / 13:00-17:00 (MS Project's Standard day), written in time order.
+_A0923_IMP_011_DAY = [[480, 720], [780, 1020]]
+#: Wed 2026-01-07, a working weekday the calendar declares non-working.
+_A0923_IMP_011_HOLIDAY = "2026-01-07"
+
+
+def _a0923_imp_011_doc(calendar: dict[str, Any], minutes: int) -> str:
+    """One task of ``minutes`` working minutes from Mon 2026-01-05 08:00 on ``calendar``, in the
+    tool's own friendly JSON format (src/schedule_forensics/importers/json_schedule.py)."""
+    return json.dumps(
+        {
+            "name": "imp011",
+            "project_start": "2026-01-05T08:00:00",
+            "calendar": calendar,
+            "tasks": [{"unique_id": 1, "name": "Pour", "duration_minutes": minutes}],
+            "relationships": [],
+        }
+    )
+
+
+def _a0923_imp_011_finish(text: str) -> dt.datetime | None:
+    """The task's computed finish as the product renders a project-calendar task, or ``None``
+    when the importer refuses the document by name (``ImporterError``)."""
+    try:
+        sch = parse_json_text(text)
+    except ImporterError:
+        return None
+    timing = compute_cpm(sch).timings[1]
+    return timing.early_finish_wall or offset_to_datetime(
+        sch.project_start, timing.early_finish, sch.calendar
+    )
+
+
+def _a0923_imp_011_served(text: str) -> list[str] | None:
+    """POST /upload of ``text`` as ``imp011.json``, then the 'computed finish MM/DD/YYYY' phrases
+    GET /analysis/<key> serves; ``None`` when the upload refused the file by name."""
+    state = SessionState()
+    client = TestClient(create_app(state))
+    # no redirect-follow: the dashboard GET would consume the one-shot flash that names a refusal
+    client.post(
+        "/upload",
+        files={"files": ("imp011.json", text.encode(), "application/json")},
+        follow_redirects=False,
+    )
+    if not state.schedules:
+        if state.flash is not None and any("imp011" in e for e in state.flash.errors):
+            return None
+        pytest.fail("precondition: the upload either loads imp011.json or refuses it by name")
+    page = client.get(f"/analysis/{next(iter(state.schedules))}")
+    if page.status_code != 200:
+        pytest.fail(f"precondition: /analysis answers {page.status_code}")
+    return re.findall(r"computed finish (\d\d/\d\d/\d{4})", page.text)
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="A0923-IMP-011: the tool's own JSON format accepts, with no ImporterError and no import "
+    "note, a calendar that repeats a holiday (each extra listing costs one more working day: "
+    "/analysis 'computed finish 01/09/2026' for 01/08/2026), lists its day blocks afternoon-first "
+    "(a 240-min task from Mon 08:00 finishes 17:00, not 12:00) or whose blocks total 420 against a "
+    "stated 480-minute day (offset 480 -> Mon 16:00 -> 420)",
+)
+def test_a0923_imp_011_a_json_calendar_is_computed_as_declared_or_refused() -> None:
+    """A0923-IMP-011 · IMP · T1 (data-gated: the tool's own JSON format; 0 committed)
+
+    Claim (verifier P4's broadened and narrowed claim): at 0b45eb28 ``parse_json_text`` (and POST
+    /upload of a .json) accepts, with no ImporterError and ``import_notes == ()``, a calendar that
+    breaks the invariants the calendar rulers assume, and ``compute_cpm`` then mis-computes
+    silently: (a) a holiday listed twice (Wed 2026-01-07) finishes a 3-day task from Mon
+    2026-01-05 08:00 at Fri 01-09 17:00, and each EXTRA listing costs one more working day (listed
+    three times, a 5-day task finishes Wed 01-14 17:00 for Mon 01-12 17:00) -- the day counters
+    sum the model's tuple (engine/cpm.py:485, :603, :1349) while the day test reads it once (the
+    frozenset, :398 / :415) -- and /analysis serves 'computed finish 01/09/2026'; (b) the Standard
+    day written afternoon-first ([[780, 1020], [480, 720]]) finishes a 240-minute task at Mon 17:00
+    and a 600-minute task at Tue 15:00 (the blocks are laid out in list order,
+    ``_tod_at_worked``, cpm.py:1303-1311); (c) blocks totalling 420 (08-12 / 13-16) under
+    ``working_minutes_per_day: 480`` are accepted, and offset 480 renders Mon 16:00 and projects
+    back to 420. (b) and (c) move intraday instants only on these witnesses (the served dates do
+    not move). The route is the JSON format only: MSPDI builds holidays from a set and sorts the
+    blocks (importers/mspdi.py:525, :566), and XER builds holidays from a set with no blocks.
+
+    Correct: (a) a date is one non-working day however often it is listed -- Thu 01-08 17:00 and
+    Mon 01-12 17:00, 'computed finish 01/08/2026' -- or the document is refused by name; (b) the
+    declared blocks in time order -- Mon 12:00 and Tue 10:00 -- or a refusal by name; (c) the
+    document contradicts itself, so the importer's contract requires ImporterError. The same
+    documents written consistently (one listing; blocks in time order; blocks totalling the stated
+    day) are preconditions: the engine is right on them today and a fix must keep them.
+
+    Authority: src/schedule_forensics/importers/json_schedule.py:8 "Best-effort and fail-loud: a
+    malformed document raises :class:`ImporterError`." src/schedule_forensics/engine/cpm.py:463
+    (``_count_working_days``) "Equivalent to the day-by-day count (see
+    ``test_cpm_date_equivalence``)." -- whose reference,
+    tests/engine/test_cpm_date_equivalence.py:35, counts a day
+    ``if cur.weekday() in calendar.work_weekdays and cur not in calendar.holidays`` (a listed
+    date once). src/schedule_forensics/engine/cpm.py:617-619 (``offset_to_datetime``)
+    "Each working weekday contributes ``calendar.working_minutes_per_day`` minutes laid out on the
+    calendar's own SEGMENTS" -- impossible when the segments hold 420 of a stated 480. The model's
+    own sibling invariant, src/schedule_forensics/model/calendar.py:61-62, refuses a repeated
+    weekday: "work_weekdays must not contain duplicates". Hand arithmetic: Mon 480 + Tue 480 +
+    (Wed holiday) + Thu 480 = 1,440 -> Thu 01-08 17:00; + Fri + Mon = 2,400 -> Mon 01-12 17:00;
+    240 minutes from Mon 08:00 in the blocks 08:00-12:00, 13:00-17:00 end at 12:00, 600 at Tue
+    10:00; 08-12 + 13-16 = 420 minutes of declared working time against a stated 480.
+
+    Why the oracle is independent: calendar arithmetic written out above and the importer's own
+    written contract; the engine supplies only the observed values. The verifier's per-minute walk
+    of the declared calendar agrees on every witness, and the same calendars declared in MSPDI
+    compute to the hand values through the product's own MSPDI path (verifier record). MPXJ 16.2.0
+    is no oracle for unsorted blocks (it keeps them in file order and returns the engine's 17:00);
+    MS Project's own behaviour on such input is UNVERIFIED (its writer never emits it). ADR-0474's
+    note that "even a duplicated holiday counts exactly as before" preserved byte-identity in a
+    performance change; it decides nothing about fidelity (verifier; the lead did not rule it
+    HELD).
+
+    Tier: T1 (not LAW-1; data-gated: 0 of the 2 tracked JSON schedule documents and 0 of the
+    44-file MSPDI corpus carry any of the three shapes).
+    """
+    hol = _A0923_IMP_011_HOLIDAY
+    std = {"working_minutes_per_day": 480, "day_segments": _A0923_IMP_011_DAY}
+    at = dt.datetime
+
+    # Preconditions: the same documents written consistently compute to the hand values today.
+    controls = {
+        "holiday listed once, 1,440 min": ({**std, "holidays": [hol]}, 1440, at(2026, 1, 8, 17)),
+        "holiday listed once, 2,400 min": ({**std, "holidays": [hol]}, 2400, at(2026, 1, 12, 17)),
+        "blocks in time order, 240 min": (std, 240, at(2026, 1, 5, 12)),
+        "blocks in time order, 600 min": (std, 600, at(2026, 1, 6, 10)),
+    }
+    for label, (calendar, minutes, want) in controls.items():
+        got = _a0923_imp_011_finish(_a0923_imp_011_doc(calendar, minutes))
+        if got != want:
+            pytest.fail(f"precondition: {label} finishes {got}, hand {want}")
+    for total, blocks in ((480, _A0923_IMP_011_DAY), (420, [[480, 720], [780, 960]])):
+        try:
+            sch = parse_json_text(
+                _a0923_imp_011_doc(
+                    {"working_minutes_per_day": total, "day_segments": blocks}, total
+                )
+            )
+        except ImporterError as exc:
+            pytest.fail(f"precondition: a consistent {total}-minute day is refused: {exc}")
+        wall = offset_to_datetime(sch.project_start, total, sch.calendar)
+        back = datetime_to_offset(sch.project_start, wall, sch.calendar)
+        if back != total:
+            pytest.fail(f"precondition: consistent {total}/{total}: {total} -> {wall} -> {back}")
+    if _a0923_imp_011_served(_a0923_imp_011_doc({**std, "holidays": [hol]}, 1440)) != [
+        "01/08/2026"
+    ]:
+        pytest.fail("precondition: /analysis serves 'computed finish 01/08/2026' for one listing")
+
+    problems = []
+    claims = {
+        "(a) holiday listed twice, 1,440 min": ({**std, "holidays": [hol] * 2}, 1440, (8, 17)),
+        "(a) holiday listed three times, 2,400 min": (
+            {**std, "holidays": [hol] * 3},
+            2400,
+            (12, 17),
+        ),
+        "(b) blocks afternoon-first, 240 min": (
+            {**std, "day_segments": _A0923_IMP_011_DAY[::-1]},
+            240,
+            (5, 12),
+        ),
+        "(b) blocks afternoon-first, 600 min": (
+            {**std, "day_segments": _A0923_IMP_011_DAY[::-1]},
+            600,
+            (6, 10),
+        ),
+    }
+    for label, (calendar, minutes, (day, hour)) in claims.items():
+        want = at(2026, 1, day, hour)
+        got = _a0923_imp_011_finish(_a0923_imp_011_doc(calendar, minutes))
+        if got is not None and got != want:
+            problems.append(f"{label}: finishes {got:%a %m-%d %H:%M}; hand {want:%a %m-%d %H:%M}")
+    served = _a0923_imp_011_served(_a0923_imp_011_doc({**std, "holidays": [hol] * 2}, 1440))
+    if served is not None and served != ["01/08/2026"]:
+        problems.append(f"(a) /analysis serves computed finish {served}; hand ['01/08/2026']")
+    try:
+        sch = parse_json_text(
+            _a0923_imp_011_doc(
+                {"working_minutes_per_day": 480, "day_segments": [[480, 720], [780, 960]]}, 480
+            )
+        )
+    except ImporterError:
+        pass  # the contract: a self-contradictory calendar is refused by name
+    else:
+        wall = offset_to_datetime(sch.project_start, 480, sch.calendar)
+        back = datetime_to_offset(sch.project_start, wall, sch.calendar)
+        problems.append(
+            f"(c) blocks totalling 420 under a stated 480-minute day accepted "
+            f"(import_notes={sch.import_notes!r}): offset 480 -> {wall:%a %H:%M} -> {back}"
         )
     assert problems == [], "\n".join(problems)

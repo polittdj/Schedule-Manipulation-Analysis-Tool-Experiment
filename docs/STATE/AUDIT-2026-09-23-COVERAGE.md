@@ -13,6 +13,30 @@
 
 Companion to the live ledger `docs/STATE/AUDIT-2026-09-23.md` (charter §8, §11 item 3).
 
+## Session 7 (2026-09-29, WP-CPM round 3, base 0b45eb28) — what changed in this census and what did not
+
+- **Base and population.** `0b45eb28` (#723); `git ls-files` is unchanged in `src/` and `tools/` since `13b13f38`
+  (the diff is docs and `tests/audit`), so the per-file population is session 6's plus session 6's own additions
+  (its ledger rows, its `tests/audit/test_audit_20260923_ui.py`). No file was re-classified.
+- **New status `PROBED-S7(n: IDs)`** — method as §0 states for S5 / S6: a file cited as `path:line` in the claim or
+  the mechanism of a session-7 class gets the S7 mark prepended to its existing status (the earlier statuses are kept,
+  as session 6 did). The marks are generated from the ledger's session-7 class table by `integrate.py` (session
+  scratch), not typed by hand, and the per-lane heading counts are recounted by the same script from the first status
+  token of every file line — the recount reproduces the untouched census's own headings before it is applied (a
+  self-check that aborts the integration if the parser is wrong).
+- **What the S7 marks say.** The session-7 classes cite `web/evolution.py`, `web/driving.py`, `web/state.py`,
+  `web/app.py`, `engine/cpm.py`, `engine/path_evolution.py`, `engine/path_trace.py`, `engine/metrics/_common.py`,
+  `importers/json_schedule.py`, `model/calendar.py`, `static/taskinfo.js`, `static/path.js`, `exhibits/report_html.py`,
+  `exhibits/render_svg.py` (the two exhibits files move UNREAD → PROBED-S7: the first session to reach the exhibits
+  pack), the fixtures `tests/fixtures/mspdi/commercial_construction.xml` and
+  `tests/fixtures/test_projects/TP2_Bridge_4x10_Calendar.xml`, and the ADRs 0174, 0251, 0355, 0420, 0467, 0516 (0174,
+  0355 and 0420 move UNREAD → PROBED-S7). The behavioural census gains §3c (five probe families, their populations and
+  reach).
+- **What did not change.** No lane's file list; the intake block (698 files, MANIFEST-COVERED); the route population
+  (158 entries from `create_app(SessionState()).routes`, re-enumerated by the F-DAY finder — the same count session 1
+  recorded); the gap map. Files read by the finders but cited by no class keep their status (a finder's reading is
+  not censused here; its reach is in the ledger).
+
 ## Session 6 (2026-09-28, WP-CPM continued, base 13b13f38) — what changed in this census and what did not
 
 - **Bases.** Session 6's findings and probes ran at `13b13f38` (`origin/main`, #721 = session 5, v1.0.294, 820 commits,
@@ -394,7 +418,7 @@ session-1 PROBED file now reads `PROBED-S5(…) PROBED(…) path`. The populatio
 a file probed in sessions 1 and 5 now reads `PROBED-S6(…) PROBED-S5(…) PROBED(…) path`. Each lane heading gains a
 PROBED-S6 count; its READ and UNREAD counts are the values after session 6.
 
-#### TST — 563 files (PROBED 20, PROBED-S2 11, PROBED-S5 1, PROBED-S6 7, READ 115, UNREAD 409)
+#### TST — 563 files (PROBED 20, PROBED-S2 11, PROBED-S5 1, PROBED-S6 7, PROBED-S7 0, READ 115, UNREAD 409)
 
 ```text
 UNREAD                   tests/README.md
@@ -962,7 +986,7 @@ READ(1)                  tests/web/test_zero_margin_sra.py
 READ(3)                  tests/web/tip_probe.py
 ```
 
-#### DOC(adr) — 527 files (PROBED 34, PROBED-S2 5, PROBED-S5 7, PROBED-S6 21, READ 56, UNREAD 404)
+#### DOC(adr) — 527 files (PROBED 34, PROBED-S2 5, PROBED-S5 7, PROBED-S6 21, PROBED-S7 4, READ 55, UNREAD 401)
 
 ```text
 UNREAD                   docs/adr/0000-record-architecture-decisions.md
@@ -1139,7 +1163,7 @@ UNREAD                   docs/adr/0170-split-health-indices-trend-charts.md
 UNREAD                   docs/adr/0171-resources-bucketing-and-overallocation-drill.md
 UNREAD                   docs/adr/0172-sra-grid-group-by-any-field.md
 UNREAD                   docs/adr/0173-trend-signal-drill-and-focus-chart-removal.md
-UNREAD                   docs/adr/0174-driving-tiers-export-trace-option-fidelity.md
+PROBED-S7(1: CPM-040) UNREAD docs/adr/0174-driving-tiers-export-trace-option-fidelity.md
 UNREAD                   docs/adr/0175-polaris-brand-wordmark.md
 UNREAD                   docs/adr/0176-acumen-alignment-bei-spit-dcma09-change-trackers.md
 UNREAD                   docs/adr/0177-ui-work-order-whatif-added-mission-grid-tracked-uids.md
@@ -1216,7 +1240,7 @@ UNREAD                   docs/adr/0247-audit-remainder-driving-path-shading-xlsx
 UNREAD                   docs/adr/0248-pr-p1-perf-safe-increment.md
 UNREAD                   docs/adr/0249-audit-f-perf-regression-harness.md
 READ(1)                  docs/adr/0250-deep-audit-remediation.md
-PROBED-S6(1: CPM-022)    docs/adr/0251-ignore-toggles-copy-truth-and-page-family-alignment.md
+PROBED-S7(1: CPM-038) PROBED-S6(1: CPM-022) docs/adr/0251-ignore-toggles-copy-truth-and-page-family-alignment.md
 UNREAD                   docs/adr/0252-base-cpm-single-calendar-disclosure.md
 UNREAD                   docs/adr/0253-user-parameterized-nasa-margin-rate.md
 UNREAD                   docs/adr/0254-expected-margin-panel-fig530-band-sra-spread.md
@@ -1320,7 +1344,7 @@ UNREAD                   docs/adr/0351-phase-3-slice-2-the-driving-path-family-a
 UNREAD                   docs/adr/0352-phase-3-slice-3-the-evolution-family-and-the-pre-flight-coverage-check.md
 PROBED-S2(1: DOC-015)    docs/adr/0353-the-legacy-sra-shares-one-basis-and-one-axis.md
 UNREAD                   docs/adr/0354-duration-literals-conform-to-the-vendored-mpxj-and-populations-move-visibly.md
-UNREAD                   docs/adr/0355-four-codex-findings-on-the-duration-literal-fix-all-confirmed-all-hardened.md
+PROBED-S7(1: CPM-041) UNREAD docs/adr/0355-four-codex-findings-on-the-duration-literal-fix-all-confirmed-all-hardened.md
 UNREAD                   docs/adr/0356-the-ssi-delta-was-a-stale-setup-and-the-grid-learns-to-read-the-file.md
 UNREAD                   docs/adr/0357-the-1440-boundary-is-blessed-by-the-operators-oracle.md
 UNREAD                   docs/adr/0358-phase-3-slice-4-the-integrity-family-and-the-render-diff-that-finally-earned-its-keep.md
@@ -1385,7 +1409,7 @@ UNREAD                   docs/adr/0416-the-parity-toggle-is-a-live-control.md
 UNREAD                   docs/adr/0417-the-sra-export-cache-learns-the-scope.md
 UNREAD                   docs/adr/0418-the-browser-suite-was-orphaned-from-ci-and-one-of-its-oracles-could-not-fail.md
 UNREAD                   docs/adr/0419-a-default-times-working-day-weighed-nothing-in-the-calendar-census.md
-UNREAD                   docs/adr/0420-a-scoped-analysis-paired-with-a-raw-population.md
+PROBED-S7(1: CPM-040) UNREAD docs/adr/0420-a-scoped-analysis-paired-with-a-raw-population.md
 UNREAD                   docs/adr/0421-ask-the-ai-silently-lost-the-engines-driving-path-facts-under-a-filter.md
 UNREAD                   docs/adr/0422-unrestricted-ask-fed-the-model-the-oldest-versions-activity-table.md
 PROBED(1: IMP-005)       docs/adr/0423-isdigit-gated-int-500d-twelve-routes-and-isdecimal-is-the-exact-predicate.md
@@ -1432,7 +1456,7 @@ PROBED-S6(1: CPM-024)    docs/adr/0463-wp6-six-ledger-highs-verified-five-fixed-
 UNREAD                   docs/adr/0464-forecast-in-the-claude-design-layout-the-stepper-re-homed-into-the-strip.md
 READ(1)                  docs/adr/0465-one-pager-compare-two-lists-matched-on-the-only-key-they-carry-every-move-in-calendar-days.md
 UNREAD                   docs/adr/0466-the-trend-cursor-follows-the-data-frame-publication-never-a-click-proxy.md
-PROBED-S6(1: CPM-025)    docs/adr/0467-wp6b-the-ledger-tail-verified-by-execution-eleven-fixed-red-first-six-refuted.md
+PROBED-S7(1: WEB-003) PROBED-S6(1: CPM-025) docs/adr/0467-wp6b-the-ledger-tail-verified-by-execution-eleven-fixed-red-first-six-refuted.md
 UNREAD                   docs/adr/0468-performance-in-the-claude-design-layout-five-bands-in-one-grid-the-stepper-re-homed.md
 PROBED(2: CUI-002,CUI-003) docs/adr/0469-wp7-the-transaction-log-under-law-1-and-the-twenty-one-never-adverse-routes-driven-adversely.md
 UNREAD                   docs/adr/0470-card-in-the-claude-design-layout-a-per-file-drill-whose-cursor-is-navigation.md
@@ -1481,7 +1505,7 @@ READ(2)                  docs/adr/0512-the-backward-pass-stops-at-finished-work-
 READ(1)                  docs/adr/0513-out-of-sequence-progress-resumes-its-remaining-work-at-its-recorded-start-and-a-start-need-binds-no-started-predecessor.md
 READ(1)                  docs/adr/0514-acumen-fuses-total-float-field-is-the-stored-slack-rounded-half-to-even-dcma14s-parity-roundings-are-the-references-own-rule.md
 READ(1)                  docs/adr/0515-fuses-own-rounding-is-half-to-even-wherever-its-code-rounds-r-04s-sweep-refuted-by-measurement-the-round-sites-classified-by-exposure.md
-READ(1)                  docs/adr/0516-fuses-total-float-field-divides-by-the-activitys-own-day-a-task-calendars-1440-raw-for-an-elapsed-duration-never-the-crews-r-75-closed.md
+PROBED-S7(1: CPM-041) READ(1) docs/adr/0516-fuses-total-float-field-divides-by-the-activitys-own-day-a-task-calendars-1440-raw-for-an-elapsed-duration-never-the-crews-r-75-closed.md
 PROBED-S6(1: CPM-010) READ(1) docs/adr/0517-every-started-activitys-remaining-work-is-scheduled-from-its-stored-resume-read-in-working-minutes-of-the-calendars-own-segments-r-73-closed.md
 READ(1)                  docs/adr/0518-fuses-duration-fields-divide-by-the-activitys-own-calendar-day-and-the-dcma-population-and-the-high-duration-tile-read-the-baseline-field-r-76-closed.md
 READ(2)                  docs/adr/0519-float-ratio-is-two-metrics-under-one-name-mean-of-ratios-na-on-a-zero-divisor-and-ratio-of-means-r-78-closed.md
@@ -1494,7 +1518,7 @@ READ(1)                  docs/adr/0525-ten-of-eleven-terminal-catch-sentences-ar
 READ(4)                  docs/adr/0526-one-pager-compare-a-repeated-name-whose-date-did-not-move-is-one-unchanged-item-column-d-is-a-status-word.md
 ```
 
-#### UI — 70 files (PROBED 17, PROBED-S2 5, PROBED-S5 0, PROBED-S6 0, READ 30, UNREAD 18)
+#### UI — 70 files (PROBED 17, PROBED-S2 5, PROBED-S5 0, PROBED-S6 0, PROBED-S7 0, READ 30, UNREAD 18)
 
 ```text
 PROBED-S6(1: UI-001) PROBED-S2(1: TST-001) READ(6) src/schedule_forensics/web/static/a11y.js
@@ -1535,7 +1559,7 @@ READ(1)                  src/schedule_forensics/web/static/mission.js
 READ(1)                  src/schedule_forensics/web/static/onepager.js
 READ(1)                  src/schedule_forensics/web/static/onepager_compare.js
 PROBED(1: TST-007)       src/schedule_forensics/web/static/panelkit.js
-PROBED(1: MET-002)       src/schedule_forensics/web/static/path.js
+PROBED-S7(1: CPM-039) PROBED(1: MET-002) src/schedule_forensics/web/static/path.js
 READ(6)                  src/schedule_forensics/web/static/path_evolution.js
 PROBED(1: TST-008)       src/schedule_forensics/web/static/performance.js
 UNREAD                   src/schedule_forensics/web/static/persist.js
@@ -1554,7 +1578,7 @@ READ(2)                  src/schedule_forensics/web/static/sra_ssi.js
 UNREAD                   src/schedule_forensics/web/static/story.js
 READ(1)                  src/schedule_forensics/web/static/sysmon.js
 UNREAD                   src/schedule_forensics/web/static/target.js
-PROBED(1: MET-002)       src/schedule_forensics/web/static/taskinfo.js
+PROBED-S7(2: CPM-042,UI-002) PROBED(1: MET-002) src/schedule_forensics/web/static/taskinfo.js
 READ(9)                  src/schedule_forensics/web/static/theme.js
 UNREAD                   src/schedule_forensics/web/static/timeaxis.js
 READ(2)                  src/schedule_forensics/web/static/timescale.js
@@ -1569,7 +1593,7 @@ UNREAD                   src/schedule_forensics/web/static/whatif.js
 READ(12)                 src/schedule_forensics/web/static/workbench.js
 ```
 
-#### FIXTURE(oracle) — 41 files (PROBED 0, PROBED-S2 0, PROBED-S5 0, PROBED-S6 3, READ 26, UNREAD 12)
+#### FIXTURE(oracle) — 41 files (PROBED 0, PROBED-S2 0, PROBED-S5 0, PROBED-S6 3, PROBED-S7 1, READ 25, UNREAD 12)
 
 ```text
 UNREAD                   tests/fixtures/.gitkeep
@@ -1599,7 +1623,7 @@ READ(11)                 tests/fixtures/golden/ssi_uid152_leveled/Large_Test_Fil
 UNREAD                   tests/fixtures/golden/ssi_uid152_leveled/case.json
 PROBED-S6(1: CPM-019) READ(3) tests/fixtures/golden/ssi_uid67/case.json
 READ(4)                  tests/fixtures/mspdi/NEGFLOAT_SubDay_Probe.xml
-READ(1)                  tests/fixtures/mspdi/commercial_construction.xml
+PROBED-S7(1: CPM-035) READ(1) tests/fixtures/mspdi/commercial_construction.xml
 UNREAD                   tests/fixtures/mspdi/jacked_up_schedule_1.xml
 READ(2)                  tests/fixtures/mspdi/jacked_up_schedule_2.xml
 UNREAD                   tests/fixtures/mspdi/jacked_up_schedule_2_with_deadline.xml
@@ -1615,7 +1639,7 @@ READ(4)                  tests/fixtures/test_projects/TP5_LongSpan_Synthetic.xml
 READ(4)                  tests/fixtures/xer/commercial_construction.xer
 ```
 
-#### DOC — 36 files (PROBED 18, PROBED-S2 1, PROBED-S5 0, PROBED-S6 0, READ 7, UNREAD 10)
+#### DOC — 36 files (PROBED 18, PROBED-S2 1, PROBED-S5 0, PROBED-S6 0, PROBED-S7 0, READ 7, UNREAD 10)
 
 ```text
 PROBED(1: DOC-004)       AUTONOMOUS-BUILD-PROMPT.md
@@ -1656,7 +1680,7 @@ READ(5)                  docs/automated-reporting.md
 PROBED(3: CUI-003,DOC-004,DOC-013) docs/risks.md
 ```
 
-#### MET — 36 files (PROBED 8, PROBED-S2 1, PROBED-S5 0, PROBED-S6 2, READ 11, UNREAD 14)
+#### MET — 36 files (PROBED 8, PROBED-S2 1, PROBED-S5 0, PROBED-S6 2, PROBED-S7 0, READ 11, UNREAD 14)
 
 ```text
 READ(6)                  src/schedule_forensics/engine/dcma_audit.py
@@ -1665,7 +1689,7 @@ PROBED(1: MET-001)       src/schedule_forensics/engine/margin_dashboard.py
 READ(3)                  src/schedule_forensics/engine/margin_guideline.py
 UNREAD                   src/schedule_forensics/engine/metric_catalog.py
 UNREAD                   src/schedule_forensics/engine/metrics/__init__.py
-PROBED-S6(1: CPM-020) READ(9) src/schedule_forensics/engine/metrics/_common.py
+PROBED-S7(1: CPM-036) PROBED-S6(1: CPM-020) READ(9) src/schedule_forensics/engine/metrics/_common.py
 READ(3)                  src/schedule_forensics/engine/metrics/cei.py
 PROBED-S5(1: CPM-001) PROBED(1: DOC-005) src/schedule_forensics/engine/metrics/change_metrics.py
 PROBED(1: AI-004)        src/schedule_forensics/engine/metrics/completion_performance.py
@@ -1697,12 +1721,12 @@ UNREAD                   src/schedule_forensics/engine/sra_conclusions.py
 READ(10)                 src/schedule_forensics/web/help.py
 ```
 
-#### SEC/WEB/UI(page) — 36 files (PROBED 12, PROBED-S2 0, PROBED-S5 4, PROBED-S6 1, READ 7, UNREAD 12)
+#### SEC/WEB/UI(page) — 36 files (PROBED 12, PROBED-S2 0, PROBED-S5 4, PROBED-S6 1, PROBED-S7 0, READ 7, UNREAD 12)
 
 ```text
 PROBED(1: DOC-002)       src/schedule_forensics/web/__init__.py
 PROBED-S6(1: CPM-020) PROBED-S5(1: CPM-001) PROBED(6: CUI-003,CUI-004,DOC-011,IMP-003,MET-002,TST-008) src/schedule_forensics/web/analysis.py
-PROBED-S6(1: CPM-025) PROBED-S5(1: CPM-001) PROBED(14: AI-002,AI-003,AI-005,CUI-001,CUI-003,CUI-004,DOC-001,DOC-002,IMP-001,IMP-004,IMP-005,MET-001,WEB-001,WEB-002) src/schedule_forensics/web/app.py
+PROBED-S7(4: CPM-037,CPM-040,WEB-003,WEB-004) PROBED-S6(1: CPM-025) PROBED-S5(1: CPM-001) PROBED(14: AI-002,AI-003,AI-005,CUI-001,CUI-003,CUI-004,DOC-001,DOC-002,IMP-001,IMP-004,IMP-005,MET-001,WEB-001,WEB-002) src/schedule_forensics/web/app.py
 UNREAD                   src/schedule_forensics/web/brief.py
 UNREAD                   src/schedule_forensics/web/briefing.py
 PROBED-S5(1: CPM-001) READ(10) src/schedule_forensics/web/card.py
@@ -1711,9 +1735,9 @@ PROBED-S6(1: CPM-025) PROBED(3: CUI-003,CUI-004,DOC-003) src/schedule_forensics/
 PROBED-S6(1: UI-001) PROBED-S5(1: CPM-001) src/schedule_forensics/web/compare.py
 PROBED-S5(1: CPM-001) PROBED(1: MET-001) src/schedule_forensics/web/components.py
 READ(3)                  src/schedule_forensics/web/curves.py
-PROBED-S6(9: CPM-016,CPM-017,CPM-018,CPM-019,CPM-021,CPM-022,CPM-023,CPM-024,DOC-017) READ(9) src/schedule_forensics/web/driving.py
+PROBED-S7(3: CPM-038,CPM-039,CPM-035) PROBED-S6(9: CPM-016,CPM-017,CPM-018,CPM-019,CPM-021,CPM-022,CPM-023,CPM-024,DOC-017) READ(9) src/schedule_forensics/web/driving.py
 UNREAD                   src/schedule_forensics/web/evm.py
-PROBED-S6(5: CPM-010,CPM-011,CPM-012,CPM-013,CPM-015) PROBED-S5(1: CPM-001) READ(7) src/schedule_forensics/web/evolution.py
+PROBED-S7(4: CPM-036,CPM-038,CPM-037,CPM-045) PROBED-S6(5: CPM-010,CPM-011,CPM-012,CPM-013,CPM-015) PROBED-S5(1: CPM-001) READ(7) src/schedule_forensics/web/evolution.py
 UNREAD                   src/schedule_forensics/web/forecast.py
 READ(5)                  src/schedule_forensics/web/i18n.py
 PROBED-S6(2: CPM-013,CPM-014) PROBED-S5(1: CPM-001) src/schedule_forensics/web/integrity.py
@@ -1738,7 +1762,7 @@ READ(3)                  src/schedule_forensics/web/wbs.py
 READ(3)                  src/schedule_forensics/web/workbench.py
 ```
 
-#### IMP(mpxj) — 28 files (PROBED 0, PROBED-S2 0, PROBED-S5 0, PROBED-S6 0, READ 3, UNREAD 25)
+#### IMP(mpxj) — 28 files (PROBED 0, PROBED-S2 0, PROBED-S5 0, PROBED-S6 0, PROBED-S7 0, READ 3, UNREAD 25)
 
 ```text
 UNREAD                   tools/mpxj/MpxjToMspdi.java
@@ -1771,7 +1795,7 @@ READ(1)                  tools/mpxj/setup.ps1
 READ(1)                  tools/mpxj/setup.sh
 ```
 
-#### PKG — 24 files (PROBED 10, PROBED-S2 1, PROBED-S5 0, PROBED-S6 0, READ 11, UNREAD 2)
+#### PKG — 24 files (PROBED 10, PROBED-S2 1, PROBED-S5 0, PROBED-S6 0, PROBED-S7 0, READ 11, UNREAD 2)
 
 ```text
 PROBED(2: CUI-003,DOC-010) installer/README-DISTRIBUTABLE.md
@@ -1800,7 +1824,7 @@ PROBED(1: CUI-003)       tools/installer/template.ps1
 PROBED(1: CUI-003)       tools/installer/template.sh
 ```
 
-#### DOC(state) — 23 files (PROBED 10, PROBED-S2 3, PROBED-S5 0, PROBED-S6 0, READ 4, UNREAD 6)
+#### DOC(state) — 23 files (PROBED 10, PROBED-S2 3, PROBED-S5 0, PROBED-S6 0, PROBED-S7 0, READ 4, UNREAD 6)
 
 ```text
 PROBED(2: DOC-004,TST-002) docs/STATE/AUDIT-2026-06-25.md
@@ -1828,7 +1852,7 @@ READ(1)                  docs/STATE/msp-filters-research/04-test-matrix.md
 UNREAD                   docs/STATE/msp-views-leveled.json
 ```
 
-#### AI — 22 files (PROBED 13, PROBED-S2 0, PROBED-S5 2, PROBED-S6 0, READ 1, UNREAD 6)
+#### AI — 22 files (PROBED 13, PROBED-S2 0, PROBED-S5 2, PROBED-S6 0, PROBED-S7 0, READ 1, UNREAD 6)
 
 ```text
 UNREAD                   src/schedule_forensics/ai/__init__.py
@@ -1855,7 +1879,7 @@ UNREAD                   src/schedule_forensics/ai/version_facts.py
 PROBED-S6(1: UI-001) PROBED(4: CUI-001,CUI-003,CUI-004,DOC-010) src/schedule_forensics/web/settings.py
 ```
 
-#### INH(audit) — 19 files (PROBED 3, PROBED-S2 0, PROBED-S5 0, PROBED-S6 0, READ 14, UNREAD 2)
+#### INH(audit) — 19 files (PROBED 3, PROBED-S2 0, PROBED-S5 0, PROBED-S6 0, PROBED-S7 0, READ 14, UNREAD 2)
 
 ```text
 PROBED(1: DOC-004)       audit/AUDIT-REPORT.md
@@ -1879,7 +1903,7 @@ READ(1)                  audit/operator-artifacts/README.md
 READ(1)                  audit/operator-artifacts/collect-ollama-artifacts.ps1
 ```
 
-#### TST(ci/instr) — 19 files (PROBED 10, PROBED-S2 0, PROBED-S5 0, PROBED-S6 0, READ 9, UNREAD 0)
+#### TST(ci/instr) — 19 files (PROBED 10, PROBED-S2 0, PROBED-S5 0, PROBED-S6 0, PROBED-S7 0, READ 9, UNREAD 0)
 
 ```text
 PROBED(2: TST-002,TST-003) .claude/agents/README.md
@@ -1903,12 +1927,12 @@ READ(10)                 constraints/floor.txt
 READ(7)                  constraints/known-good.txt
 ```
 
-#### IMP — 18 files (PROBED 7, PROBED-S2 1, PROBED-S5 1, PROBED-S6 1, READ 3, UNREAD 5)
+#### IMP — 18 files (PROBED 7, PROBED-S2 1, PROBED-S5 1, PROBED-S6 1, PROBED-S7 0, READ 3, UNREAD 5)
 
 ```text
 PROBED(1: DOC-002)       src/schedule_forensics/importers/__init__.py
 PROBED(1: IMP-005)       src/schedule_forensics/importers/_common.py
-PROBED(1: IMP-004)       src/schedule_forensics/importers/json_schedule.py
+PROBED-S7(1: IMP-011) PROBED(1: IMP-004) src/schedule_forensics/importers/json_schedule.py
 PROBED(1: DOC-002)       src/schedule_forensics/importers/loader.py
 PROBED(1: IMP-004)       src/schedule_forensics/importers/mpp_mpxj.py
 UNREAD                   src/schedule_forensics/importers/msp_views.py
@@ -1926,15 +1950,15 @@ PROBED-S6(1: CPM-018)    src/schedule_forensics/model/units.py
 READ(31)                 src/schedule_forensics/web/examples/house_build.json
 ```
 
-#### EXP — 14 files (PROBED 3, PROBED-S2 1, PROBED-S5 0, PROBED-S6 0, READ 4, UNREAD 6)
+#### EXP — 14 files (PROBED 3, PROBED-S2 1, PROBED-S5 0, PROBED-S6 0, PROBED-S7 2, READ 4, UNREAD 4)
 
 ```text
 UNREAD                   src/schedule_forensics/exhibits/__init__.py
 UNREAD                   src/schedule_forensics/exhibits/cli.py
 READ(3)                  src/schedule_forensics/exhibits/csvout.py
 UNREAD                   src/schedule_forensics/exhibits/payload.py
-UNREAD                   src/schedule_forensics/exhibits/render_svg.py
-UNREAD                   src/schedule_forensics/exhibits/report_html.py
+PROBED-S7(1: EXP-001) UNREAD src/schedule_forensics/exhibits/render_svg.py
+PROBED-S7(1: EXP-001) UNREAD src/schedule_forensics/exhibits/report_html.py
 UNREAD                   src/schedule_forensics/reports/__init__.py
 READ(2)                  src/schedule_forensics/reports/docx.py
 PROBED(1: IMP-005)       src/schedule_forensics/reports/onepager.py
@@ -1945,7 +1969,7 @@ READ(2)                  src/schedule_forensics/reports/xlsx.py
 PROBED(2: IMP-001,IMP-005) src/schedule_forensics/reports/xlsx_read.py
 ```
 
-#### FOR — 14 files (PROBED 0, PROBED-S2 0, PROBED-S5 8, PROBED-S6 0, READ 2, UNREAD 4)
+#### FOR — 14 files (PROBED 0, PROBED-S2 0, PROBED-S5 8, PROBED-S6 0, PROBED-S7 0, READ 2, UNREAD 4)
 
 ```text
 UNREAD                   src/schedule_forensics/engine/bow_wave.py
@@ -1955,7 +1979,7 @@ UNREAD                   src/schedule_forensics/engine/diff.py
 PROBED-S5(1: CPM-001) READ(5) src/schedule_forensics/engine/forecast.py
 PROBED-S5(1: CPM-001) READ(7) src/schedule_forensics/engine/manipulation.py
 PROBED-S5(1: CPM-001)    src/schedule_forensics/engine/pair_series.py
-PROBED-S5(1: CPM-001)    src/schedule_forensics/engine/path_evolution.py
+PROBED-S7(2: CPM-036,CPM-045) PROBED-S5(1: CPM-001) src/schedule_forensics/engine/path_evolution.py
 UNREAD                   src/schedule_forensics/engine/projects.py
 READ(6)                  src/schedule_forensics/engine/recommendations.py
 PROBED-S5(1: CPM-001)    src/schedule_forensics/engine/summary.py
@@ -1964,7 +1988,7 @@ READ(1)                  src/schedule_forensics/engine/trend.py
 PROBED-S5(1: CPM-001) READ(1) src/schedule_forensics/engine/version_series.py
 ```
 
-#### WEB — 14 files (PROBED 4, PROBED-S2 1, PROBED-S5 0, PROBED-S6 0, READ 3, UNREAD 6)
+#### WEB — 14 files (PROBED 4, PROBED-S2 1, PROBED-S5 0, PROBED-S6 0, PROBED-S7 0, READ 3, UNREAD 6)
 
 ```text
 PROBED(1: CUI-003)       src/schedule_forensics/__init__.py
@@ -1979,26 +2003,26 @@ UNREAD                   src/schedule_forensics/engine/saved_grouping.py
 PROBED(4: CUI-001,CUI-002,CUI-003,WEB-002) src/schedule_forensics/launcher.py
 PROBED(1: CUI-004)       src/schedule_forensics/web/launch.py
 UNREAD                   src/schedule_forensics/web/offload.py
-PROBED-S6(1: CPM-020) PROBED(2: DOC-011,MET-001) src/schedule_forensics/web/state.py
+PROBED-S7(2: CPM-042,CPM-041) PROBED-S6(1: CPM-020) PROBED(2: DOC-011,MET-001) src/schedule_forensics/web/state.py
 READ(5)                  src/schedule_forensics/web/system.py
 ```
 
-#### CPM — 10 files (PROBED 4, PROBED-S2 0, PROBED-S5 2, PROBED-S6 3, READ 0, UNREAD 1)
+#### CPM — 10 files (PROBED 4, PROBED-S2 0, PROBED-S5 2, PROBED-S6 3, PROBED-S7 0, READ 0, UNREAD 1)
 
 ```text
-PROBED-S6(11: CPM-010,CPM-011,CPM-014,CPM-020,CPM-027,CPM-028,CPM-029,CPM-030,CPM-031,CPM-033,CPM-034) PROBED-S5(9: CPM-001,CPM-002,CPM-003,CPM-004,CPM-005,CPM-006,CPM-007,CPM-008,IMP-007) PROBED(3: DOC-014,IMP-002,TST-011) src/schedule_forensics/engine/cpm.py
+PROBED-S7(4: CPM-043,CPM-044,CPM-046,CPM-047) PROBED-S6(11: CPM-010,CPM-011,CPM-014,CPM-020,CPM-027,CPM-028,CPM-029,CPM-030,CPM-031,CPM-033,CPM-034) PROBED-S5(9: CPM-001,CPM-002,CPM-003,CPM-004,CPM-005,CPM-006,CPM-007,CPM-008,IMP-007) PROBED(3: DOC-014,IMP-002,TST-011) src/schedule_forensics/engine/cpm.py
 PROBED-S6(6: CPM-016,CPM-017,CPM-018,CPM-019,CPM-021,DOC-017) src/schedule_forensics/engine/drag.py
 PROBED-S6(1: CPM-026)    src/schedule_forensics/engine/driving_path.py
 PROBED-S6(2: CPM-022,CPM-032) PROBED-S5(1: CPM-006) PROBED(1: IMP-002) src/schedule_forensics/engine/driving_slack.py
 PROBED-S6(1: CPM-020) PROBED(1: DOC-014) src/schedule_forensics/engine/float_analysis.py
 UNREAD                   src/schedule_forensics/engine/month_axis.py
 PROBED-S6(5: CPM-010,CPM-011,CPM-013,CPM-014,CPM-015) PROBED-S5(1: CPM-001) src/schedule_forensics/engine/path_counterfactual.py
-PROBED-S6(2: CPM-024,CPM-032) src/schedule_forensics/engine/path_trace.py
+PROBED-S7(1: CPM-035) PROBED-S6(2: CPM-024,CPM-032) src/schedule_forensics/engine/path_trace.py
 PROBED-S5(1: CPM-001)    src/schedule_forensics/engine/resources.py
-PROBED-S5(1: CPM-006) PROBED(1: IMP-002) src/schedule_forensics/model/calendar.py
+PROBED-S7(1: IMP-011) PROBED-S5(1: CPM-006) PROBED(1: IMP-002) src/schedule_forensics/model/calendar.py
 ```
 
-#### TST(tools) — 6 files (PROBED 1, PROBED-S2 0, PROBED-S5 0, PROBED-S6 0, READ 5, UNREAD 0)
+#### TST(tools) — 6 files (PROBED 1, PROBED-S2 0, PROBED-S5 0, PROBED-S6 0, PROBED-S7 0, READ 5, UNREAD 0)
 
 ```text
 READ(15)                 tools/browser_modules.py
@@ -2009,7 +2033,7 @@ READ(3)                  tools/regenerate_timephased_goldens.py
 READ(3)                  tools/route_coverage.py
 ```
 
-#### CUI — 5 files (PROBED 1, PROBED-S2 1, PROBED-S5 0, PROBED-S6 0, READ 2, UNREAD 1)
+#### CUI — 5 files (PROBED 1, PROBED-S2 1, PROBED-S5 0, PROBED-S6 0, PROBED-S7 0, READ 2, UNREAD 1)
 
 ```text
 READ(14)                 .githooks/pre-commit
@@ -2019,14 +2043,14 @@ PROBED(2: CUI-003,WEB-002) src/schedule_forensics/net_guard.py
 PROBED-S2(1: DOC-004) READ(6) tools/ci_cui_guard.sh
 ```
 
-#### PERF — 2 files (PROBED 0, PROBED-S2 0, PROBED-S5 0, PROBED-S6 0, READ 1, UNREAD 1)
+#### PERF — 2 files (PROBED 0, PROBED-S2 0, PROBED-S5 0, PROBED-S6 0, PROBED-S7 0, READ 1, UNREAD 1)
 
 ```text
 READ(4)                  tests/perf/test_observer_storm.py
 UNREAD                   tests/perf/test_perf_regression.py
 ```
 
-#### OTHER — 1 files (PROBED 0, PROBED-S2 0, PROBED-S5 0, PROBED-S6 0, READ 0, UNREAD 1)
+#### OTHER — 1 files (PROBED 0, PROBED-S2 0, PROBED-S5 0, PROBED-S6 0, PROBED-S7 0, READ 0, UNREAD 1)
 
 ```text
 UNREAD                   .gitattributes
@@ -2495,6 +2519,82 @@ parallel-path outputs (no tracked export — ASK-15); /driving-path family B; a 
 (no oracle); MS Project's stored float for CPM-028's case B and CPM-033 / 034's shapes; an out-of-sequence started
 revert on the served pages (CPM-010's assembler found that branch bad at engine level from 85f0c6ce, unasserted); the F-EDGE2 cells with no sound oracle (C06 / C07 / C10, an SNET before the start, total slack under
 HonorConstraints=0); no Python 3.13 run by the finders (the assemblers and the lead ran the teeth on 3.13.12).
+
+## 3c. Behavioural census — CPM (session 7, WP-CPM round 3, at `0b45eb28`)
+
+Five probe families, none a repeat of sessions 5–6's ten; each finder's population, method and reach are in the
+ledger's session-7 "Probe families and their reach". The census figures that describe the tree (finders' figures,
+re-run by the lead only where the ledger says so):
+
+### 3c.1 Family B and the parallel-path decomposition (finder F-FAMB)
+
+- Routes exercised: `/api/driving`, `/export/{fmt}/path` (stored and resolve), `/export/{fmt}/driving-tiers`,
+  `/driving-path`, `/evolution`, `/api/evolution`, `/evm`, `/trend`, `/volatility`, `/performance`, `/forecast`,
+  `/brief`, `/briefing`, `/path`, `/mission`.
+- Inactive tasks: 0 in the 44-file corpus; 46 tracked `*.xml|*.gz` scanned for `<Active>0</Active>` — one committed
+  fixture carries one (`tests/fixtures/mspdi/commercial_construction.xml` UID 5; CPM-035 is live on it).
+- The stored-Critical override under the trace options (CPM-036): the drawn set moves on **0 / 44** files under every
+  option set; the re-solved set differs on **21 / 24 / 33** of 44 (ignore_constraints / ignore_leveling / both); the
+  verifier's count: 24 of 44 files, 161 activities under ignore_leveling.
+- `ignore_constraints` alone (CPM-038): inert on **44 / 44** files; the constraints alone move the re-solved trace on
+  **25 / 44**; on Hard_File target 411 the option leaves its 88 rows unchanged.
+- The parallel-path decomposition (CPM-039): partition and chain invariants hold **49 / 49** traces; the branches
+  over-split on **23 / 49** (LTF-Leveled 152: 12 served vs 8; EVM2 29: 3 for 1; Project5 67: 9 for 7); an approximate
+  shadow census: 18 of 44 files affected at a latest-finish target.
+- Export scope (CPM-040): under a reduce filter on Project5 target 67, the tiers export 32 rows vs the panel's 18 (14
+  export-only UIDs), the path export 43 vs `/api/driving`'s 29; ADR-0420's standing census guard reports 0 sites (it
+  cannot see list-wrapped arguments or a `.cpm` binding).
+- 98 xlsx-shaped ZIPs under `00_REFERENCE_INTAKE` (24 with a Trace Log Value column): none a parallel-path output.
+
+### 3c.2 The working day on every served surface (finder F-DAY)
+
+- One hand network on Mon–Fri 420 / 480 / 600 / 1440-minute project calendars: every GET route from
+  `create_app(...).routes` (158 entries) with `{fmt}` xlsx and docx (pptx on the one-pager routes), required
+  parameters filled, same-app links crawled — **281 URLs per day length**, each page diffed token by token against the
+  480 control; TP2 against its own network on a 480 day (253 URLs each); Hard_File_updated3 (254 URLs).
+- Result: every day figure agrees with the file's own day except the four filed classes (CPM-041 / 042, UI-002, EXP-001)
+  and the three known ones (CPM-015 / 017 / 018, DUPLICATE).
+- Custom duration values in the committed files: **79,140** (verifier P3; the finder counted 73,673 on the corpus) —
+  all on 8-hour-day files (UI-002 latent). Elapsed unstarted activities served with `remaining_duration_days` ≠
+  `duration_days` (CPM-042): **15 of 1,142,988** served fields on the corpus, all this field, all elapsed; two Fuse
+  exports disagree with the served value (2 vs 6; 32 vs 96).
+- Declared vs derived day (CPM-041): **0 of 71** committed MSPDI documents mismatch (43 tracked + 29 conversions −
+  1 without the field); MPXJ 16.2.0 reads the hand file's 9,000-minute task as 18.75 d (declared 480) where the tool
+  serves 15.0 d (derived 600).
+- The exhibits CLI (EXP-001): the only working path is `schedule-forensics-report --payload`; `--inputs TP2` exits 4;
+  the committed payload's threshold is 0, so the floor is latent; the day-basis leg is unreachable (no payload builder).
+
+### 3c.3 Calendar-arithmetic algebra (finder F-CALG)
+
+- 14 properties, each tied to a quoted docstring; seeds 20260929 / 7 / 12 (no extras), 11 (extras), 300–600 synthetic
+  calendars each; the 9 distinct real calendars from the 44 files (seed 44); start-role spellings (seed 5);
+  non-working project starts (seed 31: 1,955 checks, 0 violations). Clean: round trips in both spellings,
+  `datetime_to_offset`, `_stored_instant_offset`, day counts, `_wall_minutes_between`, the snaps, offset → wall,
+  recorded spans and the intersection without extras — 0 violations.
+- The week-jump (CPM-043): **0 triggers** in 12,566 walker calls over 75 tracked MSPDI files / 23,222 timings; the
+  verifier's brute-force sweep: 0 mismatches from any working start day, every mismatch has |n| % wdpw == 0.
+- The recorded ruler and worked exceptions (the CPM-006 instance): **0 of 3,281** recorded windows over the 44 files
+  (EVM included) contain an extra.
+- JSON calendar invariants (IMP-011): 44 files / 372 calendars — 0 invariant violations; the Save `.json` round trip
+  44 / 44 model-equal on both sides of the sketch; 2 tracked JSON schedule documents parse model-identically.
+
+### 3c.4 Session 6's unrun designs (finder F-TWIN)
+
+- Links: **33,588** in the 44 files; every tracked file at HEAD (2,262 paths, gzip / zip-aware, MSPDI sniff: 42
+  documents, 13,069 links). CPM-044's shape: 1 corpus link (does not bind; the fix moves 0 of 22,105); CPM-046's: 11
+  lagged SS / SF corpus links, 0 into a wall-path successor; CPM-047's: 11 lag-0 SS / SF from project-axis
+  predecessors into wall-path successors, 0 on an internal boundary; CPM-045's: 0 committed files carry summary logic.
+- R8 duality (Mon–Fri 08-12 / 13-17, reflection-symmetric): std 0..299 **0**; mix 0..399 **97 → 0** after the CPM-034 +
+  CPM-044 / 046 / 047 sketches; mixf 0..399 **15 → 0**.
+
+### 3c.5 The Save `.json` round trip (finder F-RT)
+
+- 76 files / 22,992 CPM activities (43 tracked MSPDI incl. `NEGFLOAT_SubDay_Probe.xml`, 29 conversions + sidecars, 1
+  XER, 3 Save-format JSON incl. `00_REFERENCE_INTAKE/a11y.js` — a byte-identical renamed copy of `house_build.json`):
+  model-equal **76 / 76** (3.11 and 3.13), figure-equal **76 / 76**, served **47 / 47** with 0 page differences,
+  multi-version **0** differences over 4 families × 21 pages, idempotent **76 / 76**, the parse cache's JSON **76 / 76**,
+  the strict-dump fallback **76 / 76**, the real MPXJ `.mpp` route byte-identical on 3 / 3.
+- File names outside ISO-8859-1 among the 106 tracked schedule names: **0** (WEB-004 latent in the tree).
 
 ## 4. Prior-audit gap map, re-checked against this session
 
