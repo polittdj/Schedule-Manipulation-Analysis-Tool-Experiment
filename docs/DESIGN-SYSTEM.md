@@ -190,11 +190,18 @@ byte** rather than that both "look right": one schedule must never yield two ans
 **An annotation the operator draws is a statement, not a verdict.** The One-Pager's logic links
 (both One-Pager pages) are drawn in `--ink` (the slide's print ink in the .pptx), never a status hue:
 `--bad`/`--ok`/`--warn` already mean slip / pull-in / caution on the same slide, and `--accent` and
-`--focus` each equal `--warn` in one view. A link is carried by SHAPE — an orthogonal route whose
-horizontal leg runs in the measured gap between two rows, a filled head that enters the successor's
-edge, a text tag for SS / FF / SF — over a halo in the canvas colour (`--panel`), so a leg that must
-cross a bar or a label reads as crossing it. The head is a polygon of the LAYOUT's points in both
-painters (a DrawingML line-end head is sized by the renderer, three times the page's). Picking an
+`--focus` each equal `--warn` in one view. A link is carried by SHAPE — the shortest orthogonal
+route from the predecessor's end to the successor's (out of the item's edge at its centre line, one
+vertical where the rows differ, its column chosen to pass behind the fewest bars, then the fewest
+names; round the successor's row boundary when it must run backward), a filled head that enters the
+successor's edge, a text tag for SS / FF / SF — and it is painted in TWO layers (ADR-0543, the
+operator's design handoff, superseding ADR-0539's "over a halo"): its SHAFT under the items, so
+every bar, diamond and name it passes stays readable (the names on a halo of the slide's ground),
+and its HEAD and TAG over them. The head is a polygon of the LAYOUT's points in both painters (a
+DrawingML line-end head is sized by the renderer, three times the page's); the .pptx paints each
+link as two named groups, "Logic link: …" (the shaft, before the first item) and "Logic link
+arrowhead: …" (head and tag, after the items, before the data-date line), and gives the labels
+outside their bar the same halo as a 1.5-pt glow. Picking an
 item is shown by a ring AND a text tag (FROM dashed, TO solid), hidden in print. The pick is a
 pointer accelerator: the From/To selects are the form, the no-JS path and the keyboard path, and
 they carry `data-sf-nopersist` (persist.js would otherwise restore the pair just added). An
@@ -202,27 +209,21 @@ action's result renders where the browser lands after it (the links block), not 
 scrolled off above the slide — and lands clear of a sticky page header (daylight's top bar is
 224-458 px tall; a fixed scroll margin left the result under it).
 
-**The slide fills the page, and every requested link is fitted (ADR-0540; operator rulings
-2026-09-29).** The rows always fill the lane area — fewer items, larger bars and text; more items,
-smaller — the row pitch never capped, the text capped at `LABEL_MAX` (14 pt; a label larger than
-the 16-pt title would invert the slide's hierarchy — PROVISIONAL, the operator's ruling on the
-3 / 10 / 40 / 144-item renders pending). A link no route clears is never refused: the layout
-escalates in the operator's order — more room between the rows (bars, diamonds and labels at 80 %
-then 65 %), a 12-pt gutter lane at the chart's right edge, a reorder WITHIN a swimlane (never
-across) — and, as the last resort, draws the link along the route that covers the least, DASHED
-(the halo solid, so it still reads as crossing) and named with what it covers. Every step is
-disclosed: on the page ("How the logic links were fitted"; "Logic links drawn dashed over other
-ink"), in the Excel Notes (the list keeps the sheet's own order), and in the slide's FOOTNOTE — up
-to four 5.5-pt lines above the legend in `--warn` when a link is flagged, `--muted` otherwise,
-naming every flagged link compactly and counting any the four lines cannot hold — which both
-painters paint, so the .pptx carries it (the deck has no notes to hide it in). Bars and diamonds
-are sized from the row up to `GLYPH_MAX` (a 27-pt bar, a 25-pt diamond; PROVISIONAL with
-`LABEL_MAX`), and a diamond is clamped to the chart's edges. Never a second slide. Three rulings live here: the marking switch feeds the page and every PowerPoint, never the
+**The slide fills the page (ADR-0540; operator rulings 2026-09-29), and every requested link is
+drawn (ADR-0543).** The rows always fill the lane area — fewer items, larger bars and text; more
+items, smaller — the row pitch never capped, the text capped at `LABEL_MAX` (14 pt; a label larger
+than the 16-pt title would invert the slide's hierarchy — PROVISIONAL, the operator's ruling on the
+3 / 10 / 40 / 144-item renders pending). Bars and diamonds are sized from the row up to `GLYPH_MAX`
+(a 27-pt bar, a 25-pt diamond; PROVISIONAL with `LABEL_MAX`), and a diamond is clamped to the
+chart's edges. The slide is laid out ONCE: a link never moves an item, and there is no collision to
+resolve — ADR-0540's escalation (more room between the rows, the gutter lane, the reorder within a
+swimlane, the dashed last resort and the slide's footnote) is retired, because a shaft drawn under
+the items cannot hide one. Never a second slide. Three rulings live here: the marking switch feeds the page and every PowerPoint, never the
 Excel exports (their fixed CUI header over-marks, never under); **slide content drawn at the
 slide's own point size — the SS / FF / SF tag, 3.8–13.8 px at 1440 depending on the slide's density
 and the view's scale — is exempt from §1's 8 px floor; page-only chrome (the FROM / TO pick tag,
-8.15–10 px) is not**; a collision is drawn and disclosed, not
-refused. The page-only axis caption ("TIMELINE BY MONTH AND YEAR", `SFChartFrame.axisTitles`)
+8.15–10 px) is not**; ruling (c) — a collision drawn and disclosed —
+is moot under ADR-0543 (no route collides). The page-only axis caption ("TIMELINE BY MONTH AND YEAR", `SFChartFrame.axisTitles`)
 sits in the SVG's empty strip under the legend: the lanes reach the legend on every slide now.
 
 **The red line is the DATA DATE, and says so (ADR-0541).** Both One-Pager slides draw their red
@@ -232,11 +233,7 @@ pages) and at the computer's date otherwise; the caption reads `DATA DATE m/d/yy
 would make false. The subtitle's "Prepared" stays the day the slide is made and names the data
 date beside it when the two differ (the deck's "generated" line likewise). The caption's baseline
 sits `TODAY_CAPTION_DY` (5.5 pt) below the last lane band: at 4.5 its box lay 0.66 pt into the
-band (measured in Chromium; the ink was 0.09 pt clear). A head of a logic link is judged
-against EVERY leg of an earlier link, not its vertical legs only (a leg through a head's base
-mis-joins the same way). A list that fills the slide to its last row has no band for its
-footnote; when the legend needs one row, its spare row carries a one-line count on the slide and
-in the PowerPoint (`spare_row_footnote`), and the page names the links in full.
+band (measured in Chromium; the ink was 0.09 pt clear).
 
 **LODESTAR 2.0 has a design system of its own (ADR-0543 — the operator's "Console" design
 handoff, adopted 2026-10-01).** LODESTAR no longer loads Polaris²'s sheets or scripts

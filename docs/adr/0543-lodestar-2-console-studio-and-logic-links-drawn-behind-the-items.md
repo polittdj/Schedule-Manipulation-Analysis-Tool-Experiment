@@ -76,7 +76,19 @@ Polaris²'s One-Pager pages).
    own: the hero (three stories, 6.5 s), Take a star fix (six stages, 650 ms, ending on a welcome
    panel), Skip, the opt-out (v1's `sf-boot-skip` key, kept so the choice survives the upgrade),
    three real tiles, the list→slide animation. No canvas, no sound.
-10. **The logic links, both programs** — ENGINE_PLACEHOLDER
+10. **The logic links, both programs** (`reports/onepager_links.py`, shared with Polaris²): the
+    handoff's routing rule, steps 1–8 — anchors on each item's shape edge at its true date (a
+    milestone's centre ± half its OWN diamond), stubs of 4 / 6 pt, a single vertical whose column
+    is chosen over at most nine candidates by `10·bars crossed + 3·names crossed + 0.002·|cx−bx|`
+    (on Compare a moved item's obstacle is its current shape, its WHOLE ghost and its move arrow),
+    a go-round along the successor's row boundary when the route must run backward; head 4.2 pt,
+    tag 5 pt. Painted in two layers by both page painters (`static/onepager_links.js`; LODESTAR's
+    `lodestar_slide.js`) and the PowerPoint: the shaft under the items, the head and tag over them,
+    the names outside their bar on a halo of the ground (a 1.5-pt glow in the .pptx). The slide is
+    laid out ONCE: ADR-0540's escalation — row spacing, the gutter lane, the reorder within a
+    swimlane, the glyph shrink, the dashed last resort, the slide footnote and the spare-row
+    footnote — is removed, not left dormant (A7). "Logic links not drawn — N of M" and its
+    reasons stay. The One-Pager pages' sentences now live in one place, read by both programs.
 11. **Versions**: LODESTAR **2.0.0** (`f"{NAME} {VERSION}"` renders "LODESTAR 2.0.0"; the README
     says "Version 2.0.0."); the package **1.0.298**.
 
@@ -105,7 +117,7 @@ Polaris²'s One-Pager pages).
 | A5 | The air-gap scan tolerates `xmlns="http://www.w3.org/…"` | `tests/web/test_airgap.py:121-130` | **HELD** |
 | A6 | `package-data` `web/static/*` packages `static/fonts/` | a setuptools wheel of a probe package | **REFUTED** — not recursive; `web/static/fonts/*` added, else LODESTAR from the wheel crashes at `load_assets()` |
 | A7 | The new router makes ADR-0540's escalation unreachable | the router mapper: `fit_links` steps only while the report has collisions; a scratch install of the new router turned every escalation test red because no step was ever taken | **HELD** — the escalation is dead code under the new rule and is retired whole, not left dormant |
-| A8 | Polaris²'s painters need only the z-order change | ENGINE_A8 | ENGINE_A8_VERDICT |
+| A8 | Polaris²'s painters need only the z-order change | the engine stream's edit of `onepager_links.js` / `onepager.js` / `onepager_compare.js` / `app.css`, then the page's browser tests in four themes | **HELD, with one addition** — the labels outside their bar take an inline halo (0.42 × the label size) and the inside labels none; the shaft is `--muted`, head and tag `--ink`; both `axisTitles` call sites stay at their pinned lines, byte-unchanged |
 | A9 | "Go straight to the studio next time" needs a new mechanism | read `launch.js` | **REFUTED** — v1 already stored it (`sf-boot-skip`); kept, so the choice survives the upgrade |
 | A10 | Every v1.0.2 feature has a home in 2.0 | TESTS_A10 | TESTS_A10_VERDICT |
 | A11 | A same-origin `fetch` POST passes `_gate` | Chromium: JSON and urlencoded `fetch` POSTs, 200, state changed | **HELD** |
@@ -133,7 +145,12 @@ Polaris²'s One-Pager pages).
 | The data-date slider lost keyboard presses (found by the test stream) | a range fires `input` AND `change` on every arrow key: each key committed, `act()` dropped the ones sent while a commit was in flight, and the region swap re-rendered the slider at the server's value — 12 × ArrowRight moved the date +2 / +5 / +3 days and logged 2 / 5 / 3 steps (plain, Tab inside the wait, a 0.6 s server) | keyboard nudges gathered into ONE commit 700 ms after the last key or at once on blur; a data date set while a request is in flight waits and is sent when it lands (never dropped); measured +12 days and ONE step in all three, a pointer drag still ONE step on release |
 | The JSON gate admitted non-string values for every action (found by the test stream) | `POST /api/title {"title": true}` (or a two-item list) → 200, the title cleared to "" and logged "Slide title changed": the gate let the preview's flag / pair types through for every action and the route then dropped the non-strings, so the action read the field as missing; strings were also cut at 256 characters, which the form path never does | an action's values must be strings (400 otherwise, by name); only `/api/preview` takes a flag and a two-date list; strings pass whole (the body cap bounds them, each action caps its own field, as on the form path); every demo and action re-run through the gate in Chromium — no 4xx |
 | The launch page carried the author's credit once | ADR-0539: header AND footer of every page | a second credit above the bottom marking bar |
-| ENGINE_QC1 | | |
+| Item geometry under the new router (the engine stream) | 232 layouts dumped before and after (no links, a few, the links-module sweeps, the dense fill / resume generators on both pages, the UIP-2 Compare ghosts, windowed slides) | identical to the pristine BASE attempt outside the link fields on all 232; the 34 that differ from the pristine ACTUAL layouts are exactly the 34 that escalated there |
+| The same, re-derived by the lead independently | 60 random lists (1–6 lanes, 3–70 items) through the session API: without links vs `origin/main`; with 1,238 random links vs without | identical without links (60 of 60); with links only the legend gains its link entry (60 of 60); the OLD router moved items on 4 of 60 (the check's teeth) |
+| The router against the handoff's own prototype | a differential over 5,315 links (the prototype's JS run in node) and a frozen oracle of 190 routes (`tests/fixtures/onepager_links_prototype_routes.json`) | 0 mismatches; a `NAME_COST` 3 → 1 mutant SURVIVED the random cases — a targeted fixture now kills it, and one for `BAR_COST` 10 → 3 |
+| A mutation battery over scratch copies of the source (the engine stream) | 14 mutants, among them (ghost extended left only — the prototype's rule; arrow dropped; names ignored; tag dropped; the end-anchored label's tag offset ignored; the slide's diamond size for the item's own; inside labels glowing, both pages; the go-round's row height doubled; a gutter returning; the inside-label halo in CSS; shafts over the items) | 13 killed by name; one equivalent (an inline halo width on inside labels, invisible under `stroke:none`) |
+| Both decks against the schema | `slide1.xml` of both pages validated with lxml against ISO/IEC 29500 `pml.xsd`; a glow placed before the fill or after `a:latin` | valid; both misplaced glows rejected |
+| The pages' sentences duplicated in LODESTAR | 52 renders (Polaris²'s two bodies and LODESTAR's studio state, 13 session states incl. a source and an item named with `& < > '`) | moved to one builder per page: byte-identical between the parent commit and the refactor; a one-word mutant changes BOTH programs' render |
 | TESTS_QC1 | | |
 
 **UNVERIFIED, stated:** PowerPoint itself (LibreOffice Impress is the renderer here); Firefox
@@ -151,6 +168,14 @@ a physical printer (Chromium's PDF only); the size-cap ruling (`LABEL_MAX` 14, `
   slide footnote and the gutter are gone from both programs, and the Excel Notes no longer carry
   fitting sentences.
 - `LODESTAR.pyz` grows by the fonts (stored, not compressed) and the new modules.
+- **Known, recorded, not changed** (each is the handoff's rule working as written; each fix moves
+  item geometry, which this change holds identical): a 4.2-pt head entering an item's edge on its
+  LABEL's side covers about 1.2 pt of that label (the label gap is 3 pt) — "◂CDR",
+  "Integrate (11/11/27)▸"; an SS and an FF link on the same pair both go round along the same row
+  boundary; FS links into one start share their last leg and their head; a horizontal leg on the
+  links' own rows is not scored, so it can run behind the predecessor's own label. Proposed fix
+  for the first, for the operator's ruling: nudge a label away by the head's length when a head
+  enters on its side.
 - Deliberately NOT done: a client-side router (the layout stays the one source); a second
   slide; an icon font; a CDN; the handoff's bundle committed (the operator's to add); the three
   pre-existing PowerPoint defects found on the way (month lines under the opaque lane fills, the
