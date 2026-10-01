@@ -22,10 +22,8 @@ from __future__ import annotations
 
 import datetime as dt
 import json
-from collections.abc import Sequence
 
 from schedule_forensics.reports.onepager import (
-    CROWDED_NOTE,
     DATE_STATUS,
     START_FINISH,
     Layout,
@@ -250,35 +248,24 @@ Add as many pairs as you need (up to {MAX_LINKS}): every link you add is drawn o
 </section>"""  # nosec B608 (HTML, not SQL)
 
 
-#: The words a flagged link's note carries (``onepager_links._flagged``), by which the page
-#: tells it from a link not drawn.
-_FLAGGED_MARK = " is drawn DASHED over "
-
-
 def links_list(
     action: str,
     prefix: str,
     links: tuple[Link, ...],
     drawn: list[PlacedLink],
     notes: list[str],
-    fit_notes: Sequence[str] = (),
 ) -> str:
     """BELOW the slide: every link the operator made, each with its own Remove, and — in a block
     of its own, because a link not drawn is an omission, not an assumption — every link the
-    slide does NOT draw, with the reason; every link drawn DASHED over other ink (ADR-0540's
-    last resort), with what it covers; and what the layout did to fit the links (``fit_notes``:
-    the room made, the gutter lane, the items reordered within their swimlane)."""
+    slide does NOT draw, with the reason. Every other link IS drawn: its shaft runs under the
+    items and its head over them (ADR-0543), so none is ever drawn "over" anything."""
     if not links:
         return ""
     on_slide = {(d.pred, d.succ, d.kind) for d in drawn}
-    dashed = {(d.pred, d.succ, d.kind) for d in drawn if d.flagged}
     items = ""
     for ln in links:
         shown = (ln.pred, ln.succ, ln.kind) in on_slide
-        if (ln.pred, ln.succ, ln.kind) in dashed:
-            state = ' <span class="op-link-off">— drawn dashed over other ink (see below)</span>'
-        else:
-            state = "" if shown else ' <span class="op-link-off">— not drawn (see below)</span>'
+        state = "" if shown else ' <span class="op-link-off">— not drawn (see below)</span>'
         what = f"{ln.pred_label} → {ln.succ_label} ({ln.kind})"
         items += (
             f"<li><span data-no-i18n>{_e(ln.pred_label)} → {_e(ln.succ_label)}</span> · "
@@ -291,42 +278,19 @@ def links_list(
             f'<button type=submit class=linkbtn aria-label="Remove logic link {_e(what)}">Remove</button>'
             "</form></li>"
         )
-    flagged = [n for n in notes if _FLAGGED_MARK in n]
-    undrawn = [n for n in notes if n != CROWDED_NOTE and n not in flagged]
     missing = (
-        f'<div class="notice warn" role=alert><b>Logic links not drawn — {len(undrawn)} of '
+        f'<div class="notice warn" role=alert><b>Logic links not drawn — {len(notes)} of '
         f"{len(links)}</b><ul class=op-notes>"
-        + "".join(f"<li>{_e(n)}</li>" for n in undrawn)
+        + "".join(f"<li>{_e(n)}</li>" for n in notes)
         + "</ul></div>"
-        if undrawn
-        else ""
-    )
-    over = (
-        f'<div class="notice warn" role=alert><b>Logic links drawn dashed over other ink — '
-        f"{len(flagged)} of {len(links)}</b> (no clear route exists; each is named in the "
-        "slide's footnote and in the PowerPoint)<ul class=op-notes>"
-        + "".join(f"<li>{_e(n)}</li>" for n in flagged)
-        + "</ul></div>"
-        if flagged
-        else ""
-    )
-    fitted = (
-        '<div class="notice ok" role=status><b>How the logic links were fitted</b><ul class=op-notes>'
-        + "".join(f"<li>{_e(n)}</li>" for n in fit_notes)
-        + "</ul></div>"
-        if fit_notes
-        else ""
-    )
-    crowded = (
-        f'<div class="notice ok" role=status>{_e(CROWDED_NOTE)}</div>'
-        if CROWDED_NOTE in notes
+        if notes
         else ""
     )
     return f"""<section class=op-link-listing id={prefix}LinkList aria-label="Logic links on this slide">
 <ul class=op-link-list>{items}</ul>
 <form action="{action}" method=post class=op-link-clear data-noprint=1 data-sf-nopersist><input type=hidden name=action value=clear>
 <button type=submit>Remove all links</button></form>
-{missing}{over}{fitted}{crowded}
+{missing}
 </section>"""
 
 
@@ -552,7 +516,7 @@ two of them to link them.</p>
 {links_form("/onepager/links", "op", linkable_items(st), link_msg, link_error)}
 <div id=opHost class="op-host chart-host" role=img aria-label="{_e(lay.title)}"></div>
 <script id=opData type="application/json">{blob}</script>
-{links_list("/onepager/links", "op", st.onepager_links, lay.links, lay.link_notes, lay.fit_notes)}
+{links_list("/onepager/links", "op", st.onepager_links, lay.links, lay.link_notes)}
 {_data_table(view)}
 </div>
 {_dropzone(st, loaded=True)}{_SCRIPT}"""

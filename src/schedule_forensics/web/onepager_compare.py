@@ -455,7 +455,7 @@ them.</p>
 {links_form("/onepager-compare/links", "opc", linkable_rows(st), link_msg, link_error)}
 <div id=opcHost class="op-host chart-host" role=img aria-label="{_e(lay.title)}"></div>
 <script id=opcData type="application/json">{blob}</script>
-{links_list("/onepager-compare/links", "opc", st.onepager_compare_links, lay.links, lay.link_notes, lay.fit_notes)}
+{links_list("/onepager-compare/links", "opc", st.onepager_compare_links, lay.links, lay.link_notes)}
 {_data_table(cdoc)}
 </div>
 <div class="cd-grid cd-grid-12">
