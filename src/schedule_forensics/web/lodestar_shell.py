@@ -135,8 +135,8 @@ def header(path: str, *, unclassified: bool, undo: str = "", redo: str = "") -> 
     """The 56-px header. ``undo`` / ``redo`` are the labels of the steps they would take (``""``
     when there is none — the button is then disabled)."""
     tabs = "".join(
-        f'<a class="aismat-tab{" aismat-tab--active" if href == path else ""}" role=tab '
-        f'aria-selected={"true" if href == path else "false"} href="{href}" data-ls-tab={page}'
+        f'<a class="aismat-tab{" aismat-tab--active" if href == path else ""}" '
+        f'href="{href}" data-ls-tab={page}'
         f"{' aria-current=page' if href == path else ''}>{icon(ic, 15)}{label}</a>"
         for href, page, label, ic in TABS
     )
@@ -150,7 +150,7 @@ def header(path: str, *, unclassified: bool, undo: str = "", redo: str = "") -> 
         '<a class=ls-brand href="/launch?replay=1" title="The launch page">'
         "<span class=ls-brand-mark aria-hidden=true>&#10022;</span>"
         f"<b class=ls-brand-name>{NAME}</b><span class=ls-brand-tag>{TAGLINE}</span></a>"
-        f'<nav class=aismat-tabs role=tablist aria-label="{NAME} pages">{tabs}</nav>'
+        f'<nav class=aismat-tabs aria-label="{NAME} pages">{tabs}</nav>'
         "<span class=ls-spacer></span>"
         '<button type=button class="ls-cmd ls-js-only" data-ls-palette aria-haspopup=dialog>'
         f"{icon('search', 14)}<span class=ls-cmd-text>Run a command…</span>"

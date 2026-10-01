@@ -1351,8 +1351,8 @@ TOUR: tuple[tuple[str, str, str], ...] = (
     (
         "marking",
         "Mark it right",
-        "Pages and every export carry the CUI marking until you switch it. Nothing you load leaves "
-        "this computer, and there is no AI in it.",
+        "The pages and every PowerPoint carry the CUI marking until you switch it; the Excel "
+        "exports always keep it. Nothing you load leaves this computer, and there is no AI in it.",
     ),
 )
 

@@ -238,26 +238,52 @@ mis-joins the same way). A list that fills the slide to its last row has no band
 footnote; when the legend needs one row, its spare row carries a one-line count on the slide and
 in the PowerPoint (`spare_row_footnote`), and the page names the links in full.
 
-**LODESTAR's launch page (ADR-0541)** is Polaris²'s boot screen (§7a) served by LODESTAR outside
-its frame — the same `launch.js` / `launch.css` / hum, §7a's four rules unchanged — made
-LODESTAR's by what the PAGE supplies through the boot JSON block (`heroes`, `stages`, `home`):
-its ✦ mark, name and line, its own hero copy and stage words, quick actions naming its two
-pages, and real facts in the tiles (lists aboard, items, the data date; an em dash when empty).
-`lodestar_launch.css` re-points `--boot-accent` to the lodestar's gold in every view (the
-§7a-sanctioned boot palette, one more declaration on `:root`); `--boot-warm` keeps following each
-view. LODESTAR's favicon and its Desktop shortcut carry the same ✦ (`desktop_icon.lodestar_ico_bytes`),
-so the two programs are told apart on a Desktop and in a tab strip.
+**LODESTAR 2.0 has a design system of its own (ADR-0543 — the operator's "Console" design
+handoff, adopted 2026-10-01).** LODESTAR no longer loads Polaris²'s sheets or scripts
+(`sf-themes.css`, `base.css`, `hud.css`, `theme.js`, `gantt.js`, `chartframe.js`, `launch.*`). Its
+tokens are the handoff's A1 "Command Deck" set, verbatim, in `static/lodestar_tokens.css` — four
+views (`dark` default · `bright` · `contrast` · `console`) on `html[data-theme]`, saved by
+`static/lodestar_view.js` under its own key (`lodestar-view`; Polaris²'s `sf-theme` values are
+mapped once) — and **§0's law holds there unchanged in spirit: a hex lives once, as a token on
+`:root`, never at a call site** (the marking bars' fixed `#502b85` / `#007a33` stay the one
+exception, in `lodestar_shell._MARKING_COLOURS`). This sanctions ONE more token file for ONE
+program; it is not a precedent for a Polaris² page. Its fonts (IBM Plex Sans / Mono, Space
+Grotesk, OFL) are vendored as `static/fonts/*.woff2` with their licence beside them — the repo's
+first vendored type, so `pyproject.toml`'s package-data names `web/static/fonts/*`. Its icons are
+an inline Lucide sprite (`lodestar_icons.py`, ISC) — no icon font, no request. LODESTAR's slide
+has its own painter (`static/lodestar_slide.js`) over the SAME layout JSON both programs compute
+(`reports/onepager*.py`), so §4's data-date line is drawn there as the layout places it — the
+layout, not the painter, owns its position, size and caption (`DATA DATE m/d/yy`), which is §4's
+point; Polaris²'s pages still draw it through `SFGantt.dataDateLine`. The panel toolbar is the
+handoff's (help · DATA · Excel · full screen), and LODESTAR's full-screen is its own overlay —
+Polaris²'s `panelkit.js` is not loaded there. Motion follows the handoff (120/200/320 ms, the
+list→slide animation, the slide's reveal) and **`prefers-reduced-motion` stills every one of
+them** — the hero holds, the transit steps without pauses, the reveal and the pulses are off.
 
-**The LODESTAR frame** — the two One-Pager pages served as their own program — keeps the
+**LODESTAR's launch page (ADR-0541, rebuilt by ADR-0543)** is its own page now, not Polaris²'s
+boot screen: two columns on the graticule — the ✦ mark, a hero that cycles LODESTAR's three
+stories (6.5 s; still under reduced motion), **Take a star fix** (six stages, 650 ms apart, ending
+on a welcome panel that opens either page), **Skip to the studio**, the "go straight to the studio
+next time" opt-out (v1's `sf-boot-skip` key, read before paint), three real tiles (lists aboard,
+the data date, the stage; an em dash when empty) — and, on the right, the list→slide animation that
+shows what the program does. It has **no sound and no canvas** (§8 binds Polaris²'s hum; LODESTAR
+plays none). §7a's four rules hold: both marking bars and the drawer from the same functions, real
+facts or `—`, theme-following (the A1 views), reduced motion STILL not blank. LODESTAR's favicon and
+its Desktop shortcut carry the same ✦ (`desktop_icon.lodestar_ico_bytes`).
+
+**The LODESTAR frame** — a 56-px header (the mark, the two pages as `nav` links with
+`aria-current=page` — not ARIA tabs, they navigate — the command palette, Undo / Redo, the view
+menu, the marking switch, the Tour, Quit), a 320-px side panel, a status bar — keeps the
 compliance chrome whole: the CUI bars top and bottom, the handling & export-control drawer from the
 ONE copy of the prose (`htmlkit._DRAWER_HTML`, its `{where}` slot naming the frame's own marking
 switch), and the marking defaulting to CUI and feeding the page and every PowerPoint (the Excel
-exports keep the shared writer's fixed CUI print header — over-marking, never under). The frame is a banner `div`,
-never a `<header>` (base.css makes every `<header>` the dark views' fixed left rail). N/A in the
-frame, by design: the chapter kicker, the Continue segue and the nav rail/story spine — LODESTAR has
-two pages and no story; its tabs are `cd-chip` links with `aria-current=page`. Its author's credit
-(name and a bare `mailto:` — never a web link, never pre-filled) is in the frame's header and footer
-on every page, and never on the exported slide or in the deck's author field.
+exports keep the shared writer's fixed CUI print header — over-marking, never under; the switch's
+title says "page and PowerPoint", never "export"). The frame's banner is a `<header>` again:
+`base.css`, which made every `<header>` the dark views' left rail, is no longer loaded. Its
+author's credit (name and a bare `mailto:` — never a web link, never pre-filled) is in the header
+strip and the status bar on every page, and never on the exported slide, the printed slide or in
+the deck's author field. Every control is a plain form underneath (scripting off → the v1 routes →
+303), and the script only accelerates it: the same server renders the regions the script swaps in.
 
 ## 8. Audio (the Boot Audio Hum rule — ADR-0328)
 Sound in this tool is SYNTHESIZED WebAudio, never a shipped asset (the air-gap and the lean

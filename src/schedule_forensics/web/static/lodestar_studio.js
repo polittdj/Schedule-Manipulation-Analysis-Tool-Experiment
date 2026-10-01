@@ -109,7 +109,6 @@
     Array.prototype.forEach.call(D.querySelectorAll("[data-ls-tab]"), function (a) {
       var on = a.getAttribute("data-ls-tab") === st.page;
       a.classList.toggle("aismat-tab--active", on);
-      a.setAttribute("aria-selected", on ? "true" : "false");
       if (on) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
     });
     Array.prototype.forEach.call(D.querySelectorAll("[data-ls-next]"), function (i) { i.value = st.path; });

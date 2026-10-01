@@ -43,5 +43,6 @@
 .ls-stage.is-done .ls-stage-bar,.ls-stage.is-active .ls-stage-bar{background:var(--accent-gold)}
 .ls-stage.is-done .ls-stage-label{color:var(--text-secondary)}
 .ls-stage.is-active .ls-stage-label{color:var(--accent-gold)}
+.ls-launch-credit{padding:10px 28px 12px;text-align:center;font-size:11px;color:var(--text-muted)}
 .ls-launch-foot{font:500 11px var(--font-mono);letter-spacing:.14em;color:var(--text-muted);text-align:center}
 @media (max-width:980px){.ls-launch-grid{grid-template-columns:1fr;gap:28px;padding:16px}}

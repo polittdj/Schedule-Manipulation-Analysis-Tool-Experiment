@@ -208,6 +208,7 @@ def lodestar_launch_html(
 <div class=ls-launch-foot>NOTHING LEAVES THIS COMPUTER · NO AI</div>
 </div>
 </div>
+<div class="ls-launch-credit ls-credit-who">{credit_html()}</div>
 </div>
 {mark_bar(unclassified, "bottom")}
 </div>

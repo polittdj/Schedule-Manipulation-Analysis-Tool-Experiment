@@ -432,7 +432,9 @@ body.ls-app{background:var(--bg-app);color:var(--text-primary);font-family:var(-
 @page{size:landscape;margin:.4in}
 @media print{
   html,body{height:auto;overflow:visible;background:var(--bg-panel)}
-  .ls-root{position:static;height:auto;overflow:visible}
+  /* the frame leaves the flow, so the document is one page tall: the fixed print zone would
+     otherwise repeat on every page the hidden frame still spans (measured: 2 pages, both alike) */
+  body.ls-app .ls-root{position:fixed;inset:0;height:auto;overflow:hidden}
   .ls-work,.ls-main{overflow:visible}
   body.ls-app *{visibility:hidden}
   body.ls-app .ls-print-zone,body.ls-app .ls-print-zone *{visibility:visible}

@@ -320,11 +320,19 @@ needs nothing but **Python 3.10 or newer** — no install, no internet, no AI. S
 run `sh lodestar.sh` (Linux) and read `lodestar/README.md`. It is built from the very modules
 Polaris² runs, so both programs draw the same slide from the same list; after changing any of
 them, rebuild it with `python tools/lodestar/build_lodestar.py` (a test fails until you do).
-LODESTAR opens on its own **launch page** (ADR-0541) — Polaris²'s boot screen made LODESTAR's:
-the ✦ lodestar mark and name, its own copy and stage words, the lodestar's gold accent in every
-view, the lists and items aboard and the data date as its tiles — and on its first run writes a
-Desktop shortcut with its own icon (once; `--shortcut` again, `--no-shortcut` never), as
-`lodestar/README.md` explains.
+Since **LODESTAR 2.0** (ADR-0543) it is a studio of its own rather than a copy of the Polaris²
+pages: a side panel with the list, the shape, the links and the exports; the slide redrawn in place
+on every change (no reload); **Undo / Redo** of the last 60 changes with a session log naming each;
+a **Ctrl+K** command palette; a seven-step **Tour** and **Show me** demonstrations that run on a
+copy and change nothing; a data-date **slider** whose red line moves as you drag; drag one item
+onto another to link them; a DATA drawer, full-screen and **Print** (the slide alone, with its
+marking — *Save as PDF* for a PDF); and four views — Dark, Bright, High contrast, Console. Its fonts
+and icons are carried inside the archive. With scripting off it still works as plain forms.
+It opens on its own **launch page** — the ✦ mark, a three-story hero, **Take a star fix** (six
+stages ending on a welcome panel that opens either page), **Skip to the studio** and the "go
+straight to the studio next time" opt-out, with the lists aboard and the data date as real facts —
+and on its first run writes a Desktop shortcut with its own icon (once; `--shortcut` again,
+`--no-shortcut` never), as `lodestar/README.md` explains.
 
 ## 4. Verifying a number (forensic use)
 
