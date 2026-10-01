@@ -20342,3 +20342,5 @@ commit, not a rebase. The resolution:
   deselected, 1 warning in 671.63s (0:11:11). CI on `4a5e4eff` (run 36807470761 + the installer
   smoke run 36807470693): **all EIGHT checks green** — test (3.11), test (3.13), floor, browser, cui-guard, check, linux,
   windows.
+- **Merged + ruled.** #730 squash-merged as `ad2cfa14` (tree `d5683fec` = the PR head's). The operator ruled the
+  head-over-label overlap: **NO** label nudge — the overlap stays (recorded in HANDOFF; not to be re-proposed).
