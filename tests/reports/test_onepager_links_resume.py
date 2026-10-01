@@ -18,18 +18,25 @@ The review of the built tree re-opened four fixes and found the crowding note on
   system's 8 px floor.
 
 Everything is driven the way a page drives it — ``onepager_actions`` uploads a workbook and adds
-links, and the layout the page paints is read back — and judged by an INK ORACLE written here,
-independent of the router: a link is painted halo (the canvas colour, ``HALO_W`` wide, round
-caps and joins) → line → head → tag, in the order the links were made, ABOVE every item; so a
-later link's halo, head or tag covers whatever of an earlier head or tag — or of a move arrow's
-head — it overlaps. The property tests use a seeded generator of their own (chains of random
-types through random items), never the router's code.
+links, and the layout the page paints is read back.
+
+ADR-0543 (the design handoff's Console rule) re-cast the routing half of this review: a link's
+SHAFT is now painted UNDER the items and its head and tag over them, so no shaft can erase a
+head, a tag or a move arrow — the halo-above ink oracle this module carried (and its "crowding"
+property) described a z-order that no longer exists, and is retired with the rule; the z-order
+itself is pinned in a browser (``tests/web/test_onepager_links_browser.py``) and in the
+.pptx (``tests/reports/test_onepager_links.py``). What this module's seeded generator pins now
+is the ROUTE: every link on 320 dense slides (both pages) is exactly the README's route,
+recomputed here by an ORACLE written from the README's text over the layout's own fields —
+independent of the router, of ``crossings`` and of the obstacles the slides hand it.
 
 Red first (2026-09-29, on 21e99c76): every test here failed there for the reason its docstring
 gives, except the mutation twins and three GUARDS that held on the built tree and exist to kill
 the review's surviving mutants — the link surviving its name starting to repeat through the
 upload (M4c / M4d), the "none with its dates" sentence (M4e) and the window note on both pages
-(M6b). Each of those mutants, applied to this tree, turns them red by name.
+(M6b). Each of those mutants, applied to this tree, turns them red by name. The route property
+(ADR-0543) is red on the pristine tree (fac5773): no route there leaves an item's edge at its
+centre line.
 """
 
 from __future__ import annotations
@@ -43,14 +50,14 @@ import threading
 import time
 from collections.abc import Iterator, Sequence
 from dataclasses import replace
-from itertools import pairwise
 from typing import Any
 
 import pytest
 
+from schedule_forensics.reports import onepager as op
+from schedule_forensics.reports import onepager_compare as opc
 from schedule_forensics.reports import onepager_links as links_mod
 from schedule_forensics.reports.onepager import (
-    CROWDED_NOTE,
     Layout,
     OnePagerDoc,
     OnePagerItem,
@@ -61,8 +68,9 @@ from schedule_forensics.reports.onepager_compare import (
     CompareLayout,
     build_compare_layout,
     compare_onepager_docs,
+    window_compare,
 )
-from schedule_forensics.reports.onepager_links import HALO_W, LINK_TYPES, Link, PlacedLink
+from schedule_forensics.reports.onepager_links import LINK_TYPES, Link, PlacedLink
 from schedule_forensics.web import onepager_actions as act
 from schedule_forensics.web.onepager import linkable_items, onepager_layout
 from schedule_forensics.web.onepager_compare import linkable_rows, onepager_compare_layout
@@ -76,115 +84,95 @@ TODAY = D(2026, 1, 1)
 Point = tuple[float, float]
 
 
-# ── the ink oracle (independent of the router) ────────────────────────────────────────────────
+# ── the README's route, recomputed from its text (an oracle independent of the router) ───────
+
+#: README §"Logic-link routing and z-order", steps 1-8, as numbers.
+_HEAD, _OUT, _IN, _PAD, _TAG = 4.2, 4.0, 6.0, 1.5, 1.5
+_BAR, _NAME, _PULL = 10.0, 3.0, 0.002
 
 
-def _seg_dist(px: float, py: float, a: Point, b: Point) -> float:
-    (x1, y1), (x2, y2) = a, b
-    dx, dy = x2 - x1, y2 - y1
-    span = dx * dx + dy * dy
-    t = 0.0 if span == 0 else max(0.0, min(1.0, ((px - x1) * dx + (py - y1) * dy) / span))
-    return float(((px - x1 - t * dx) ** 2 + (py - y1 - t * dy) ** 2) ** 0.5)
+def _painted(lay: Layout | CompareLayout, p: Any) -> tuple[list[Point], list[Point]]:
+    """``(shapes, names)``: the x-extents of what an item paints — read off the layout's own
+    fields the way the PAINTERS draw them (``onepager.js`` / ``onepager_compare.js``): each shape
+    (a bar's ends; a diamond at its own size; on Compare the ghost and the move arrow) and each
+    name (the label's text; on Compare the NEW / REMOVED / DUPLICATE tag)."""
+    shapes: list[Point] = []
+    sides = [(p.x0, p.x1, p.milestone, p.ms)]
+    if isinstance(lay, CompareLayout):
+        sides.append((p.ghost_x0, p.ghost_x1, bool(p.ghost_milestone), p.ghost_ms))
+        if p.arrow_x0 is not None and p.arrow_x1 is not None:
+            shapes.append((min(p.arrow_x0, p.arrow_x1), max(p.arrow_x0, p.arrow_x1)))
+    for x0, x1, diamond, size in sides:
+        if x0 is not None and x1 is not None:
+            shapes.append((x0 - size / 2, x0 + size / 2) if diamond else (x0, x1))
+    tag = getattr(p, "badge", "")
+    tx = p.label_x - (p.badge_w + 2 if tag and p.label_anchor == "end" else 0.0)
+    text = (tx - p.label_w, tx) if p.label_anchor == "end" else (tx, tx + p.label_w)
+    names = [text] + ([(p.badge_x, p.badge_x + p.badge_w)] if tag else [])
+    return shapes, names
 
 
-def _in_tri(px: float, py: float, tri: Sequence[Point]) -> bool:
-    (x1, y1), (x2, y2), (x3, y3) = tri
-
-    def side(ax: float, ay: float, bx: float, by: float) -> float:
-        return (px - bx) * (ay - by) - (ax - bx) * (py - by)
-
-    d = (side(x1, y1, x2, y2), side(x2, y2, x3, y3), side(x3, y3, x1, y1))
-    return not (any(v < 0 for v in d) and any(v > 0 for v in d))
+def _current(p: Any) -> Point:
+    """The item's own (current) shape: a bar's ends, a diamond's side vertices at its own size."""
+    return (p.x0 - p.ms / 2, p.x0 + p.ms / 2) if p.milestone else (p.x0, p.x1)
 
 
-def _tri_samples(tri: Sequence[Point], n: int = 8) -> list[Point]:
-    (ax, ay), (bx, by), (cx, cy) = tri
-    return [
-        (
-            (ax * u + bx * v + cx * (n - u - v)) / n,
-            (ay * u + by * v + cy * (n - u - v)) / n,
-        )
-        for u in range(n + 1)
-        for v in range(n + 1 - u)
-    ]
+def _readme_route(lay: Layout | CompareLayout, ln: PlacedLink) -> tuple[list[Point], Point]:
+    """``(shaft, tag position)`` the README's steps 1-8 give this link on this slide."""
+    by_key = {p.key: p for p in lay.items if p.key}
+    p, s = by_key[ln.pred], by_key[ln.succ]
+    pe, se = _current(p), _current(s)
+    from_finish, to_start = ln.kind[0] == "F", ln.kind[1] == "S"
+    out, into = (1 if from_finish else -1), (1 if to_start else -1)
+    a = (pe[1] if from_finish else pe[0], p.y)
+    b = (se[0] if to_start else se[1], s.y)
+    ax, bx = a[0] + out * _OUT, b[0] - into * _IN
+    lo = max([x for x, on in ((ax, out == 1), (bx, into == -1)) if on], default=None)
+    hi = min([x for x, on in ((ax, out == -1), (bx, into == 1)) if on], default=None)
+    lo, hi = (hi, hi) if lo is None else ((lo, lo) if hi is None else (lo, hi))
+    end = (b[0] - into * _HEAD, b[1])
+    same = abs(a[1] - b[1]) < 0.01
+    if same and out == into and into * (b[0] - a[0]) > _IN:
+        return [a, end], ((a[0] + b[0]) / 2, a[1] - _TAG)
+    if not same and lo <= hi:
+        between_rows = [
+            q
+            for q in lay.items
+            if min(a[1], b[1]) < q.y < max(a[1], b[1]) and q is not p and q is not s
+        ]
+        cands = [lo] if hi - lo < 0.5 else [lo + (hi - lo) * i / 8 for i in range(9)]
+        scores = []
+        for cx in cands:
+            bars = names = 0
+            for q in between_rows:
+                shapes, words = _painted(lay, q)
+                if any(x0 - _PAD <= cx <= x1 + _PAD for x0, x1 in shapes):
+                    bars += 1
+                elif any(n0 <= cx <= n1 for n0, n1 in words):
+                    names += 1
+            scores.append(_BAR * bars + _NAME * names + _PULL * abs(cx - bx))
+        cx = cands[scores.index(min(scores))]
+        shaft = [a, (cx, a[1]), (cx, b[1]), end]
+    else:
+        gy = s.y + (-1.0 if same or a[1] < b[1] else 1.0) * lay.row_h / 2
+        shaft = [a, (ax, a[1]), (ax, gy), (bx, gy), (bx, b[1]), end]
+    return shaft, (shaft[1][0] + _TAG, (shaft[1][1] + shaft[2][1]) / 2 + _TAG)
 
 
-def _tag_ink(ln: PlacedLink) -> tuple[float, float, float, float]:
-    """The type tag's text as the painters write it: capitals 0.62 em wide, 0.7 em tall above
-    the baseline at ``tag_y``, anchored at ``tag_x`` (``start``: its left edge; ``end``: its
-    right)."""
-    w = len(ln.tag) * ln.tag_pt * 0.62
-    x0 = ln.tag_x if ln.tag_anchor == "start" else ln.tag_x - w
-    return x0, x0 + w, ln.tag_y - ln.tag_pt * 0.7, ln.tag_y
-
-
-def _tag_samples(ln: PlacedLink) -> list[Point]:
-    x0, x1, y0, y1 = _tag_ink(ln)
-    return [(x0 + (x1 - x0) * i / 8, y0 + (y1 - y0) * j / 8) for i in range(9) for j in range(9)]
-
-
-def _reach(ln: PlacedLink) -> tuple[float, float, float, float]:
-    """A box around everything ``ln`` paints — halo, head and tag — for a quick far-away test."""
-    xs = [x for x, _ in (*ln.shaft, *ln.head)]
-    ys = [y for _, y in (*ln.shaft, *ln.head)]
-    if ln.tag:
-        x0, x1, y0, y1 = _tag_ink(ln)
-        xs += [x0, x1]
-        ys += [y0, y1]
-    h = HALO_W / 2
-    return min(xs) - h, max(xs) + h, min(ys) - h, max(ys) + h
-
-
-def _covers(ln: PlacedLink, x: float, y: float) -> bool:
-    """Whether link ``ln``'s paint covers the point: its halo, its head or its tag's text."""
-    x0, x1, y0, y1 = _reach(ln)
-    if not (x0 <= x <= x1 and y0 <= y <= y1):
-        return False
-    if any(_seg_dist(x, y, a, b) < HALO_W / 2 for a, b in pairwise(ln.shaft)):
-        return True
-    if _in_tri(x, y, ln.head):
-        return True
-    if ln.tag:
-        x0, x1, y0, y1 = _tag_ink(ln)
-        return x0 <= x <= x1 and y0 <= y <= y1
-    return False
-
-
-def _move_heads(lay: Layout | CompareLayout) -> list[tuple[str, list[Point]]]:
-    """Every Compare move arrow's head as the PAGE paints it (``onepager_compare.js`` arrow()):
-    its tip on the new finish, its base ``arrow_head`` back toward the old one, as tall."""
-    if not isinstance(lay, CompareLayout):
-        return []
+def _off_readme(lay: Layout | CompareLayout) -> list[str]:
+    """Every drawn link whose shaft, head or tag is not the README's route."""
     out = []
-    h = lay.arrow_head
-    for p in lay.items:
-        if p.arrow_x0 is None or p.arrow_x1 is None:
-            continue
-        x0, x1, y = p.arrow_x0, p.arrow_x1, p.arrow_y
-        d = 1.0 if x1 >= x0 else -1.0
-        out.append((p.name, [(x1, y), (x1 - d * h, y - h / 2), (x1 - d * h, y + h / 2)]))
-    return out
-
-
-def _erasures(lay: Layout | CompareLayout) -> list[str]:
-    """Every head, type tag and move-arrow head a LATER-painted link covers, named with the
-    share of its samples covered."""
-    links = list(lay.links)
-    out: list[str] = []
-    for name, tri in _move_heads(lay):
-        pts = _tri_samples(tri)
-        hit = sum(any(_covers(ln, x, y) for ln in links) for x, y in pts)
-        if hit:
-            out.append(f"the move arrow of {name}: {hit}/{len(pts)} of its head covered")
-    for i, ln in enumerate(links):
-        later = links[i + 1 :]
-        what = f"{ln.pred_name} → {ln.succ_name} ({ln.kind})"
-        for part, pts in (("head", _tri_samples(ln.head)), ("tag", _tag_samples(ln))):
-            if part == "tag" and not ln.tag:
-                continue
-            hit = sum(any(_covers(m, x, y) for m in later) for x, y in pts)
-            if hit:
-                out.append(f"the {part} of {what}: {hit}/{len(pts)} covered by a later link")
+    for ln in lay.links:
+        shaft, (tx, ty) = _readme_route(lay, ln)
+        tip, base = ln.head[0], shaft[-1]
+        head = [tip, (base[0], base[1] - _HEAD / 2), (base[0], base[1] + _HEAD / 2)]
+        same = len(shaft) == len(ln.shaft) and all(
+            abs(u - v) < 1e-6
+            for want, got in zip([*shaft, *head], [*ln.shaft, *ln.head], strict=True)
+            for u, v in zip(want, got, strict=True)
+        )
+        if not (same and abs(tx - ln.tag_x) < 1e-6 and abs(ty - ln.tag_y) < 1e-6):
+            out.append(f"{ln.pred_name} → {ln.succ_name} ({ln.kind}): {ln.shaft} != {shaft}")
     return out
 
 
@@ -256,57 +244,137 @@ def _slides(
 
 
 @pytest.fixture(scope="module")
-def dense() -> list[tuple[str, Layout | CompareLayout, list[str]]]:
-    """160 seeds, 3-40 items, chains of 2-6 links, as both slides — each with its erasures."""
-    return [(what, lay, _erasures(lay)) for what, lay, _n in _slides(range(0, 160), (3, 40), 6)]
+def dense() -> list[tuple[str, Layout | CompareLayout, int]]:
+    """160 seeds, 3-40 items, chains of 2-6 links, as both slides."""
+    return list(_slides(range(0, 160), (3, 40), 6))
 
 
-def test_property_no_head_or_tag_is_erased_unless_the_slide_says_so(
-    dense: list[tuple[str, Layout | CompareLayout, list[str]]],
+def test_property_every_route_on_a_dense_slide_is_the_readme_route(
+    dense: list[tuple[str, Layout | CompareLayout, int]],
 ) -> None:
-    """Review DOC-LS-02: a head, a type tag or a move-arrow head covered by a later link is
-    allowed only on a slide that carries the crowding note (the reviewers' generator lost 35
-    heads and 32 tags on the built tree)."""
-    assert sum(len(lay.links) for _w, lay, _e in dense) > 1000  # the population is not empty
-    silent = [
-        f"{what}: {e}"
-        for what, lay, erased in dense
-        if CROWDED_NOTE not in lay.link_notes
-        for e in erased
-    ]
-    assert silent == [], silent[:5]
+    """Every link the generator makes is drawn — none refused, none flagged, no note — and its
+    shaft, head and tag are exactly the README's route over the slide's own items: its edges at
+    its centre line, its column the one of the band behind the fewest bars (ghosts and move
+    arrows included), then names, nearest the successor; round the successor's row boundary
+    when no column stands."""
+    assert sum(len(lay.links) for _w, lay, _n in dense) > 1000  # the population is not empty
+    shapes = {len(ln.shaft) for _w, lay, _n in dense for ln in lay.links}
+    assert shapes == {2, 4, 6}  # straight, one vertical and the way round all occur
+    bad = [f"{what}: {e}" for what, lay, _n in dense for e in _off_readme(lay)]
+    undrawn = [(what, lay.link_notes[:1]) for what, lay, n in dense if len(lay.links) != n]
+    assert bad == [] and undrawn == [], (bad[:3], undrawn[:3])
 
 
-def test_property_a_small_slide_erases_nothing_and_says_nothing() -> None:
-    """A slide of at most 6 items and at most 3 links is not dense: every link is drawn,
-    nothing is erased and there is no note at all (the built tree put the "At this density …
-    Split the list" note on 3-item slides)."""
+def test_property_a_small_slide_draws_every_link_and_says_nothing() -> None:
+    """A slide of at most 6 items and at most 3 links: every link drawn on the README's route,
+    no note at all (the built tree put the "At this density … Split the list" note on 3-item
+    slides)."""
     bad = []
     for what, lay, n in _slides(range(1000, 1200), (3, 6), 3):
-        erased = _erasures(lay)
-        if erased or lay.link_notes or len(lay.links) != n:
-            bad.append((what, len(lay.links), n, lay.link_notes[:1], erased[:2]))
+        if lay.link_notes or len(lay.links) != n or _off_readme(lay):
+            bad.append((what, len(lay.links), n, lay.link_notes[:1], _off_readme(lay)[:1]))
     assert bad == [], bad[:5]
 
 
-def test_a_drawn_link_never_erases_ink_even_on_a_dense_slide(
-    dense: list[tuple[str, Layout | CompareLayout, list[str]]],
+@pytest.mark.parametrize("module", [op, opc], ids=["one-pager", "compare"])
+def test_mutation_a_slide_that_hands_the_router_no_names_is_caught(
+    monkeypatch: pytest.MonkeyPatch, module: Any
 ) -> None:
-    """The stronger design statement (ADR-0539 resume): the router never DRAWS a link that
-    would erase another link's head or tag, or a move arrow's head — when no route between its
-    two items keeps them apart, the link is not drawn and is named, with the collision."""
-    erased = [f"{what}: {e}" for what, lay, found in dense for e in found]
-    assert erased == [], erased[:5]
+    """Teeth: the slide's obstacles stripped of their names (labels, tags) — the router then
+    stands columns behind names it no longer sees, and the SAME oracle names those links."""
+    monkeypatch.setattr(
+        module, "Obstacle", lambda key, y, x0, x1, names=(): links_mod.Obstacle(key, y, x0, x1)
+    )
+    which = 0 if module is op else 1
+    bad = [
+        e
+        for k, (_w, lay, _n) in enumerate(_slides(range(0, 60), (3, 40), 6))
+        if k % 2 == which
+        for e in _off_readme(lay)
+    ]
+    assert bad, "the oracle must see routes off the README when the names are not handed over"
 
 
-def test_mutation_without_the_ink_check_the_property_goes_red(
+def _pulled_in_across() -> tuple[Any, list[Link]]:
+    """Probe was 9/1-10/31 and is now 2/1-3/1: its ghost and its move arrow (10/31 back to 3/1)
+    span 2/1-10/31 in the row between A (above) and Z (the next swimlane, starting 11/1). An
+    A → Z column nearest Z's stub stands behind the GHOST; with the ghost and the arrow seen, the
+    only free column is the one beside A."""
+
+    def doc(source: str, start: D, finish: D) -> OnePagerDoc:
+        items = [
+            OnePagerItem("Lane", "A", D(2027, 1, 4), D(2027, 1, 20), 2),
+            OnePagerItem("Lane", "Probe", start, finish, 3),
+            OnePagerItem("Next", "Z", D(2027, 11, 1), D(2027, 12, 20), 4),
+        ]
+        return OnePagerDoc(source, "S", tuple(keyed(items)), (), ())
+
+    cmp = compare_onepager_docs(
+        doc("p.xlsx", D(2027, 9, 1), D(2027, 10, 31)), doc("c.xlsx", D(2027, 2, 1), D(2027, 3, 1))
+    )
+    k = {r.name: r.key for r in cmp.rows}
+    return cmp, [Link(k["A"], k["Z"])]
+
+
+def test_a_compare_column_never_stands_behind_a_ghost_or_a_move_arrow() -> None:
+    doc, links = _pulled_in_across()
+    lay = build_compare_layout(doc, TODAY, "T", links=links)
+    a, probe, z = (next(p for p in lay.items if p.name == n) for n in ("A", "Probe", "Z"))
+    assert a.y < probe.y < z.y and probe.ghost_x1 is not None and probe.arrow_x0 is not None
+    (ln,) = lay.links
+    assert _off_readme(lay) == []
+    assert ln.shaft[1][0] < probe.x0  # the free column beside A, not one behind the ghost
+
+
+def test_a_windowed_move_arrow_running_to_the_edge_is_part_of_its_rows_obstacle() -> None:
+    """With a date window a row that slipped OUT of it keeps its ghost and an arrow to the chart's
+    edge — the arrow then reaches past every shape the row still draws (its current one is off
+    the slide). Mover sits between A and Z (three swimlanes); its ghost is 4/1-5/1 and its arrow
+    runs on to 6/30, so every column from 4/1 on stands behind the ROW and the link takes the
+    column before it — the README's route over the painted extent, the arrow included."""
+    window = (D(2027, 3, 1), D(2027, 6, 30))
+
+    def doc(source: str, start: D, finish: D) -> OnePagerDoc:
+        items = [
+            OnePagerItem("L1", "A", D(2027, 3, 2), D(2027, 3, 10), 2),
+            OnePagerItem("L2", "Mover", start, finish, 3),
+            OnePagerItem("L3", "Z", D(2027, 6, 26), D(2027, 6, 29), 4),
+        ]
+        return OnePagerDoc(source, "S", tuple(keyed(items)), (), ())
+
+    full = compare_onepager_docs(
+        doc("p.xlsx", D(2027, 4, 1), D(2027, 5, 1)), doc("c.xlsx", D(2027, 8, 1), D(2027, 8, 20))
+    )
+    cmp, _omitted = window_compare(full, window)
+    k = {r.name: r.key for r in cmp.rows if r.key}
+    lay = build_compare_layout(cmp, TODAY, "T", window=window, links=[Link(k["A"], k["Z"])])
+    a, mover, z = (next(p for p in lay.items if p.name == n) for n in ("A", "Mover", "Z"))
+    assert a.y < mover.y < z.y and mover.x0 is None and mover.ghost_x1 is not None
+    assert mover.arrow_x0 is not None and mover.arrow_x1 is not None
+    assert max(mover.arrow_x0, mover.arrow_x1) > mover.ghost_x1 + 50  # the arrow reaches past it
+    (ln,) = lay.links
+    assert _off_readme(lay) == []
+    assert ln.shaft[1][0] < mover.ghost_x0  # the column before the row, not one beside Z
+
+
+def test_mutation_a_compare_slide_that_hides_its_ghosts_is_caught(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Teeth: the router's ink check switched off (every candidate route judged clean) — the
-    same oracle and generator see heads and tags erased."""
-    monkeypatch.setattr(links_mod, "_conflicts", lambda *_a, **_k: ([], [], False))
-    erased = [e for _w, lay, _n in _slides(range(0, 40), (3, 40), 6) for e in _erasures(lay)]
-    assert erased, "the oracle must see erasures when the ink check is off"
+    """Teeth for ADR-0543's ghost rule on a real slide: the Compare slide hands the router each
+    row's CURRENT shape only (the prototype's blind side, and more) — the oracle, which reads the
+    ghost and the move arrow off the layout, names the link standing behind them."""
+    doc, links = _pulled_in_across()
+    rows = {p.key: p for p in build_compare_layout(doc, TODAY, "T").items if p.key}
+    real = links_mod.Obstacle
+
+    def current_only(key: str, y: float, x0: float, x1: float, names: Any = ()) -> Any:
+        p = rows.get(key)
+        if p is not None and p.x0 is not None:
+            x0, x1 = (p.x0 - p.ms / 2, p.x0 + p.ms / 2) if p.milestone else (p.x0, p.x1)
+        return real(key, y, x0, x1, names)
+
+    monkeypatch.setattr(opc, "Obstacle", current_only)
+    assert _off_readme(build_compare_layout(doc, TODAY, "T", links=links)) != []
 
 
 # ── through the page's actions ────────────────────────────────────────────────────────────────
@@ -358,30 +426,11 @@ def _three() -> Layout:
 
 
 def test_a_three_item_forward_chain_carries_no_crowding_note() -> None:
-    """Review DOC-LS-01: Design → Build (FF) then Build → Deliver (FS). The FS leg leaves
-    Build's finish along the gap where the FF tag stood — two links meeting, not a dense slide;
-    the built tree said "At this density … Split the list"."""
+    """Review DOC-LS-01: Design → Build (FF) then Build → Deliver (FS) — two links meeting, not
+    a dense slide; the built tree said "At this density … Split the list". Both are drawn, on
+    the README's route, and the slide says nothing."""
     lay = _three()
-    assert len(lay.links) == 2 and lay.link_notes == [] and _erasures(lay) == []
-
-
-def test_a_tag_in_a_later_links_path_takes_its_second_spot() -> None:
-    """Review SKL-6 (M2c): with the FS leg running through the FF tag's first spot (beside its
-    head), the tag stands at its second — beside its predecessor's end, on the side away from
-    its own leg — and nothing is erased."""
-    ff, _fs = _three().links
-    sx = ff.shaft[0][0]
-    assert ff.tag == "FF" and ff.tag_anchor == "end"
-    assert sx - 2.0 < ff.tag_x < sx  # right-aligned just left of Design's finish leg
-
-
-def test_mutation_a_tag_with_one_spot_is_caught_off_its_second(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    real = links_mod._tag_spots
-    monkeypatch.setattr(links_mod, "_tag_spots", lambda *a, **k: real(*a, **k)[:1])
-    ff, *_rest = _three().links
-    assert not (ff.tag_anchor == "end" and ff.shaft[0][0] - 2.0 < ff.tag_x < ff.shaft[0][0])
+    assert len(lay.links) == 2 and lay.link_notes == [] and _off_readme(lay) == []
 
 
 SHIP = ("Eng", "Ship", "9/1/2026", "9/1/2026", "")

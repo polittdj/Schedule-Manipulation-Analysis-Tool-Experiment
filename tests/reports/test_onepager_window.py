@@ -118,7 +118,11 @@ def test_windowed_doc_names_every_omitted_item_and_the_excel_says_so() -> None:
 #: the red line is the DATA DATE (the caption reads `DATA DATE m/d/yy`, the legend `Data date
 #: (m/d/yy)`) and its caption's baseline moved from 4.5 to 5.5 pt below the last band
 #: (`TODAY_CAPTION_DY`) so its text box clears the band — the only two fields that moved.
-_PRISTINE_DIGEST = "07483a3188fd6349e0434c86727114445c74cc93f1a18267636137026ff66769"
+#: Re-derived under ADR-0543, which RETIRED ADR-0540's fitting fields (``fit_notes``, the
+#: footnote's five, ``gutter``): the digest below is the pristine tree's own (fac5773), computed
+#: THERE with those seven fields stripped — so this pin still proves the geometry byte-identical,
+#: not merely re-pinned to whatever the new tree emits (07483a31… with them, 64cac171… without).
+_PRISTINE_DIGEST = "64cac171fcc2de97745fa361e3cb2cdab73a77d2ba7dfe5bbf1d1b77adc9f385"
 
 
 def _digest(obj: object) -> str:
@@ -129,19 +133,7 @@ def _digest(obj: object) -> str:
 #: column's letter. Stripped before the pristine digest so the pin keeps proving what it always
 #: proved (every slide's GEOMETRY is byte-identical) instead of being re-pinned blind; the new
 #: fields have their own tests (tests/reports/test_onepager_links.py).
-_ADDED_LAYOUT_FIELDS = (
-    "links",
-    "link_notes",
-    "status_label",
-    # ADR-0540: the fitting notes, the footnote and the gutter (each has its own tests in
-    # tests/reports/test_onepager_fill_and_fit.py)
-    "fit_notes",
-    "footnote",
-    "footnote_x",
-    "footnote_y",
-    "footnote_pt",
-    "gutter",
-)
+_ADDED_LAYOUT_FIELDS = ("links", "link_notes", "status_label")
 
 
 def _pristine(layout: dict) -> dict:

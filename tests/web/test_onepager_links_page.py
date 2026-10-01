@@ -248,15 +248,17 @@ class _Tags(HTMLParser):
 _PML = "{http://schemas.openxmlformats.org/presentationml/2006/main}"
 
 
-def _link_groups(pptx: bytes) -> list[tuple[str, list[str]]]:
-    """``(group name, its children's names)`` for every ``Logic link:`` group on the slide."""
+def _link_groups(pptx: bytes, prefix: str = "Logic link: ") -> list[tuple[str, list[str]]]:
+    """``(group name, its children's names)`` for every group on the slide named ``prefix …`` —
+    a link's SHAFT group (``Logic link: …``) or, since ADR-0543 paints the head over the items
+    and the shaft under them, its HEAD group (``Logic link arrowhead: …``)."""
     with zipfile.ZipFile(io.BytesIO(pptx)) as zf:
         root = ET.fromstring(zf.read("ppt/slides/slide1.xml"))
     out = []
     for grp in root.iter(f"{_PML}grpSp"):
         own = grp.find(f"{_PML}nvGrpSpPr/{_PML}cNvPr")
         name = own.get("name", "") if own is not None else ""
-        if name.startswith("Logic link: "):
+        if name.startswith(prefix):
             kids = [str(c.get("name")) for c in grp.iter(f"{_PML}cNvPr") if c is not own]
             out.append((name, kids))
     return out
@@ -564,22 +566,30 @@ def test_clearing_the_list_clears_its_links_and_says_how_many(
 
 @PAGES
 def test_the_exports_carry_every_link(client: TestClient, pg: Page) -> None:
-    """The .pptx: one ``Logic link: A → B (T)`` group per drawn link (an SS one with its type
-    tag); the .xlsx: a "Logic links" sheet — both ends, the type, whether the slide draws it,
-    and the reason when it does not. With no link, neither."""
+    """The .pptx: one ``Logic link: A → B (T)`` shaft group and one ``Logic link arrowhead: A →
+    B (T)`` head group per drawn link (an SS one's head group with its type tag); the .xlsx: a
+    "Logic links" sheet — both ends, the type, whether the slide draws it, and the reason when it
+    does not. With no link, neither."""
     keys = _keys(_load(client, pg), pg)
     deck = client.get(pg.pptx)
     assert deck.status_code == 200 and _link_groups(deck.content) == []
     assert "Logic links" not in read_xlsx(client.get(pg.xlsx).content)
     _link(client, pg, "add", keys[DR], keys[BUILD])
     _link(client, pg, "add", keys[TEST], keys[SHIP], "SS")
-    groups = _link_groups(client.get(pg.pptx).content)
+    deck = client.get(pg.pptx)
+    groups = _link_groups(deck.content)
     assert [g for g, _kids in groups] == [
         f"Logic link: {DR} → {BUILD} (FS)",
         f"Logic link: {TEST} → {SHIP} (SS)",
     ]
-    assert f"Logic link type: {TEST} → {SHIP} (SS)" in groups[1][1]
-    assert not any(k.startswith("Logic link type:") for k in groups[0][1])
+    heads = _link_groups(deck.content, "Logic link arrowhead: ")
+    assert [g for g, _kids in heads] == [
+        f"Logic link arrowhead: {DR} → {BUILD} (FS)",
+        f"Logic link arrowhead: {TEST} → {SHIP} (SS)",
+    ]
+    assert f"Logic link type: {TEST} → {SHIP} (SS)" in heads[1][1]
+    assert not any(k.startswith("Logic link type:") for _g, kids in groups for k in kids)
+    assert not any(k.startswith("Logic link type:") for k in heads[0][1])
     book = client.get(pg.xlsx)
     assert book.status_code == 200
     sheet = read_xlsx(book.content)["Logic links"]
@@ -753,13 +763,16 @@ def test_mutation_a_removed_row_offered_is_caught(
 
 def test_a_compare_link_joins_the_current_positions_never_the_ghost(client: TestClient) -> None:
     """Design Review slipped 1/10 -> 1/15: its ghost and its current diamond sit apart, and the
-    link leaves the CURRENT diamond (a milestone's link point is its centre line)."""
+    link leaves the CURRENT diamond — FS out of a milestone's finish: its right vertex, at its
+    centre line (ADR-0543) — and tips on Build's start, its shaft ending 4.2 pt before it."""
     keys = _keys(_load(client, COMPARE), COMPARE)
     page = _link(client, COMPARE, "add", keys[DR], keys[BUILD])
     dr = _item(page, COMPARE, "Design Review")
     assert dr["status"] == "slipped" and abs(dr["x0"] - dr["ghost_x0"]) > 5.0
-    shaft = _layout(page, COMPARE)["links"][0]["shaft"]
-    assert shaft[0][0] == pytest.approx(dr["x0"])
-    assert shaft[0][0] != pytest.approx(dr["ghost_x0"], abs=1.0)
+    link = _layout(page, COMPARE)["links"][0]
+    shaft = link["shaft"]
+    assert shaft[0] == pytest.approx([dr["x0"] + dr["ms"] / 2, dr["y"]])
+    assert abs(shaft[0][0] - dr["ghost_x0"]) > dr["ghost_ms"] / 2 + 1.0  # off the ghost
     build = _item(page, COMPARE, "Build")
-    assert build["x0"] < shaft[-1][0] < build["x1"]  # FS: into the bar's start end
+    assert link["head"][0] == pytest.approx([build["x0"], build["y"]])  # FS: into its start
+    assert shaft[-1] == pytest.approx([build["x0"] - 4.2, build["y"]])

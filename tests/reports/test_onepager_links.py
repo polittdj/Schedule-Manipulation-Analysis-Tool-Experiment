@@ -1,6 +1,8 @@
 """Logic links the operator draws on a One-Pager (operator request 2026-09-29, ADR-0539) — the
-engine side: item keys, the refusals, the routing, the clearance, the named undrawn links, the
-legend, the JSON and the PowerPoint painter.
+engine side: item keys, the refusals, the routing on real slides, the named undrawn links, the
+legend, the JSON and the PowerPoint painter. The routing RULE itself (ADR-0543, the design
+handoff's Console rule, step by step and against the prototype's own routes) is pinned in
+``tests/reports/test_onepager_links_console.py``.
 
 A One-Pager list carries no logic, so a link is never inferred: the operator picks two items and
 the slide draws exactly that arrow. What this module pins:
@@ -11,30 +13,28 @@ the slide draws exactly that arrow. What this module pins:
   review now sits in its position; identical twins are told apart; a date window never re-keys.
 * **Refusals** (:func:`check_link`), each by name — itself, an unknown item, a duplicate, a loop
   (naming the chain), the cap, an unknown type — while an SS and an FF on one pair are allowed.
-* **Routing** (:func:`route_links`): each type leaves the end it names and tips on the end it
-  names; a milestone's end is its diamond's centre; the head's tip touches the successor's EDGE
-  and the shaft stops at the head's base.
-* **Clearance.** No horizontal leg's stroke crosses any glyph — its own ends' included — over
-  real ``build_layout`` / ``build_compare_layout`` output from row height 13 down to the label
-  floors, each glyph boxed twice: by the router's own ``shape_box`` / ``label_box`` and by an
-  independent ink model (so a margin that shrinks cannot shrink the oracle). The one-pager clears
-  at every density measured; a DENSE compare slide does not (measured 2026-09-29: 1 hit at 64
-  items / row 9.46, 17 at 100 items — legs touching move arrows), and there the layout SAYS so
-  (``CROWDED_NOTE``) — a hit is never silent. Legs sharing a channel are stacked on tracks.
-  Each glyph kind the router measures (label, NEW tag, check disc, ghost, move arrow) has a
-  fixture where it is the ONLY glyph under a leg, so dropping it from the router goes red.
+* **Routing on real slides** (``build_layout`` / ``build_compare_layout``): each type leaves the
+  EDGE it names at the item's centre line (a milestone's: its own diamond's side vertex) and its
+  head tips on the successor's edge, 4.2 pt long; a non-FS type is tagged at 5 pt beside the first
+  vertical leg. Every link whose two ends are on the slide is drawn, at every density of the
+  sweep, with no note — the shafts run UNDER the items, so nothing is ever "crowded" or
+  "flagged" (ADR-0543 retired ADR-0540's escalation, footnote and gutter). A link head is the
+  only part of a link painted over the items, and none lands on a Compare move arrow's head.
 * **Every undrawn link is NAMED**, with its reason; the legend gains ONE link entry, only when a
-  link is drawn; the JSON carries links as plain data; the .pptx paints the layout's own head as a
-  closed polygon inside one named group whose box is its children's union, with no DrawingML
-  line-end, and names the program that wrote it.
+  link is drawn; the JSON carries links as plain data.
+* **The PowerPoint**, in the page's z-order: each link's SHAFT is a group of its own ("Logic
+  link: …") painted after the lanes and BEFORE the first item; its HEAD and type tag a second
+  group ("Logic link arrowhead: …") AFTER the items' labels and BEFORE the data-date line; each
+  group's box is its children's union; the head is the layout's own closed polygon and the shaft
+  its own open polyline, with no DrawingML line-end, no halo, no dash; the labels outside their
+  bars and the type tags glow in the slide's white, and nothing else does.
 
-Red-first (2026-09-29): on the pristine tree (HEAD 0b45eb2) ``reports/onepager_links`` does not
-exist and ``reports.onepager`` has no ``item_keys`` / ``CROWDED_NOTE`` — every test here errors
-at import there. Mutation proofs live beside the checks they arm (``test_mutation_*``): each one
-breaks the engine or the painter in memory and asserts the SAME checker the real test uses goes
-red. One src defect is pinned as a strict xfail — two legs in one channel whose measured bands
-differ are offset from DIFFERENT centres, so they can land 0.4 pt apart and merge (see
-``test_legs_sharing_a_channel_with_different_bands_never_touch``).
+Red first: the keys, refusals, not-drawn and legend pins predate ADR-0543 and are unchanged. The
+routing and PowerPoint pins were rewritten for ADR-0543 and are red on the pristine tree
+(fac5773): its heads tipped on the successor's top or bottom edge, its tags were 70 % of the
+label size, its densest sweep slides carried the crowding note, and its .pptx painted each link
+as ONE group (halo, line, head, tag) after the labels. Mutation proofs live beside the checks
+they arm (``test_mutation_*``).
 """
 
 from __future__ import annotations
@@ -42,6 +42,7 @@ from __future__ import annotations
 import datetime as dt
 import io
 import json
+import re
 import shutil
 import subprocess
 import xml.etree.ElementTree as ET
@@ -57,7 +58,6 @@ import pytest
 from schedule_forensics.reports import onepager_links as links_mod
 from schedule_forensics.reports import pptx
 from schedule_forensics.reports.onepager import (
-    CROWDED_NOTE,
     LABEL_MAX,
     Layout,
     OnePagerDoc,
@@ -72,9 +72,7 @@ from schedule_forensics.reports.onepager import (
 )
 from schedule_forensics.reports.onepager_compare import (
     AMBIGUOUS,
-    ARROW_HEAD,
     REMOVED,
-    SLIPPED,
     CompareDoc,
     CompareLayout,
     build_compare_layout,
@@ -84,18 +82,11 @@ from schedule_forensics.reports.onepager_compare import (
     window_compare,
 )
 from schedule_forensics.reports.onepager_links import (
-    HALO_W,
-    LINK_W,
+    HEAD,
     MAX_LINKS,
-    Anchor,
-    Box,
-    Grid,
     Link,
     check_link,
-    label_box,
     links_table,
-    route_links,
-    shape_box,
 )
 from schedule_forensics.reports.xlsx_read import read_xlsx_numbered
 from web.onepager_twin import twin_xlsx
@@ -108,8 +99,6 @@ HEADER = ("Swimlane", "Task", "Start", "Finish", "Complete")
 _EMU_PER_PT = 12700
 _P = "http://schemas.openxmlformats.org/presentationml/2006/main"
 _A = "http://schemas.openxmlformats.org/drawingml/2006/main"
-
-Glyphs = list[tuple[str, str, Box]]
 
 
 def _doc(rows: Sequence[tuple[object, ...]], source: str = "list.xlsx") -> OnePagerDoc:
@@ -183,7 +172,9 @@ def test_a_repeated_name_is_keyed_by_its_dates_never_by_its_position() -> None:
     assert [(d.pred, d.succ) for d in lay.links] == [(integ, feb_march)]
     feb_placed = next(p for p in lay.items if p.key == feb_march)
     assert feb_placed.finish == "2027-02-15"
-    assert lay.links[0].head[0][0] == pytest.approx(feb_placed.x0)  # it tips on THAT diamond
+    # it tips on THAT diamond: FS enters a milestone at its LEFT vertex (ADR-0543)
+    tip = (feb_placed.x0 - feb_placed.ms / 2, feb_placed.y)
+    assert lay.links[0].head[0] == pytest.approx(tip)
     assert lay.link_notes == [
         f"logic link “{names[integ]}” → “{names[jan]}” (FS) is not drawn — "
         f"“{names[jan]}” is no longer in the list."
@@ -207,10 +198,9 @@ def test_identical_twins_get_distinct_keys_and_each_can_be_linked() -> None:
     assert sorted(p.key for p in lay.items) == sorted(it.key for it in doc.items)
     twin2 = next(p for p in lay.items if p.key == second)
     assert [(d.pred, d.succ) for d in lay.links] == [(kick, second)]
-    assert lay.links[0].head[0][1] in (
-        pytest.approx(twin2.y - lay.ms / 2),
-        pytest.approx(twin2.y + lay.ms / 2),
-    )
+    twin1 = next(p for p in lay.items if p.key == first)
+    assert twin1.y != twin2.y  # identical twins stack: the head's row says which one it joins
+    assert lay.links[0].head[0] == pytest.approx((twin2.x0 - twin2.ms / 2, twin2.y))
 
 
 def test_a_date_window_never_renumbers_an_item() -> None:
@@ -334,9 +324,8 @@ def test_check_link_caps_the_count_at_exactly_max_links() -> None:
     )
 
 
-# ── routing semantics ─────────────────────────────────────────────────────────────────────────
+# ── routing semantics, on real slides ───────────────────────────────────────────────────────
 
-#: Two swimlanes, a bar-to-bar in each direction and milestones at both ends of a link.
 ROUTE_ROWS = [
     ("Design", "Concept", "1/4/2027", "3/1/2027", ""),
     ("Design", "Gate", "3/15/2027", "3/15/2027", ""),
@@ -354,58 +343,57 @@ def _placed(lay: Layout, key: str) -> Any:
     return next(p for p in lay.items if p.key == key)
 
 
+def _edges(p: Any) -> tuple[float, float]:
+    """An item's shape edges as the painters draw it: a bar's two ends, a milestone's centre ±
+    half its OWN diamond (``Placed.ms``, clamped at the chart's edge)."""
+    return (p.x0 - p.ms / 2, p.x0 + p.ms / 2) if p.milestone else (p.x0, p.x1)
+
+
 @pytest.mark.parametrize(
     ("kind", "pred_at", "succ_at"),
-    [("FS", "x1", "x0"), ("SS", "x0", "x0"), ("FF", "x1", "x1"), ("SF", "x0", "x1")],
+    [("FS", 1, 0), ("SS", 0, 0), ("FF", 1, 1), ("SF", 0, 1)],
 )
 def test_each_type_leaves_and_enters_the_end_it_names(
-    route_doc: OnePagerDoc, kind: str, pred_at: str, succ_at: str
+    route_doc: OnePagerDoc, kind: str, pred_at: int, succ_at: int
 ) -> None:
-    """A bar's link point sits 2 pt inside the end the type names (so the arrow visibly meets
-    THAT end): FS leaves the predecessor's finish and tips at the successor's start; SS, FF and
-    SF likewise. The head's tip lies ON the successor's edge; the shaft ends at the head's base."""
+    """A finish end is the item's RIGHT edge, a start end its LEFT edge, both at its centre line
+    (README step 1): FS leaves the predecessor's finish and tips at the successor's start; SS, FF
+    and SF likewise. The head's tip lies ON the successor's edge, the shaft ends at the head's
+    base, and the base is :data:`HEAD` back along the last leg."""
     concept, fab = _key(route_doc, "Concept"), _key(route_doc, "Fabricate")
     lay = build_layout(route_doc.items, TODAY, "T", links=[Link(concept, fab, kind)])
     (ln,) = lay.links
     p, s = _placed(lay, concept), _placed(lay, fab)
-    inset = {"x0": 2.0, "x1": -2.0}
-    assert ln.shaft[0][0] == pytest.approx(getattr(p, pred_at) + inset[pred_at])
-    assert ln.shaft[0][1] == pytest.approx(p.y + lay.bar_h / 2)  # leaves the bottom edge (down)
+    assert ln.shaft[0] == pytest.approx((_edges(p)[pred_at], p.y))
     tip = ln.head[0]
-    assert tip == (
-        pytest.approx(getattr(s, succ_at) + inset[succ_at]),
-        pytest.approx(s.y - lay.bar_h / 2),
-    )  # the successor's TOP edge
-    base_y = ln.head[1][1]
-    assert ln.head[2][1] == pytest.approx(base_y)
-    assert ln.shaft[-1] == (pytest.approx(tip[0]), pytest.approx(base_y))
+    assert tip == pytest.approx((_edges(s)[succ_at], s.y))
+    into = 1 if succ_at == 0 else -1
+    assert ln.shaft[-1] == pytest.approx((tip[0] - into * HEAD, tip[1]))
     assert ln.tag == ("" if kind == "FS" else kind)
 
 
-def test_a_milestone_end_is_the_diamonds_centre_and_an_upward_link_enters_from_below(
-    route_doc: OnePagerDoc,
-) -> None:
-    """Ship (a milestone in the lower lane) → Gate (a milestone in the upper lane): the shaft
-    leaves Ship's TOP vertex, the head tips on Gate's BOTTOM vertex, both at the diamond's centre
-    line, whatever the type (a milestone's start is its finish)."""
+def test_a_milestone_end_is_its_own_diamonds_side_vertex(route_doc: OnePagerDoc) -> None:
+    """Ship (a milestone in the lower lane) → Gate (a milestone in the upper lane): FS leaves
+    Ship's RIGHT vertex and tips on Gate's LEFT one; SF the other two — each diamond at its own
+    size, at its centre line."""
     ship, gate = _key(route_doc, "Ship"), _key(route_doc, "Gate")
-    for kind in ("FS", "SF"):
+    for kind, out_at, in_at in (("FS", 1, 0), ("SF", 0, 1)):
         lay = build_layout(route_doc.items, D(2027, 1, 1), "T", links=[Link(ship, gate, kind)])
         (ln,) = lay.links
         p, s = _placed(lay, ship), _placed(lay, gate)
-        assert ln.shaft[0] == (pytest.approx(p.x0), pytest.approx(p.y - lay.ms / 2))
-        assert ln.head[0] == (pytest.approx(s.x0), pytest.approx(s.y + lay.ms / 2))
-        assert ln.head[1][1] > ln.head[0][1]  # the base is BELOW the tip: it points up
+        assert p.milestone and s.milestone and p.ms > 0 and s.ms > 0
+        assert ln.shaft[0] == pytest.approx((_edges(p)[out_at], p.y))
+        assert ln.head[0] == pytest.approx((_edges(s)[in_at], s.y))
 
 
 def _assert_heads_on_edges(lay: Layout) -> None:
-    """Every drawn head's tip lies on the successor's top or bottom edge (bar or diamond)."""
+    """Every drawn head's tip lies on the successor's left or right edge, at its centre line."""
     for ln in lay.links:
         s = _placed(lay, ln.succ)
-        half = lay.ms / 2 if s.milestone else lay.bar_h / 2
-        tip_y = ln.head[0][1]
-        assert min(abs(tip_y - (s.y - half)), abs(tip_y - (s.y + half))) < 1e-6, (
-            f"the head of {ln.pred_name} → {ln.succ_name} tips at y={tip_y}, off the edge"
+        tip_x, tip_y = ln.head[0]
+        on_edge = min(abs(tip_x - e) for e in _edges(s)) < 1e-6 and abs(tip_y - s.y) < 1e-6
+        assert on_edge, (
+            f"the head of {ln.pred_name} → {ln.succ_name} tips at {ln.head[0]}, off the edge"
         )
 
 
@@ -422,150 +410,35 @@ def test_every_head_tips_on_the_successors_edge(route_doc: OnePagerDoc) -> None:
 
 
 def test_mutation_the_edge_check_goes_red_when_the_tip_lands_on_the_centre(
-    route_doc: OnePagerDoc, monkeypatch: pytest.MonkeyPatch
+    route_doc: OnePagerDoc,
 ) -> None:
-    monkeypatch.setattr(links_mod, "_half", lambda _a, _g, _x=None: 0.0)
     lay = build_layout(route_doc.items, TODAY, "T", links=_chain(route_doc))
+    s = _placed(lay, lay.links[0].succ)
+    centre = (s.x0 + s.x1) / 2
+    moved = replace(lay.links[0], head=[(centre, s.y), *lay.links[0].head[1:]])
     with pytest.raises(AssertionError, match="off the edge"):
-        _assert_heads_on_edges(lay)
+        _assert_heads_on_edges(replace(lay, links=[moved, *lay.links[1:]]))
 
 
-def test_heads_are_sized_by_the_last_leg_and_tags_sit_beside_them(route_doc: OnePagerDoc) -> None:
-    """The head's length is the last leg's length held to [0.6, 1.8] pt, its base as wide as it
-    is long; a non-FS type is tagged at 70% of the label size (never below 3 pt), on the side
-    away from the incoming leg."""
+def test_heads_are_4_2_pt_and_tags_are_5_pt_beside_the_first_vertical(
+    route_doc: OnePagerDoc,
+) -> None:
+    """Every head is the README's triangle — :data:`HEAD` long along the last leg and as wide —
+    whatever the slide's size; a non-FS type is tagged at 5 pt, 1.5 pt right of the first
+    vertical leg at its middle (+1.5), anchored at its start."""
     lay = build_layout(route_doc.items, TODAY, "T", links=_chain(route_doc))
+    assert lay.label_pt == LABEL_MAX  # a roomy slide: the head does not scale with it
     for ln in lay.links:
-        (tx, ty), (bx0, by), (bx1, _by) = ln.head
-        length = abs(by - ty)
-        assert 0.6 - 1e-9 <= length <= 1.8 + 1e-9
-        assert bx1 - bx0 == pytest.approx(length)
-        assert (bx0 + bx1) / 2 == pytest.approx(tx)
-        if ln.tag:
-            assert ln.tag_pt == pytest.approx(max(3.0, lay.label_pt * 0.7))
-            leg_from_left = ln.shaft[0][0] <= tx
-            assert ln.tag_anchor == ("start" if leg_from_left else "end")
-            assert (ln.tag_x > tx) is leg_from_left
-    assert max(abs(ln.head[1][1] - ln.head[0][1]) for ln in lay.links) == pytest.approx(1.8)
-    # a leg arriving from the RIGHT puts its tag on the left, anchored at its end
-    ship, concept = _key(route_doc, "Ship"), _key(route_doc, "Concept")
-    back = build_layout(route_doc.items, TODAY, "T", links=[Link(ship, concept, "SS")]).links[0]
-    assert back.shaft[0][0] > back.head[0][0]
-    assert back.tag == "SS" and back.tag_anchor == "end" and back.tag_x < back.head[0][0]
+        (tx, ty), (bx0, by0), (bx1, by1) = ln.head
+        assert bx0 == bx1 == pytest.approx(ln.shaft[-1][0]) and abs(bx0 - tx) == pytest.approx(HEAD)
+        assert by1 - by0 == pytest.approx(HEAD) and (by0 + by1) / 2 == pytest.approx(ty)
+        assert ln.tag_pt == 5.0 and ln.tag_anchor == "start"
+        if len(ln.shaft) > 2:
+            mid = (ln.shaft[1][1] + ln.shaft[2][1]) / 2
+            assert (ln.tag_x, ln.tag_y) == pytest.approx((ln.shaft[1][0] + 1.5, mid + 1.5))
 
 
-def _grid(rows: list[float], bands: list[list[Box]]) -> Grid:
-    return Grid(rows, bands, rows[0] - 8, rows[-1] + 8, 500.0, 13.0, 8.84, 8.06, 7.8)
-
-
-def test_the_channel_next_to_the_successor_is_used_unless_it_is_too_narrow() -> None:
-    """P (row 0) → S (row 2): the preferred channel is the gap next to S (between rows 1 and 2);
-    when a glyph fills that gap over the leg's range, the widest other gap is MEASURED and used."""
-    anchors = {
-        "p": Anchor(100, 150, 10, False, 0, D(2027, 1, 1), D(2027, 2, 1)),
-        "s": Anchor(300, 350, 36, False, 2, D(2027, 3, 1), D(2027, 4, 1)),
-    }
-    names = {"p": "P", "s": "S"}
-    p_box = shape_box(100, 150, 10, False, 8.84, 8.06)  # each end's own bar is a glyph too
-    s_box = shape_box(300, 350, 36, False, 8.84, 8.06)
-    free: list[list[Box]] = [[p_box], [], [s_box]]
-    (ln,), notes, crowded = route_links([Link("p", "s")], anchors, names, _grid([10, 23, 36], free))
-    assert 23 < ln.shaft[1][1] < s_box.y0 and not notes and not crowded  # next to the successor
-    # row 1 carries a glyph reaching down past the successor's top edge over the leg's range
-    blocked: list[list[Box]] = [[p_box], [Box(140, 320, 20, 35.5)], [s_box]]
-    (ln,), _notes, crowded = route_links(
-        [Link("p", "s")], anchors, names, _grid([10, 23, 36], blocked)
-    )
-    assert p_box.y1 < ln.shaft[1][1] < 20 and not crowded  # the gap between rows 0 and 1
-
-
-def test_a_short_bars_link_point_stays_inside_it() -> None:
-    """The 2-pt inset shrinks to a third of the bar on a short bar, so the arrow still meets the
-    end the type names and never leaves the bar."""
-    anchors = {
-        "p": Anchor(100, 103, 10, False, 0, D(2027, 1, 1), D(2027, 1, 2)),
-        "s": Anchor(300, 350, 23, False, 1, D(2027, 3, 1), D(2027, 4, 1)),
-    }
-    grid = _grid([10, 23], [[], []])
-    fs, ss = route_links(
-        [Link("p", "s", "FS"), Link("p", "s", "SS")], anchors, {"p": "P", "s": "S"}, grid
-    )[0]
-    assert fs.shaft[0][0] == pytest.approx(102.0) and ss.shaft[0][0] == pytest.approx(101.0)
-
-
-# ── clearance: no horizontal leg through a glyph that is not its own ──────────────────────────
-
-
-def _ink(x0: float, x1: float, y: float, milestone: bool, lay: Layout | CompareLayout) -> Box:
-    """A shape's painted extent with no margin — derived here, not by :func:`shape_box`."""
-    if milestone:
-        return Box(x0 - lay.ms / 2, x0 + lay.ms / 2, y - lay.ms / 2, y + lay.ms / 2)
-    return Box(x0, x1, y - lay.bar_h / 2, y + lay.bar_h / 2)
-
-
-def _label_ink(p: Any, lay: Layout | CompareLayout, right_pad: float) -> Box:
-    """A label's ink by the PAINTERS' rule, not :func:`label_box`'s: the baseline sits
-    ``0.35 * label_pt`` below the row centre (``onepager.js`` / ``onepager_compare.js``) and
-    Calibri's ascent and descent are 0.75 and 0.25 em."""
-    right = p.label_x - right_pad if p.label_anchor == "end" else p.label_x + p.label_w
-    base = p.y + 0.35 * lay.label_pt
-    return Box(right - p.label_w, right, base - 0.75 * lay.label_pt, base + 0.25 * lay.label_pt)
-
-
-def _glyphs(lay: Layout | CompareLayout) -> Glyphs:
-    """Every glyph the slide paints, by owning key: the shape (and a compare row's ghost), the
-    label (with its tag on an end-anchored compare label), the check disc, and on the compare
-    slide the move arrow's shaft and head and the NEW / REMOVED tag. Shapes and labels are
-    boxed TWICE — by the router's own :func:`shape_box` / :func:`label_box` (what the task
-    states the clearance against) and by an independent ink model, so a margin function that
-    shrinks cannot shrink the oracle with it."""
-    out: Glyphs = []
-    compare = isinstance(lay, CompareLayout)
-    for p in lay.items:
-        if p.x0 is not None and p.x1 is not None:
-            out.append((p.key, "shape", shape_box(p.x0, p.x1, p.y, p.milestone, lay.bar_h, lay.ms)))
-            out.append((p.key, "shape ink", _ink(p.x0, p.x1, p.y, p.milestone, lay)))
-        pad = 0.0
-        if compare:
-            if p.ghost_x0 is not None and p.ghost_x1 is not None:
-                gm = bool(p.ghost_milestone)
-                ghost = shape_box(p.ghost_x0, p.ghost_x1, p.y, gm, lay.bar_h, lay.ms)
-                out.append((p.key, "ghost", ghost))
-                out.append((p.key, "ghost ink", _ink(p.ghost_x0, p.ghost_x1, p.y, gm, lay)))
-            if p.arrow_x0 is not None and p.arrow_x1 is not None:
-                h = ARROW_HEAD / 2  # the painted head's half-height, not the router's margin
-                lo, hi = sorted((p.arrow_x0, p.arrow_x1))
-                out.append((p.key, "move arrow", Box(lo, hi, p.arrow_y - h, p.arrow_y + h)))
-            if p.badge:  # the painters' tag rect: label_pt * 1.2 tall, centred on the row
-                t = lay.label_pt * 0.6
-                out.append((p.key, "tag", Box(p.badge_x, p.badge_x + p.badge_w, p.y - t, p.y + t)))
-                pad = p.badge_w + 2 if p.label_anchor == "end" else 0.0
-        box = label_box(p.label_x, p.label_anchor, p.label_w, p.y, lay.label_pt, pad)
-        out.append((p.key, "label", box))
-        out.append((p.key, "label ink", _label_ink(p, lay, pad)))
-        if p.done_x is not None:
-            r = p.done_r
-            out.append((p.key, "check", Box(p.done_x - r, p.done_x + r, p.y - r, p.y + r)))
-    return out
-
-
-def _leg_hits(lay: Layout | CompareLayout, own_ends: bool = True) -> list[str]:
-    """Each horizontal leg's STROKE (``LINK_W`` thick) against every glyph box on the slide —
-    the link's own two items included unless ``own_ends`` is False (a leg must not strike its own
-    predecessor's label either; the router measures those glyphs too)."""
-    glyphs = _glyphs(lay)
-    out: list[str] = []
-    for ln in lay.links:
-        for (xa, ya), (xb, yb) in zip(ln.shaft, ln.shaft[1:], strict=False):
-            if abs(ya - yb) > 1e-9:
-                continue
-            lo, hi = min(xa, xb), max(xa, xb)
-            for key, what, b in glyphs:
-                if not own_ends and key in (ln.pred, ln.succ):
-                    continue
-                if hi >= b.x0 and lo <= b.x1 and ya + LINK_W / 2 > b.y0 and ya - LINK_W / 2 < b.y1:
-                    out.append(f"{ln.pred_name} → {ln.succ_name} crosses a {what} at y={ya:.2f}")
-    return out
+# ── the sweep: every density, both slides ───────────────────────────────────────────────────
 
 
 def _sweep_items(n_lanes: int, per_lane: int) -> list[OnePagerItem]:
@@ -645,48 +518,33 @@ def test_the_sweep_spans_the_page_filling_slide_down_to_the_label_floors(
     assert all(len(lay.links) >= 3 for lay in onepager_sweep)
 
 
-def test_no_leg_crosses_a_glyph_on_the_one_pager_at_any_density(
-    onepager_sweep: list[Layout],
+def test_every_link_on_the_sweep_is_drawn_and_no_slide_says_anything(
+    onepager_sweep: list[Layout], compare_sweep: list[CompareLayout]
 ) -> None:
-    for lay in onepager_sweep:
-        assert _leg_hits(lay) == [], f"row {lay.row_h:.2f}"
-        assert lay.link_notes.count(CROWDED_NOTE) <= 1  # said once per slide, never per link
-    assert CROWDED_NOTE not in onepager_sweep[0].link_notes
-    assert CROWDED_NOTE in onepager_sweep[-1].link_notes  # the count check above is not vacuous
+    """ADR-0543: a shaft runs UNDER whatever item it passes, so no density is "crowded" and no
+    link is refused, flagged or drawn dashed — every link whose ends are on the slide is drawn,
+    and the slide carries no note about its links at all (the pristine tree's densest sweep
+    slides carried the crowding note)."""
+    layouts: list[Layout | CompareLayout] = [*onepager_sweep, *compare_sweep]
+    for lay in layouts:
+        assert lay.link_notes == [], (lay.row_h, lay.link_notes[:1])
+        assert len(lay.links) >= 3
+    made = [len(_sweep_links([i.key for i in _sweep_items(*d)])) for d in DENSITIES]
+    assert [len(lay.links) for lay in onepager_sweep] == made
 
 
-def test_mutation_an_escalation_blind_to_touches_lays_legs_on_labels_at_the_densest_sweep(
-    monkeypatch: pytest.MonkeyPatch,
+def test_links_never_move_an_item_on_the_sweep(
+    onepager_sweep: list[Layout], compare_sweep: list[CompareLayout]
 ) -> None:
-    """ADR-0541: with every leg checked against new heads, the densest sweep slide's base
-    attempt left ONE link no route clears; the reorder step (the footnote band reserved)
-    re-packed the slide 0.15 pt tighter, past the point where adjacent labels overlap, and
-    `_better` — collisions only — accepted six clean legs through labels for one drawn link.
-    The report now counts such touches and a step (or a reserved last resort) that adds one is
-    refused. Blind the count, and the pin above goes red by name."""
-    from schedule_forensics.reports import onepager_links as links_mod
-
-    monkeypatch.setattr(links_mod, "_touches", lambda drawn, grid: 0)
-    n_lanes, per_lane = DENSITIES[-1]
-    its = _sweep_items(n_lanes, per_lane)
-    lay = build_layout(its, TODAY, "T", links=_sweep_links([i.key for i in its]))
-    assert _leg_hits(lay) != []
-
-
-def test_no_leg_crosses_a_glyph_on_an_uncrowded_compare_and_a_crowded_one_says_so(
-    compare_sweep: list[CompareLayout],
-) -> None:
-    """The compare slide paints a move arrow ABOVE every moved bar, so at density the gap
-    between rows can be narrower than a stroke; the layout then carries ``CROWDED_NOTE`` (once).
-    A hit is never silent: an uncrowded slide has none."""
-    crowded = [CROWDED_NOTE in lay.link_notes for lay in compare_sweep]
-    assert any(crowded) and not all(crowded), "the sweep must cover both regimes"
-    assert any(p.arrow_x0 is not None for p in compare_sweep[0].items)
-    assert all(len(lay.links) >= 2 for lay in compare_sweep)
-    for lay, is_crowded in zip(compare_sweep, crowded, strict=True):
-        assert lay.link_notes.count(CROWDED_NOTE) <= 1
-        hits = _leg_hits(lay)
-        assert is_crowded or hits == [], f"row {lay.row_h:.2f}: {hits[:3]}"
+    """The slide is laid out ONCE (ADR-0543): with its links it is the slide without them, item
+    for item — the pristine tree escalated the densest sweep slides (glyphs at 80 %, a gutter, a
+    reorder), moving every row."""
+    for (n_lanes, per_lane), lay in zip(DENSITIES, onepager_sweep, strict=True):
+        bare = build_layout(_sweep_items(n_lanes, per_lane), TODAY, "T")
+        assert lay.items == bare.items and lay.lanes == bare.lanes and lay.x1 == bare.x1
+    for (n_lanes, per_lane), clay in zip(DENSITIES[:-1], compare_sweep, strict=True):
+        cbare = build_compare_layout(_compare_sweep_doc(n_lanes, per_lane), TODAY, "T")
+        assert clay.items == cbare.items and clay.lanes == cbare.lanes
 
 
 def _slipped_compare(filler: int = 0) -> CompareDoc:
@@ -716,162 +574,46 @@ def _slipped_layout(filler: int = 0) -> CompareLayout:
     return build_compare_layout(doc, TODAY, "T", links=[Link(k["Frame"], k["Inspect"])])
 
 
-def test_a_leg_clears_the_move_arrow_of_a_slipped_item() -> None:
-    lay = _slipped_layout()
-    wiring = next(p for p in lay.items if p.name == "Wiring")
-    assert wiring.status == SLIPPED and wiring.arrow_x0 is not None
-    (ln,) = lay.links
-    assert ln.shaft[1][0] < wiring.arrow_x0 < wiring.arrow_x1 < ln.shaft[-1][0]  # it passes over
-    assert _leg_hits(lay) == [] and lay.link_notes == []
+# ── a link and a Compare move arrow (review UIP-2, re-cast for ADR-0543) ─────────────────
 
 
-@pytest.mark.parametrize(("name", "glyph"), [("Walkdown with a long name", "label"), ("W", "tag")])
-def test_a_compare_leg_clears_the_label_and_the_new_tag_of_a_row_it_passes(
-    name: str, glyph: str
-) -> None:
-    """Prime (row 0) → Successor (row 2) runs through the gap next to Successor, over row 1 — a
-    NEW item whose short bar ends before the leg begins, so only its LABEL (a long name) or only
-    its NEW TAG (a one-letter name) lies under the leg. Either must be measured and cleared."""
-    base = [
-        OnePagerItem("Build", "Prime", D(2027, 1, 4), D(2027, 3, 1), 2),
-        OnePagerItem("Build", "Successor", D(2027, 3, 4), D(2027, 6, 1), 4),
-        OnePagerItem("Build", "Late add", D(2028, 1, 3), D(2028, 1, 3), 5),
+def _tri(tri: Sequence[Sequence[float]], n: int = 10) -> list[tuple[float, float]]:
+    (ax, ay), (bx, by), (cx, cy) = tri
+    return [
+        ((ax * u + bx * v + cx * (n - u - v)) / n, (ay * u + by * v + cy * (n - u - v)) / n)
+        for u in range(n + 1)
+        for v in range(n + 1 - u)
     ]
-    # a two-day bar (ADR-0540's page-filling 14-pt labels are wider than the old 7.8-pt ones,
-    # so the item is shorter and the successor starts sooner than the ADR-0539 fixture's)
-    new = OnePagerItem("Build", name, D(2027, 1, 6), D(2027, 1, 7), 3)
-    doc = compare_onepager_docs(
-        OnePagerDoc("prior.xlsx", "S", tuple(keyed(base)), (), ()),
-        OnePagerDoc("cur.xlsx", "S", tuple(keyed([base[0], new, *base[1:]])), (), ()),
-    )
-    k = {r.name: r.key for r in doc.rows}
-    lay = build_compare_layout(doc, TODAY, "T", links=[Link(k["Prime"], k["Successor"])])
-    (ln,) = lay.links
-    rows = {p.name: p.row for p in lay.items}
-    assert (rows["Prime"], rows[name], rows["Successor"]) == (0, 1, 2)
-    lo, hi = sorted((ln.shaft[1][0], ln.shaft[2][0]))
-    under = {w for key, w, b in _glyphs(lay) if key == k[name] and b.x1 >= lo and b.x0 <= hi}
-    assert glyph in under and "shape" not in under, under  # the fixture isolates that glyph
-    assert _leg_hits(lay) == [] and lay.link_notes == []
 
 
-def _under(lay: Layout | CompareLayout, key: str) -> set[str]:
-    """Which of ``key``'s glyphs lie under the (only) link's horizontal leg."""
-    lo, hi = sorted((lay.links[0].shaft[1][0], lay.links[0].shaft[2][0]))
-    return {w for k, w, b in _glyphs(lay) if k == key and b.x1 >= lo and b.x0 <= hi}
-
-
-@pytest.mark.parametrize(("slide", "next_day"), [("one-pager", 2), ("compare", 3)])
-def test_a_leg_clears_a_check_disc_that_is_the_only_glyph_under_it(
-    slide: str, next_day: int
-) -> None:
-    """``Long run`` → ``Next`` (a short FS hop, labels inside their bars) passes over ``Done``,
-    a COMPLETE item in the row below whose bar ends just before the hop and whose label starts
-    just after it — so its check disc is the one glyph under the leg. (On the compare slide the
-    rows are NEW, the only kind whose label may sit inside its bar.)"""
-    its = keyed(
-        [
-            OnePagerItem("Build", "Long run", D(2027, 1, 4), D(2027, 6, 30), 2),
-            OnePagerItem("Build", "Done", D(2027, 5, 3), D(2027, 6, 28), 3, True),
-            OnePagerItem("Build", "Next", D(2027, 7, next_day), D(2027, 9, 30), 4),
-            OnePagerItem("Build", "Far", D(2028, 1, 3), D(2028, 1, 3), 5),
-        ]
-    )
-    lay: Layout | CompareLayout
-    if slide == "one-pager":
-        k = {i.name: i.key for i in its}
-        lay = build_layout(its, TODAY, "T", links=[Link(k["Long run"], k["Next"])])
-    else:
-        old = OnePagerItem("Other", "Old", D(2027, 1, 4), D(2027, 1, 4), 2)
-        doc = compare_onepager_docs(
-            OnePagerDoc("prior.xlsx", "S", tuple(keyed([old])), (), ()),
-            OnePagerDoc("cur.xlsx", "S", tuple(its), (), ()),
-        )
-        k = {r.name: r.key for r in doc.rows}
-        lay = build_compare_layout(doc, TODAY, "T", links=[Link(k["Long run"], k["Next"])])
-    assert _under(lay, k["Done"]) == {"check"}  # the fixture isolates the disc
-    assert _leg_hits(lay) == [] and lay.link_notes == []
-
-
-def test_a_compare_leg_clears_a_prior_ghost_that_is_the_only_glyph_under_it() -> None:
-    """``Gone right`` slipped past its own duration: its prior ghost sits under the P → S leg
-    while its current bar, its move arrow and its label all lie elsewhere."""
-
-    def doc(source: str, start: D, finish: D) -> OnePagerDoc:
-        return OnePagerDoc(
-            source,
-            "S",
-            tuple(
-                keyed(
-                    [
-                        OnePagerItem("Build", "P", D(2027, 1, 4), D(2027, 3, 31), 2),
-                        OnePagerItem("Build", "S", D(2027, 4, 30), D(2027, 6, 1), 3),
-                        OnePagerItem("Build", "Gone right", start, finish, 4),
-                    ]
-                )
-            ),
-            (),
-            (),
-        )
-
-    cmp = compare_onepager_docs(
-        doc("prior.xlsx", D(2027, 3, 15), D(2027, 5, 15)),
-        doc("cur.xlsx", D(2027, 7, 1), D(2027, 8, 1)),
-    )
-    k = {r.name: r.key for r in cmp.rows}
-    lay = build_compare_layout(cmp, TODAY, "T", links=[Link(k["P"], k["S"])])
-    assert _under(lay, k["Gone right"]) == {"ghost", "ghost ink"}
-    assert _leg_hits(lay) == [] and lay.link_notes == []
-
-
-def _move_head_hits(lay: CompareLayout) -> list[str]:
-    """Every link segment — VERTICAL as well as horizontal — whose halo (``HALO_W`` wide, round
-    caps, painted ABOVE the items) reaches a move arrow's HEAD as the page paints it (its tip on
-    the new finish, ``ARROW_HEAD`` long back toward the old one and as tall), and every link
-    head over one. :func:`_leg_hits` skips vertical segments, so it could not see a leg rising
-    off a slipped finish through that head (review UIP-2)."""
-    out = []
-    for p in lay.items:
-        if p.arrow_x0 is None or p.arrow_x1 is None:
-            continue
-        d = 1.0 if p.arrow_x1 >= p.arrow_x0 else -1.0
-        tip, back = (p.arrow_x1, p.arrow_y), p.arrow_x1 - d * ARROW_HEAD
-        corners = [tip, (back, p.arrow_y - ARROW_HEAD / 2), (back, p.arrow_y + ARROW_HEAD / 2)]
-        (ax, ay), (bx, by), (cx, cy) = corners
-        n = 10
-        pts = [
-            ((ax * u + bx * v + cx * (n - u - v)) / n, (ay * u + by * v + cy * (n - u - v)) / n)
-            for u in range(n + 1)
-            for v in range(n + 1 - u)
-        ]
-        for ln in lay.links:
-            what = f"{ln.pred_name} → {ln.succ_name} ({ln.kind})"
-            for a, b in pairwise(ln.shaft):
-                hit = sum(_dist(x, y, a, b) < HALO_W / 2 for x, y in pts)
-                if hit:
-                    leg = "vertical" if abs(a[0] - b[0]) < 1e-9 else "horizontal"
-                    out.append(f"{what}: a {leg} leg covers {hit}/{len(pts)} of {p.name}'s head")
-            under = sum(_inside(x, y, ln.head) for x, y in pts)
-            if under:
-                out.append(f"{what}: its head covers {under}/{len(pts)} of {p.name}'s head")
-    return out
-
-
-def _dist(px: float, py: float, a: tuple[float, float], b: tuple[float, float]) -> float:
-    (x1, y1), (x2, y2) = a, b
-    dx, dy = x2 - x1, y2 - y1
-    span = dx * dx + dy * dy
-    t = 0.0 if span == 0 else max(0.0, min(1.0, ((px - x1) * dx + (py - y1) * dy) / span))
-    return float(((px - x1 - t * dx) ** 2 + (py - y1 - t * dy) ** 2) ** 0.5)
-
-
-def _inside(px: float, py: float, tri: Sequence[tuple[float, float]]) -> bool:
+def _inside(px: float, py: float, tri: Sequence[Sequence[float]]) -> bool:
     (x1, y1), (x2, y2), (x3, y3) = tri
     d = [
         (px - bx) * (ay - by) - (ax - bx) * (py - by)
         for (ax, ay), (bx, by) in (((x1, y1), (x2, y2)), ((x2, y2), (x3, y3)), ((x3, y3), (x1, y1)))
     ]
     return not (any(v < 0 for v in d) and any(v > 0 for v in d))
+
+
+def _move_heads_under_link_heads(lay: CompareLayout) -> list[str]:
+    """Every Compare move arrow's HEAD — as the page paints it: its tip on the new finish,
+    ``arrow_head`` back toward the old one and as tall — that a logic link's HEAD covers. Under
+    ADR-0543's z-order a link's shaft is painted UNDER the item layer the move arrow belongs to,
+    so its head is the only part of a link that can cover one (review UIP-2's concern, re-cast)."""
+    out = []
+    h = lay.arrow_head
+    for p in lay.items:
+        if p.arrow_x0 is None or p.arrow_x1 is None:
+            continue
+        d = 1.0 if p.arrow_x1 >= p.arrow_x0 else -1.0
+        tip, back = (p.arrow_x1, p.arrow_y), p.arrow_x1 - d * h
+        pts = _tri([tip, (back, p.arrow_y - h / 2), (back, p.arrow_y + h / 2)])
+        for ln in lay.links:
+            under = sum(_inside(x, y, ln.head) for x, y in pts)
+            if under:
+                what = f"{ln.pred_name} → {ln.succ_name} ({ln.kind})"
+                out.append(f"{what}: its head covers {under}/{len(pts)} of {p.name}'s move head")
+    return out
 
 
 def _moved_compare(design_finish: D) -> CompareDoc:
@@ -916,167 +658,35 @@ def _uip2_layout(finish: D, pred: str, succ: str, kind: str) -> CompareLayout:
 
 
 @pytest.mark.parametrize(("pred", "succ", "kind"), UIP2)
-def test_a_link_at_a_slipped_finish_never_covers_its_move_arrow_head(
-    pred: str, succ: str, kind: str
+@pytest.mark.parametrize("finish", [D(2026, 11, 15), D(2026, 9, 30)], ids=["slipped", "pulled-in"])
+def test_a_link_at_a_moved_finish_never_puts_its_head_on_the_move_arrow(
+    pred: str, succ: str, kind: str, finish: D
 ) -> None:
-    """Review UIP-2: FS / FF leave a bar 2 pt inside its finish and the slip arrow's head spans
-    the last 1.8 pt of it — the link's vertical leg and its halo, painted above the items,
-    wiped 60 % of the red head off in all four themes. The router now takes the head as ink no
-    link may cover (and the .pptx paints the same points)."""
-    lay = _uip2_layout(D(2026, 11, 15), pred, succ, kind)
+    """Review UIP-2's four links off (and into) Design's moved finish: the shaft runs under the
+    item layer the move arrow is painted in (pinned by the z-order tests), and the head — the
+    one part painted over it — never lands on the arrow's head; the link is drawn, unnamed."""
+    lay = _uip2_layout(finish, pred, succ, kind)
     design = next(p for p in lay.items if p.name == "Design")
-    pdr = next(p for p in lay.items if p.name == "PDR")
-    assert design.status == SLIPPED and design.arrow_x0 is not None and pdr.row < design.row
-    assert len(lay.links) == 1 and lay.link_notes == []
-    assert _move_head_hits(lay) == []
+    assert design.arrow_x0 is not None and len(lay.links) == 1 and lay.link_notes == []
+    assert _move_heads_under_link_heads(lay) == []
 
 
-@pytest.mark.parametrize(("pred", "succ", "kind"), UIP2)
-def test_a_link_at_a_pulled_in_finish_never_covered_its_move_arrow_head(
-    pred: str, succ: str, kind: str
-) -> None:
-    """The review's control (a guard, green on the built tree too): a pull-in's head sits PAST
-    the new finish, pointing back, clear of the link's point inside it."""
-    lay = _uip2_layout(D(2026, 9, 30), pred, succ, kind)
-    assert next(p for p in lay.items if p.name == "Design").arrow_x0 is not None
-    assert len(lay.links) == 1 and _move_head_hits(lay) == []
-
-
-def test_mutation_without_the_move_arrow_keep_outs_a_vertical_leg_is_caught(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Teeth for the oracle AND the fix: the Compare slide stops handing the router its move
-    arrows' heads — the same checker names the VERTICAL leg over Design's head."""
-    from schedule_forensics.reports import onepager_compare as compare_mod
-
-    monkeypatch.setattr(compare_mod, "_keep_outs", lambda *_a, **_k: ())
-    hits = _move_head_hits(_uip2_layout(D(2026, 11, 15), "Design", "PDR", "FS"))
-    assert hits and all("a vertical leg covers" in h for h in hits), hits
-
-
-def test_no_clean_link_covers_a_move_arrow_head_on_any_compare_slide(
+def test_no_link_head_lands_on_a_move_arrow_head_on_any_compare_slide(
     compare_sweep: list[CompareLayout],
 ) -> None:
-    """Every density of the sweep, crowded or not: a move arrow's head says which way a finish
-    moved, and no link drawn CLEAN is ever over one. Since ADR-0540 the last resort draws a link
-    no route clears along the route that covers the least, FLAGGED (dashed) and naming what it
-    covers — so a covered head belongs to a flagged link whose ``overlap`` names that arrow, and
-    the densest slides of the sweep do carry some (else this clause is vacuous)."""
     assert sum(p.arrow_x0 is not None for lay in compare_sweep for p in lay.items) > 50
-    flagged_total = 0
     for lay in compare_sweep:
-        flagged = {
-            f"{ln.pred_name} → {ln.succ_name} ({ln.kind})": ln.overlap
-            for ln in lay.links
-            if ln.flagged
-        }
-        flagged_total += len(flagged)
-        for hit in _move_head_hits(lay):
-            what, _sep, rest = hit.partition(": ")
-            assert what in flagged, f"row {lay.row_h:.2f}: a clean link covers a move head: {hit}"
-            victim = rest.split(" of ", 1)[1].rsplit("'s head", 1)[0]
-            assert "arrow of “" in flagged[what] and victim in flagged[what], (hit, flagged[what])
-    assert flagged_total > 0, "the sweep must exercise the flagged last resort"
+        assert _move_heads_under_link_heads(lay) == [], lay.row_h
 
 
-def test_mutation_a_naive_row_boundary_channel_is_caught_striking_the_move_arrow(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Replace the MEASURED band with the naive one — the row boundary, half a row below the
-    centre — and the same checker reports the leg through the slipped item's move arrow.
-
-    Since review UIP-2 the arrow's HEAD is also ink no link may cover (the Compare slide hands
-    the router its move-arrow heads, ``_keep_outs``), a second, independent defense: under the
-    naive band alone the router refuses the leg over the head and routes it round the top of
-    the slide. So the mutant switches both off to show THIS checker still sees the leg — on a
-    slide dense enough that the naive boundary lands on the arrow (ADR-0540's page-filling
-    three-row slide puts the boundary 100 pt from it, and the real router clears it there too:
-    the un-mutated ``_slipped_layout()`` tests above)."""
-    from schedule_forensics.reports import onepager_compare as compare_mod
-
-    def naive(grid: Grid, j: int, xa: float, xb: float) -> tuple[float, float]:
-        c = grid.rows[j] + grid.row_h / 2 if j >= 0 else grid.rows[0] - grid.row_h / 2
-        return c - 0.01, c + 0.01
-
-    monkeypatch.setattr(links_mod, "_free", naive)
-    monkeypatch.setattr(compare_mod, "_keep_outs", lambda *_a, **_k: ())
-    dense = _slipped_layout(filler=29)  # 13.3-pt rows: the boundary lands on the arrow
-    assert dense.row_h < 14.0
-    hits = _leg_hits(dense, own_ends=False)
-    assert hits and all("crosses a move arrow" in h for h in hits), hits
-
-
-# ── parallel legs never share a line ──────────────────────────────────────────────────────────
-
-
-def _merged_legs(lay: Layout | CompareLayout, tol: float) -> list[str]:
-    """Pairs of horizontal legs of DIFFERENT links closer than ``tol`` in y over a shared x-range
-    (``tol = LINK_W``: their strokes touch; ``1e-6``: exactly collinear)."""
-    legs = [
-        (i, min(xa, xb), max(xa, xb), ya)
-        for i, ln in enumerate(lay.links)
-        for (xa, ya), (xb, yb) in zip(ln.shaft, ln.shaft[1:], strict=False)
-        if abs(ya - yb) < 1e-9 and abs(xa - xb) > 1e-9
-    ]
-    out = []
-    for n, (i, a0, a1, ay) in enumerate(legs):
-        for j, b0, b1, by in legs[n + 1 :]:
-            if i != j and abs(ay - by) < tol and min(a1, b1) - max(a0, b0) > 1e-6:
-                out.append(f"links {i} and {j}: legs at y={ay:.3f} / {by:.3f} overlap in x")
-    return out
-
-
-def _pair_layout(extra: Sequence[OnePagerItem] = ()) -> Layout:
-    """``Prime`` → ``Successor`` twice on one pair — SS and FF, which :func:`check_link` allows —
-    both routed through the gap under their shared row, over overlapping x-ranges."""
-    its = keyed(
-        [
-            OnePagerItem("Lane", "Prime contract", D(2027, 1, 4), D(2027, 6, 30), 2),
-            *extra,
-            OnePagerItem("Lane", "Successor", D(2028, 1, 3), D(2028, 3, 1), 9),
-        ]
-    )
-    p, s = its[0].key, its[-1].key
-    pair = [Link(p, s, "FF"), Link(p, s, "SS")]
-    assert check_link(pair[:1], pair[1], {p: "P", s: "S"}) is None
-    return build_layout(its, TODAY, "T", links=pair)
-
-
-def test_parallel_legs_in_one_channel_are_stacked_on_separate_tracks() -> None:
-    lay = _pair_layout()
-    ff, ss = lay.links
-    assert ff.shaft[1][1] != ss.shaft[1][1]
-    assert abs(ff.shaft[1][1] - ss.shaft[1][1]) == pytest.approx(1.0)  # one track apart
-    assert _merged_legs(lay, LINK_W) == [] and lay.link_notes == []
-
-
-def test_mutation_disabling_the_track_offset_is_caught_as_a_collinear_overlap(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(links_mod, "_TRACK", 0.0)
-    merged = _merged_legs(_pair_layout(), 1e-6)
-    assert merged, "the checker must see the two legs drawn on one line"
-
-
-def test_no_two_legs_are_collinear_unless_the_slide_says_it_is_crowded(
-    onepager_sweep: list[Layout], compare_sweep: list[CompareLayout]
-) -> None:
-    layouts: list[Layout | CompareLayout] = [*onepager_sweep, *compare_sweep]
-    assert any(CROWDED_NOTE not in lay.link_notes and lay.links for lay in layouts)
-    for lay in layouts:
-        merged = _merged_legs(lay, 1e-6)
-        assert CROWDED_NOTE in lay.link_notes or merged == [], (lay.row_h, merged[:3])
-
-
-def test_legs_sharing_a_channel_with_different_bands_never_touch() -> None:
-    """A complete item in the row below puts its LABEL (not its bar) under the FF leg's range and
-    its bar under the SS leg's — the two measured bands differ by 0.6 pt."""
-    crossing = OnePagerItem(
-        "Lane", "Crossing label item runs long", D(2027, 2, 1), D(2027, 5, 1), 3, True
-    )
-    lay = _pair_layout([crossing])
-    # either remedy — separate the strokes, or say the slide is crowded — makes this pass
-    assert CROWDED_NOTE in lay.link_notes or _merged_legs(lay, LINK_W) == []
+def test_mutation_a_head_moved_onto_the_move_arrow_is_caught() -> None:
+    lay = _uip2_layout(D(2026, 11, 15), "Design", "PDR", "FS")
+    design = next(p for p in lay.items if p.name == "Design")
+    assert design.arrow_x1 is not None
+    x, y = design.arrow_x1, design.arrow_y
+    on = [(x + 1, y), (x - 4, y - 2), (x - 4, y + 2)]
+    hit = replace(lay, links=[replace(lay.links[0], head=on)])
+    assert _move_heads_under_link_heads(hit) != []
 
 
 # ── undrawn links are named ───────────────────────────────────────────────────────────────────
@@ -1307,7 +917,7 @@ def test_links_table_lists_every_link_made_and_whether_the_slide_draws_it(
     )
 
 
-# ── the PowerPoint painter ────────────────────────────────────────────────────────────────────
+# ── the PowerPoint painter, in the page's z-order ───────────────────────────────────────────
 
 
 def _slide(data: bytes) -> ET.Element:
@@ -1319,11 +929,23 @@ def _name(el: ET.Element) -> str:
     c = el.find(f"{{{_P}}}nvGrpSpPr/{{{_P}}}cNvPr")
     if c is None:
         c = el.find(f"{{{_P}}}nvSpPr/{{{_P}}}cNvPr")
+    if c is None:
+        c = el.find(f"{{{_P}}}nvCxnSpPr/{{{_P}}}cNvPr")
     return "" if c is None else c.get("name", "")
 
 
+def _groups(root: ET.Element, prefix: str) -> list[ET.Element]:
+    return [g for g in root.iter(f"{{{_P}}}grpSp") if _name(g).startswith(prefix)]
+
+
 def _link_groups(root: ET.Element) -> list[ET.Element]:
-    return [g for g in root.iter(f"{{{_P}}}grpSp") if _name(g).startswith("Logic link: ")]
+    """The SHAFT groups (``Logic link: …``)."""
+    return _groups(root, "Logic link: ")
+
+
+def _head_groups(root: ET.Element) -> list[ET.Element]:
+    """The HEAD groups (``Logic link arrowhead: …``)."""
+    return _groups(root, "Logic link arrowhead: ")
 
 
 def _box(xfrm: ET.Element, off: str = "off", ext: str = "ext") -> tuple[int, int, int, int]:
@@ -1334,9 +956,9 @@ def _box(xfrm: ET.Element, off: str = "off", ext: str = "ext") -> tuple[int, int
 
 def _group_box_errors(root: ET.Element) -> list[str]:
     """Each link group's ``off``/``ext`` (and ``chOff``/``chExt``) against the union of its
-    children's own boxes."""
+    children's own boxes — the shaft groups and the head groups alike."""
     out = []
-    for g in _link_groups(root):
+    for g in [*_link_groups(root), *_head_groups(root)]:
         xfrm = g.find(f"{{{_P}}}grpSpPr/{{{_A}}}xfrm")
         assert xfrm is not None
         kids = [
@@ -1367,34 +989,46 @@ def _relative(
 
 
 def _lockstep_errors(root: ET.Element, lay: Layout | CompareLayout) -> list[str]:
-    """Every drawn link's group holds a CLOSED head of the layout's own points and an OPEN
-    shaft (and halo) of the layout's own polyline — relative to each shape's offset, in EMU —
-    and no DrawingML line-end."""
+    """Every drawn link has ONE shaft group holding ONE open, unfilled shaft of the layout's own
+    polyline, and ONE head group holding a CLOSED head of the layout's own points (and its type
+    tag exactly when the link carries one) — relative to each shape's offset, in EMU — with no
+    halo, no dash and no DrawingML line-end anywhere."""
     out = []
-    groups = {_name(g): g for g in _link_groups(root)}
+    shafts = {_name(g): g for g in _link_groups(root)}
+    heads = {_name(g): g for g in _head_groups(root)}
     for ln in lay.links:
         what = f"{ln.pred_name} → {ln.succ_name} ({ln.kind})"
-        g = groups.get(f"Logic link: {what}")
-        if g is None:
-            out.append(f"no group for {what}")
+        g, h = shafts.get(f"Logic link: {what}"), heads.get(f"Logic link arrowhead: {what}")
+        if g is None or h is None:
+            out.append(f"no shaft group or no head group for {what}")
             continue
-        kids = {_name(sp).split(":")[0]: sp for sp in g.findall(f"{{{_P}}}sp")}
-        head_path, head_pts = _path(kids["Logic link head"])
+        kids = [_name(sp).split(":")[0] for sp in g.findall(f"{{{_P}}}sp")]
+        if kids != ["Logic link line"]:
+            out.append(f"{what}: the shaft group holds {kids}")
+            continue
+        path, pts = _path(g.findall(f"{{{_P}}}sp")[0])
+        if pts != _relative(ln.shaft)[1]:
+            out.append(f"{what}: Logic link line {pts} != the layout's shaft")
+        if path.get("fill") != "none" or path.find(f"{{{_A}}}close") is not None:
+            out.append(f"{what}: the shaft is not an open, unfilled path")
+        hk = {_name(sp).split(":")[0]: sp for sp in h.findall(f"{{{_P}}}sp")}
+        want = {"Logic link head", *(["Logic link type"] if ln.tag else [])}
+        if set(hk) != want:
+            out.append(f"{what}: the head group holds {sorted(hk)}")
+            continue
+        head_path, head_pts = _path(hk["Logic link head"])
         want_off, want_pts = _relative(ln.head)
-        head_xfrm = kids["Logic link head"].find(f"{{{_P}}}spPr/{{{_A}}}xfrm")
+        head_xfrm = hk["Logic link head"].find(f"{{{_P}}}spPr/{{{_A}}}xfrm")
         assert head_xfrm is not None
         if _box(head_xfrm)[:2] != want_off or head_pts != want_pts:
             out.append(f"{what}: head {head_pts} at {_box(head_xfrm)[:2]} != {want_pts}")
         if head_path.find(f"{{{_A}}}close") is None or head_path.get("fill") == "none":
             out.append(f"{what}: the head is not a closed, filled polygon")
-        for part in ("Logic link line", "Logic link halo"):
-            path, pts = _path(kids[part])
-            if pts != _relative(ln.shaft)[1]:
-                out.append(f"{what}: {part} {pts} != the layout's shaft")
-            if path.get("fill") != "none" or path.find(f"{{{_A}}}close") is not None:
-                out.append(f"{what}: {part} is not an open, unfilled path")
-        if "tailEnd" in ET.tostring(g, encoding="unicode"):
-            out.append(f"{what}: carries a DrawingML line-end")
+        for grp in (g, h):
+            xml = ET.tostring(grp, encoding="unicode")
+            for bad in ("tailEnd", "headEnd", "prstDash", "halo"):
+                if bad in xml:
+                    out.append(f"{what}: {_name(grp)} carries {bad}")
     return out
 
 
@@ -1408,20 +1042,22 @@ def _render(lay: Layout, **kw: str) -> bytes:
     return pptx.render_onepager_pptx(lay, marking="CUI", source="Source: list.xlsx", **kw)
 
 
-def test_the_pptx_paints_one_named_group_per_drawn_link(linked_layout: Layout) -> None:
+def test_the_pptx_paints_one_shaft_group_and_one_head_group_per_drawn_link(
+    linked_layout: Layout,
+) -> None:
     root = _slide(_render(linked_layout))
-    names = [_name(g) for g in _link_groups(root)]
     assert len(linked_layout.links) == 3 and len(linked_layout.link_notes) == 1
-    assert names == [
-        f"Logic link: {ln.pred_name} → {ln.succ_name} ({ln.kind})" for ln in linked_layout.links
-    ]
+    what = [f"{ln.pred_name} → {ln.succ_name} ({ln.kind})" for ln in linked_layout.links]
+    assert [_name(g) for g in _link_groups(root)] == [f"Logic link: {w}" for w in what]
+    assert [_name(g) for g in _head_groups(root)] == [f"Logic link arrowhead: {w}" for w in what]
 
 
 def test_mutation_the_group_count_goes_red_when_links_are_not_grouped(
     linked_layout: Layout, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(pptx._Slide, "group", lambda self, start, name: None)
-    assert _link_groups(_slide(_render(linked_layout))) == []
+    root = _slide(_render(linked_layout))
+    assert _link_groups(root) == [] and _head_groups(root) == []
 
 
 def test_each_link_groups_box_is_the_union_of_its_childrens_boxes(linked_layout: Layout) -> None:
@@ -1431,11 +1067,11 @@ def test_each_link_groups_box_is_the_union_of_its_childrens_boxes(linked_layout:
 
 def test_mutation_a_group_box_that_is_not_the_union_is_caught(linked_layout: Layout) -> None:
     root = _slide(_render(linked_layout))
-    g = _link_groups(root)[0]
-    off = g.find(f"{{{_P}}}grpSpPr/{{{_A}}}xfrm/{{{_A}}}off")
-    assert off is not None
-    off.set("x", str(int(off.get("x", "0")) + 1))  # one EMU of drift, in memory
-    assert len(_group_box_errors(root)) == 1
+    for g in (_link_groups(root)[0], _head_groups(root)[0]):
+        off = g.find(f"{{{_P}}}grpSpPr/{{{_A}}}xfrm/{{{_A}}}off")
+        assert off is not None
+        off.set("x", str(int(off.get("x", "0")) + 1))  # one EMU of drift, in memory
+    assert len(_group_box_errors(root)) == 2
 
 
 def test_the_pptx_head_and_shaft_are_the_layouts_own_points(linked_layout: Layout) -> None:
@@ -1446,8 +1082,8 @@ def test_the_pptx_head_and_shaft_are_the_layouts_own_points(linked_layout: Layou
     assert _lockstep_errors(root, linked_layout) == []
     compare = _slipped_layout()
     croot = _slide(pptx.render_onepager_compare_pptx(compare, marking="CUI", source="s"))
-    assert len(_link_groups(croot)) == 1 and _lockstep_errors(croot, compare) == []
-    assert _group_box_errors(croot) == []
+    assert len(_link_groups(croot)) == len(_head_groups(croot)) == 1
+    assert _lockstep_errors(croot, compare) == [] and _group_box_errors(croot) == []
 
 
 def test_mutation_a_head_drawn_off_the_layouts_points_is_caught(
@@ -1465,6 +1101,184 @@ def test_mutation_a_head_drawn_off_the_layouts_points_is_caught(
     assert len(errors) == len(linked_layout.links) and all(": head " in e for e in errors)
 
 
+# the spTree's paint order: one top-level child per entry, back to front
+
+_ITEM = re.compile(
+    r"^(Activity|Milestone|Prior activity|Prior milestone|Slip|Pull-in|Done|Done tick|Label"
+    r"|Tag|Tag text): "
+)
+
+
+def _order(root: ET.Element) -> list[str]:
+    tree = root.find(f"{{{_P}}}cSld/{{{_P}}}spTree")
+    assert tree is not None
+    return [_name(el) for el in tree if el.tag != f"{{{_P}}}nvGrpSpPr" and _name(el)]
+
+
+def _z_order_errors(root: ET.Element) -> list[str]:
+    """README §10: every shaft group sits after the lanes (and on Compare the summaries) and
+    BEFORE the first item shape; every head group AFTER the last item's label / tag and BEFORE
+    the data-date line."""
+    order = _order(root)
+    items = [i for i, n in enumerate(order) if _ITEM.match(n) and not n.endswith(": legend")]
+    under = [i for i, n in enumerate(order) if n.startswith(("Lane", "Summary"))]
+    shafts = [i for i, n in enumerate(order) if n.startswith("Logic link: ")]
+    heads = [i for i, n in enumerate(order) if n.startswith("Logic link arrowhead: ")]
+    dd = [i for i, n in enumerate(order) if n == "Data date"]
+    out = []
+    if not (items and shafts and heads):
+        return [f"nothing to order: {len(items)} items, {len(shafts)} shafts, {len(heads)} heads"]
+    if max(shafts) > min(items):
+        out.append(f"a shaft is painted over an item ({order[max(shafts)]})")
+    if under and min(shafts) < max(under):
+        out.append("a shaft is painted under a lane or summary")
+    if min(heads) < max(items):
+        out.append(f"an item is painted over a head ({order[max(items)]})")
+    if dd and max(heads) > min(dd):
+        out.append("a head is painted over the data-date line")
+    return out
+
+
+def test_the_pptx_paints_shafts_under_the_items_and_heads_over_them(
+    linked_layout: Layout,
+) -> None:
+    root = _slide(_render(linked_layout))
+    assert _z_order_errors(root) == []
+    compare = _slipped_layout()
+    croot = _slide(pptx.render_onepager_compare_pptx(compare, marking="CUI", source="s"))
+    order = _order(croot)
+    assert any(n.startswith("Slip: ") for n in order) and any(
+        n.startswith("Summary: ") for n in order
+    )
+    assert _z_order_errors(croot) == []
+
+
+@pytest.mark.parametrize(
+    ("both_at", "named"),
+    [
+        ("_link_heads", "a shaft is painted over an item"),
+        ("_link_shafts", "an item is painted over"),
+    ],
+)
+def test_mutation_a_layer_painted_in_the_other_place_is_caught(
+    linked_layout: Layout, monkeypatch: pytest.MonkeyPatch, both_at: str, named: str
+) -> None:
+    """Two mutants: both layers painted where the HEADS go (the shafts over the items — the
+    pristine order), or both where the SHAFTS go (the heads under them) — the order check names
+    the layer out of place."""
+    shafts, heads = pptx._link_shafts, pptx._link_heads
+
+    def both(s: Any, links: Any) -> None:
+        shafts(s, links)
+        heads(s, links)
+
+    other = "_link_shafts" if both_at == "_link_heads" else "_link_heads"
+    monkeypatch.setattr(pptx, both_at, both)
+    monkeypatch.setattr(pptx, other, lambda s, links: None)
+    errors = _z_order_errors(_slide(_render(linked_layout)))
+    assert any(e.startswith(named) for e in errors), errors
+
+
+def _runs(root: ET.Element) -> list[tuple[str, str, bool]]:
+    """``(shape name, run text, glows)`` for every run on the slide."""
+    out = []
+    for sp in root.iter(f"{{{_P}}}sp"):
+        for r in sp.iter(f"{{{_A}}}r"):
+            rpr = r.find(f"{{{_A}}}rPr")
+            assert rpr is not None
+            glow = rpr.find(f"{{{_A}}}effectLst/{{{_A}}}glow")
+            out.append(
+                (_name(sp), "".join(t.text or "" for t in r.iter(f"{{{_A}}}t")), glow is not None)
+            )
+    return out
+
+
+def _glow_errors(root: ET.Element, lay: Layout | CompareLayout) -> list[str]:
+    """The glow is on exactly the intended runs: an item's label OUTSIDE its bar (on Compare its
+    delta run too) and every link's type tag — never a label inside its bar, a NEW / REMOVED tag's
+    text, or any other text on the slide — and each glow is the slide's white at 1.5 pt, between
+    the run's fill and its typeface (DrawingML's schema order)."""
+    inside = {f"Label: {p.name}" for p in lay.items if p.inside}
+    outside = {f"Label: {p.name}" for p in lay.items if not p.inside}
+    out = []
+    for name, text, glows in _runs(root):
+        want = name in outside or name.startswith("Logic link type: ")
+        if glows != want:
+            out.append(f"{name} ({text!r}): glow {glows}, wanted {want}")
+        if name in inside and glows:
+            out.append(f"{name}: a label inside its bar glows")
+    for rpr in root.iter(f"{{{_A}}}rPr"):
+        kids = [c.tag.rsplit("}", 1)[1] for c in rpr]
+        if "effectLst" not in kids:
+            continue
+        glow = rpr.find(f"{{{_A}}}effectLst/{{{_A}}}glow")
+        colour = None if glow is None else glow.find(f"{{{_A}}}srgbClr")
+        if kids != ["solidFill", "effectLst", "latin"]:
+            out.append(f"a glow out of DrawingML's order: {kids}")
+        if glow is None or glow.get("rad") != "19050" or colour is None:
+            out.append("an effect list that is not a 1.5-pt glow")
+        elif colour.get("val") != "FFFFFF":
+            out.append(f"a glow that is not the slide's white: {colour.get('val')}")
+    return out
+
+
+def test_labels_outside_their_bars_and_type_tags_glow_and_nothing_else_does() -> None:
+    """Each run's glow is OPT-IN (``_run(..., glow=...)``), never inferred from its colour: the
+    Compare slide's inside label and its coloured delta run, and the white tag text, never glow."""
+    doc = _doc(ROUTE_ROWS)
+    lay = build_layout(doc.items, TODAY, "T", links=_chain(doc))
+    root = _slide(_render(lay))
+    assert any(p.inside for p in lay.items) and any(not p.inside for p in lay.items)
+    assert any(name.startswith("Logic link type: ") for name, _t, _g in _runs(root))
+    assert _glow_errors(root, lay) == []
+    clay = _slipped_layout()
+    croot = _slide(pptx.render_onepager_compare_pptx(clay, marking="CUI", source="s"))
+    assert _glow_errors(croot, clay) == []
+    tagged = _tagged_compare()
+    troot = _slide(pptx.render_onepager_compare_pptx(tagged, marking="CUI", source="s"))
+    assert any(n.startswith("Tag text: ") for n, _t, _g in _runs(troot))
+    assert any(p.inside for p in tagged.items) and any(
+        p.delta and not p.inside for p in tagged.items
+    )
+    assert _glow_errors(troot, tagged) == []
+
+
+def _tagged_compare() -> CompareLayout:
+    """A Compare slide with a NEW tag, a REMOVED ghost, a slipped label carrying its delta run
+    and an inside label — every run kind the glow rule distinguishes — and an SS link."""
+    prior = [
+        OnePagerItem("Lane", "Long base", D(2027, 1, 4), D(2027, 9, 30), 2),
+        OnePagerItem("Lane", "Moves", D(2027, 2, 1), D(2027, 3, 1), 3),
+        OnePagerItem("Lane", "Goes", D(2027, 4, 1), D(2027, 4, 1), 4),
+    ]
+    current = [
+        prior[0],
+        OnePagerItem("Lane", "Moves", D(2027, 2, 1), D(2027, 4, 1), 3),
+        OnePagerItem("Other", "Fresh long new bar", D(2027, 1, 4), D(2027, 12, 1), 5),
+    ]
+    doc = compare_onepager_docs(
+        OnePagerDoc("p.xlsx", "S", tuple(keyed(prior)), (), ()),
+        OnePagerDoc("c.xlsx", "S", tuple(keyed(current)), (), ()),
+    )
+    k = {r.name: r.key for r in doc.rows if r.key}
+    return build_compare_layout(doc, TODAY, "T", links=[Link(k["Long base"], k["Moves"], "SS")])
+
+
+@pytest.mark.parametrize("colour_rule", [False, True])
+def test_mutation_a_glow_on_the_wrong_runs_is_caught(
+    linked_layout: Layout, monkeypatch: pytest.MonkeyPatch, colour_rule: bool
+) -> None:
+    """Two mutants: every run glows; or the glow is a COLOUR rule (every non-white run) — the
+    latter glows the legend, the title and the inside label's coloured delta."""
+    real = pptx._run
+
+    def every(text: str, size: float, color: str, bold: bool, glow: bool = False) -> str:
+        return real(text, size, color, bold, color != "FFFFFF" if colour_rule else True)
+
+    monkeypatch.setattr(pptx, "_run", every)
+    assert _glow_errors(_slide(_render(linked_layout)), linked_layout) != []
+
+
 def test_the_legend_link_is_a_line_and_a_head_never_a_rounded_bar(linked_layout: Layout) -> None:
     root = _slide(_render(linked_layout))
     shapes = {_name(sp): sp for sp in root.iter(f"{{{_P}}}sp")}
@@ -1478,6 +1292,18 @@ def test_the_legend_link_is_a_line_and_a_head_never_a_rounded_bar(linked_layout:
         n.startswith("Legend: link")
         for n in (_name(sp) for sp in _slide(_render(bare)).iter(f"{{{_P}}}sp"))
     )
+
+
+def test_the_deck_carries_no_footnote_and_no_retired_link_parts(linked_layout: Layout) -> None:
+    """ADR-0543 retired the slide's footnote, the halo under each shaft and the dashed fallback."""
+    for data in (
+        _render(linked_layout),
+        pptx.render_onepager_compare_pptx(_slipped_layout(), marking="CUI", source="s"),
+    ):
+        names = [_name(el) for el in _slide(data).iter() if _name(el)]
+        assert "Footnote" not in names
+        assert not [n for n in names if "halo" in n or "dashed" in n]
+    assert not hasattr(pptx, "_WARN") and not hasattr(pptx, "_footnote")
 
 
 def _props(data: bytes) -> tuple[str, str]:
