@@ -26,6 +26,20 @@ tree agreed on every point — that is what a passing §0 looks like. AUDIT-2026
 its numbers. Session 7's pull request #726 merged as `5c6622fd` (2026-09-30): `main` carries ADR-0538 — continue from `main`,
 as the resume line says.
 
+## A fifth feature pull request beside the campaign (2026-10-01 (b), ADR-0544 — LODESTAR 2.1)
+
+ADR-0544 (LODESTAR 2.1: the Compare slide's CHANGE SUMMARY strip wrapped and sized for the monospace face
+that paints it — `MONO_CHAR_W` in `src/schedule_forensics/reports/onepager.py`; a risk register read by
+`src/schedule_forensics/reports/onepager_risks.py` and drawn on both slides as triangles by probability;
+every export carrying the slide's record — `src/schedule_forensics/reports/session_payload.py` — in the
+PowerPoint, a NEW std-lib PDF export (`src/schedule_forensics/reports/pdf.py`) and the Excel workbook,
+and a "Restore a slide" zone that reads it back, logic links included — v1.0.299, LODESTAR 2.1.0, archive
+53 members) is the draft pull request #732 of `claude/lodestar-app-updates-q4xos3`. Until it merges,
+`main` still expects ADR **0543** / version **1.0.298**; once it merges, ADR **0544** / **1.0.299**. Two
+flags for the operator ride in its handoff: column E of the register (the date of occurrence) is an
+assumption, and PowerPoint's own re-save keeping the custom XML part is UNVERIFIED (the alt-text fallback
+covers it).
+
 ## Four feature pull requests beside the campaign (2026-09-29 – 10-01, ADR-0539, ADR-0540, ADR-0541 and ADR-0543)
 
 ADR-0543 (LODESTAR 2.0 — the operator's "Console" design handoff: a studio with live redraw, server-side undo/redo, a
@@ -436,5 +450,5 @@ gate) before every push.
 
 QC-1 / QC-2 (ADR-0393) and QC-3 (ADR-0509) bind every session; they are pinned by `tests/test_standing_rules.py`.
 Run the session-token-guardian's `scripts/token_audit.py` as the FIRST action (copy it to the scratchpad) and before
-each operator prompt. `git fetch origin` before you branch, number an ADR, or commit. Highest ADR 0543. Version
-1.0.298. Schema 2.17.0.
+each operator prompt. `git fetch origin` before you branch, number an ADR, or commit. Highest ADR 0544. Version
+1.0.299. Schema 2.17.0.

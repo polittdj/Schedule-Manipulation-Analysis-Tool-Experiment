@@ -122,7 +122,18 @@ def test_windowed_doc_names_every_omitted_item_and_the_excel_says_so() -> None:
 #: footnote's five, ``gutter``): the digest below is the pristine tree's own (fac5773), computed
 #: THERE with those seven fields stripped — so this pin still proves the geometry byte-identical,
 #: not merely re-pinned to whatever the new tree emits (07483a31… with them, 64cac171… without).
-_PRISTINE_DIGEST = "64cac171fcc2de97745fa361e3cb2cdab73a77d2ba7dfe5bbf1d1b77adc9f385"
+#: Split under ADR-0544, which MOVED four fields of the Compare slide — ``label_w`` (a delta set in
+#: a monospace face), ``badge_w`` / ``badge_x`` (a tag sized for it) and the summary strip's
+#: ``lines`` / ``pt`` (wrapped for it) — and nothing else: the Timeline's digest is the pristine
+#: tree's own (e75a751e, computed THERE), and so is the Compare's with those fields stripped
+#: (``_MOVED_COMPARE_FIELDS``) — the pin still proves every other coordinate byte-identical. The
+#: whole Compare digest is re-derived on the new tree (its pristine value was a379a17f…).
+_PRISTINE_TIMELINE_DIGEST = "47b57449ee5aa2ee6bacc2a185adca06e9ab0abcda8697bd569d27d92dbc23e3"
+_PRISTINE_COMPARE_STRIPPED_DIGEST = (
+    "6719aade81c1f2117576cdb16dc34778ebf991d7702810ea13034a0eeb243f36"
+)
+_COMPARE_DIGEST = "82570700796fd7474521366fa92471fb21b4b2c4c1f5aee4d22bdfaa0a77a182"
+_MOVED_COMPARE_FIELDS = ("label_w", "badge_w", "badge_x")
 
 
 def _digest(obj: object) -> str:
@@ -130,15 +141,32 @@ def _digest(obj: object) -> str:
 
 
 #: ADR-0539 ADDED fields — each item's link key, the drawn links, their notes and the status
-#: column's letter. Stripped before the pristine digest so the pin keeps proving what it always
-#: proved (every slide's GEOMETRY is byte-identical) instead of being re-pinned blind; the new
-#: fields have their own tests (tests/reports/test_onepager_links.py).
+#: column's letter — and ADR-0544's per-item ``kind`` / ``prob`` / ``impact`` (a risk's marks,
+#: ``"item"`` / ``""`` / ``""`` on every item here). Stripped before the pristine digest so the
+#: pin keeps proving what it always proved (every slide's GEOMETRY is byte-identical) instead of
+#: being re-pinned blind; the new fields have their own tests (tests/reports/test_onepager_links.py,
+#: tests/reports/test_onepager_risks_layout.py).
 _ADDED_LAYOUT_FIELDS = ("links", "link_notes", "status_label")
+_ADDED_ITEM_FIELDS = ("key", "kind", "prob", "impact")
 
 
 def _pristine(layout: dict) -> dict:
     out = {k: v for k, v in layout.items() if k not in _ADDED_LAYOUT_FIELDS}
-    out["items"] = [{k: v for k, v in it.items() if k != "key"} for it in layout["items"]]
+    out["items"] = [
+        {k: v for k, v in it.items() if k not in _ADDED_ITEM_FIELDS} for it in layout["items"]
+    ]
+    return out
+
+
+def _stripped(compare: dict) -> dict:
+    """The Compare layout without the fields ADR-0544 moved (see ``_PRISTINE_TIMELINE_DIGEST``)."""
+    out = dict(compare)
+    out["items"] = [
+        {k: v for k, v in it.items() if k not in _MOVED_COMPARE_FIELDS} for it in compare["items"]
+    ]
+    out["summaries"] = [
+        {k: v for k, v in s.items() if k not in ("lines", "pt")} for s in compare["summaries"]
+    ]
     return out
 
 
@@ -151,8 +179,10 @@ def test_without_a_window_the_slides_are_the_pristine_slides() -> None:
     )
     cd = oc.compare_onepager_docs(prior, op.OnePagerDoc("c.xlsx", "S", moved, (), ()))
     cl = oc.build_compare_layout(cd, TODAY, "T", "S")
-    got = _digest([_pristine(op.layout_json(lay)), _pristine(oc.compare_layout_json(cl))])
-    assert got == _PRISTINE_DIGEST
+    compare = _pristine(oc.compare_layout_json(cl))
+    assert _digest(_pristine(op.layout_json(lay))) == _PRISTINE_TIMELINE_DIGEST
+    assert _digest(_stripped(compare)) == _PRISTINE_COMPARE_STRIPPED_DIGEST
+    assert _digest(compare) == _COMPARE_DIGEST
 
 
 # ── the compare slide ─────────────────────────────────────────────────────────────────────────

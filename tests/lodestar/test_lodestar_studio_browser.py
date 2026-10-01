@@ -46,7 +46,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from lodestar_probe import ROWS
+from lodestar_probe import ROWS, upload
 
 from schedule_forensics.lodestar import server as server_mod
 from schedule_forensics.lodestar.server import LodestarServer, LodestarState
@@ -245,7 +245,8 @@ def test_mutation_a_studio_that_lets_forms_post_navigates(browser: Any, tmp_path
     title edit alone now loads a new document, and the same count sees it."""
     patch = {
         "lodestar_studio.js": (
-            "var API = { title: 1, window: 1, today: 1, clear: 1, links: 1, swap: 1, example: 1 };",
+            "var API = { title: 1, window: 1, today: 1, clear: 1, links: 1, swap: 1, "
+            "example: 1, risks: 1 };",
             "var API = {};",
         )
     }
@@ -1052,3 +1053,168 @@ def test_mutation_the_pre_fix_inks_are_named(
         page.wait_for_timeout(250)  # past any colour transition
         failures = _sweep(page, view)
     assert any(named in f for f in failures), failures
+
+
+# ── the CHANGE SUMMARY strip, the tags and the deltas fit their boxes (ADR-0544) ──────────────
+
+#: A pair shaped like the operator's August → September lists (typed here): a lane with eight
+#: slips and long names, a lane with a pull-in, a removal, an addition and a repeated name whose
+#: copies match no date (a DUPLICATE NAME tag), and a lane that stands still.
+_FIT_HEAD = ("Swimlane Name", "Task", "Start", "Finish", "Complete")
+_FIT_PRIOR: tuple[tuple[object, ...], ...] = (
+    _FIT_HEAD,
+    ("GRC-MET Testing", "Facility Prep - Process Water", "11/20/26", "11/20/26", ""),
+    ("GRC-MET Testing", "Facility Prep - ISP Steam Ejector Systems", "11/6/26", "11/6/26", ""),
+    (
+        "GRC-MET Testing",
+        "Facility Prep - LOX Integrated System Checkout Test",
+        "12/28/26",
+        "12/28/26",
+        "",
+    ),
+    ("GRC-MET Testing", "Facility Prep - LH2 Checkout Testing", "10/26/26", "10/26/26", ""),
+    ("GRC-MET Testing", "MET ATP for Hot-Fire", "2/1/27", "2/1/27", ""),
+    ("GRC-MET Testing", "Exhaust Certification Test (ECT) ORR", "10/28/26", "10/28/26", ""),
+    ("GRC-MET Testing", "ECT Test", "12/9/26", "1/4/27", ""),
+    ("GRC-MET Testing", "MET Hot-Fire ORR/TRR", "2/1/27", "2/1/27", ""),
+    ("GRC-MET Testing", "Cold Fire / WDR", "2/8/27", "2/8/27", ""),
+    ("GRC-MET Testing", "Hotfire Test (Test Points #2-22)", "4/27/27", "4/27/27", ""),
+    ("Blue Origin", "BOR Demo Mission IDR #2", "9/15/26", "9/15/26", ""),
+    ("Blue Origin", "MET On-Dock", "11/13/26", "11/13/26", ""),
+    ("Blue Origin", "MET Testing", "1/5/27", "4/16/27", ""),
+    ("Blue Origin", "EOR FRR", "9/1/27", "9/1/27", ""),
+    ("Blue Origin", "BOTM - Uncrewed Demo Lander Launch", "3/18/28", "3/18/28", ""),
+    ("Blue Origin", "Monthly Review", "5/5/27", "5/5/27", ""),
+    ("Blue Origin", "Monthly Review", "6/5/27", "6/5/27", ""),
+    ("Flight Manifests", "Artemis III", "6/15/27", "6/15/27", ""),
+    ("Flight Manifests", "Artemis IV", "3/31/28", "3/31/28", ""),
+)
+_FIT_CURRENT: tuple[tuple[object, ...], ...] = (
+    _FIT_HEAD,
+    ("GRC-MET Testing", "Facility Prep - Process Water", "12/11/26", "12/11/26", ""),
+    (
+        "GRC-MET Testing",
+        "Facility Prep - ISP Steam Ejector Systems",
+        "12/2/26",
+        "12/2/26",
+        "Complete",
+    ),
+    (
+        "GRC-MET Testing",
+        "Facility Prep - LOX Integrated System Checkout Test",
+        "3/5/27",
+        "3/5/27",
+        "",
+    ),
+    ("GRC-MET Testing", "Facility Prep - LH2 Checkout Testing", "12/1/26", "12/1/26", ""),
+    ("GRC-MET Testing", "MET ATP for Hot-Fire", "3/14/27", "3/14/27", ""),
+    ("GRC-MET Testing", "Exhaust Certification Test (ECT) ORR", "12/13/26", "12/13/26", ""),
+    ("GRC-MET Testing", "ECT Test", "1/29/27", "2/24/27", ""),
+    ("GRC-MET Testing", "MET Hot-Fire ORR/TRR", "3/29/27", "3/29/27", ""),
+    ("GRC-MET Testing", "Cold Fire / WDR", "4/20/27", "4/20/27", ""),
+    ("GRC-MET Testing", "Hotfire Test (Test Points #2-22)", "4/27/27", "4/27/27", ""),
+    ("Blue Origin", "BOR Demo Mission IDR #2", "10/6/26", "10/6/26", ""),
+    ("Blue Origin", "MET On-Dock", "12/9/26", "12/9/26", "Complete"),
+    ("Blue Origin", "MET Testing", "1/5/27", "4/7/27", ""),
+    ("Blue Origin", "EOR FRR", "10/12/27", "10/12/27", ""),
+    ("Blue Origin", "Monthly Review", "5/8/27", "5/8/27", ""),
+    ("Blue Origin", "Monthly Review", "6/8/27", "6/8/27", ""),
+    ("Blue Origin", "BOTM - Uncrewed Demo Lander Launch (Mk2-A-U)", "3/22/28", "3/22/28", ""),
+    ("Flight Manifests", "Artemis III", "6/15/27", "6/15/27", ""),
+    ("Flight Manifests", "Artemis IV", "3/31/28", "3/31/28", ""),
+)
+#: Each summary line's and tag's NATURAL width (its ``textLength`` fit lifted for the measure)
+#: against the box the layout gave it — a strip line keeps 2.5 pt clear of the left edge, a tag 1.6.
+_NATURAL_FIT = """() => {
+  const nat = (t) => {
+    const had = t.getAttribute('textLength'); t.removeAttribute('textLength');
+    const w = t.getComputedTextLength(); if (had !== null) t.setAttribute('textLength', had);
+    return w;
+  };
+  const over = [], held = [];
+  const painted = (t, box, kind) => {
+    const w = t.getComputedTextLength();
+    if (w > box + 0.5) held.push([kind, t.textContent, +w.toFixed(1), +box.toFixed(1)]);
+  };
+  document.querySelectorAll('g.lss-summary').forEach((g) => {
+    const box = parseFloat(g.querySelector('.lss-sum-bg').getAttribute('width')) - 2.5;
+    g.querySelectorAll('.lss-sum-text').forEach((t) => {
+      const w = nat(t);
+      if (w > box + 0.5) over.push(['summary', t.textContent, +w.toFixed(1), +box.toFixed(1)]);
+      painted(t, box, 'summary');
+    });
+  });
+  document.querySelectorAll('.lss-badge').forEach((t) => {
+    const w = nat(t), box = parseFloat(t.previousSibling.getAttribute('width')) - 1.6;
+    if (w > box + 0.5) over.push(['tag', t.textContent, +w.toFixed(1), +box.toFixed(1)]);
+    painted(t, box, 'tag');
+  });
+  const first = document.querySelector('.lss-sum-text');
+  const cs = first ? getComputedStyle(first) : null;
+  return { over: over, held: held, lines: document.querySelectorAll('.lss-sum-text').length,
+    tags: document.querySelectorAll('.lss-badge').length,
+    rendering: cs ? cs.textRendering : '', face: cs ? cs.fontFamily : '' };
+}"""
+
+
+def _fit_pair(s: Studio) -> Any:
+    """The operator-shaped pair on the Compare page, the fonts in, the strip measured."""
+    for slot, rows, name in (
+        ("prior", _FIT_PRIOR, "August.xlsx"),
+        ("current", _FIT_CURRENT, "Sept.xlsx"),
+    ):
+        got = upload(s.server.server_port, "/onepager-compare/upload", rows, name, slot=slot)
+        assert got.status == 303, (slot, got.status)
+    page = s.page
+    page.goto(s.base + "/onepager-compare")
+    page.wait_for_function("() => window.LSStudio && LSStudio.state().layout !== null")
+    page.wait_for_selector("svg[data-ls-slide] .lss-sum-text")
+    page.evaluate("() => document.fonts.ready")
+    return page.evaluate(_NATURAL_FIT)
+
+
+@pytest.mark.parametrize("view", ["dark", "bright"])
+def test_the_summary_strip_tags_and_deltas_fit_their_boxes_in_the_face_that_paints_them(
+    browser: Any, view: str
+) -> None:
+    """Operator report 2026-10-01 (a screenshot): the CHANGE SUMMARY text ran outside its coloured
+    boxes. The strip and the tags are set in IBM Plex Mono — 0.6 em per glyph — and the layout now
+    wraps and sizes them for that face (ADR-0544); the slide renders with geometric precision so
+    the browser's pixel-rounded advances at small sizes cannot widen them past the box."""
+    with _studio(browser, view=view) as s:
+        got = _fit_pair(s)
+        assert got["lines"] >= 6 and got["tags"] >= 3, got
+        assert "IBM Plex Mono" in got["face"] and got["rendering"] == "geometricprecision", got
+        assert got["over"] == [], got["over"]
+
+
+def test_mutation_the_calibri_width_model_on_the_strip_overflows_the_boxes(
+    browser: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """MUTATION: the 0.52 model put back on the strip (in-process — the server runs here) and
+    the SAME measurement reports summary lines AND tags past their boxes, by name."""
+    from schedule_forensics.reports import onepager_compare as oc
+
+    monkeypatch.setattr(oc, "MONO_CHAR_W", 0.52)
+    with _studio(browser) as s:
+        got = _fit_pair(s)
+        kinds = {o[0] for o in got["over"]}
+        assert kinds == {"summary", "tag"}, got["over"]
+
+
+def test_mutation_a_wider_face_runs_past_the_boxes_and_the_squeeze_holds_it(browser: Any) -> None:
+    """MUTATION: the strip's face tracked 0.4 px wider per glyph in the served sheet — the natural
+    widths run past the boxes (the SAME checker names them) while the painter's exact box squeeze
+    still holds every PAINTED line and tag inside its box. Deterministic on every Chromium: the
+    pixel-rounded advances this change also guards against (measured +2.5 % on a 6-pt line in the
+    session's container, absent on CI's runner) are an environment's, not a mutant's."""
+    patch = {
+        "lodestar_studio.css": (
+            ".lss-sum-text{fill:var(--text-primary);font-family:var(--font-mono)}",
+            ".lss-sum-text{fill:var(--text-primary);font-family:var(--font-mono);letter-spacing:.4px}",
+        )
+    }
+    with _studio(browser, patch=patch) as s:
+        got = _fit_pair(s)
+        assert any(o[0] == "summary" for o in got["over"]), got
+        assert got["held"] == [], got["held"]

@@ -20344,3 +20344,61 @@ commit, not a rebase. The resolution:
   windows.
 - **Merged + ruled.** #730 squash-merged as `ad2cfa14` (tree `d5683fec` = the PR head's). The operator ruled the
   head-over-label overlap: **NO** label nudge — the overlap stays (recorded in HANDOFF; not to be re-proposed).
+
+## 2026-10-01 (b) — LODESTAR 2.1: the Compare strip fits, a risk register, every export restores (ADR-0544 · v1.0.299)
+
+- **Branch** `claude/lodestar-app-updates-q4xos3` from `main` @ `e75a751e`; a feature session outside the audit.
+- **The ask (operator, with a screenshot):** fix the CHANGE SUMMARY overflow; risks on the One-Pager from an Excel
+  register (A lane, B risk, C impact, D probability), drawn as a moment by date, red/yellow/green, unmistakable;
+  re-import any export (PPTX / XLSX / PDF) on both pages with the links; a separate Risks page only if better.
+- **Plan attacked first (QC-3), ten assumptions, five refuters + a critic:** A1/A2/A3/A5/A6/A7/A8 PARTLY
+  REFUTED, A4/A9 HELD; the critic's REFUTED findings applied (register refused on a list slot by header; the
+  restore names the data date and marking it applies; a risk beyond the list's span named; bounded readers).
+  Measured: Plex Mono 0.6000 em every sample; Chromium hinting +2.5 % at 6 pt / +6 % on a 10-pt tag;
+  geometricPrecision 0.600 at every scale; 50 / 53 sheet variants reproduce through a rebuilt workbook, 53 / 53
+  through the parser; poppler accepts the std-lib PDF on four oracles.
+- **Built.** The width model and the painter fit (ask 1); `onepager_risks.py` + the layout's `kind/prob/impact`
+  + three painters + the studio's Risks slot (ask 2); `session_payload.py` + the pptx customXml/alt-text carrier
+  + `pptx_read.py` + the new `pdf.py` / `pdf_read.py` + Excel restore sheets + the Restore zone + the ⤓ PDF
+  button (ask 3); no separate page (ask 4). Three agents built the independent modules in parallel from one
+  contract; the lead wired, re-pinned and verified.
+- **Found and fixed red → green:** the strip cut at 3.6 pt in the mono face (now steps to 3.2 first); a PowerPoint
+  shape name with `"` wrote a malformed slide (pre-existing; escaped now); the workbook record said POLARIS² in
+  LODESTAR (the generator is named now); a refused restore left no banner with scripting off; `round()` site
+  avoided (the ledger census is unchanged).
+- **Render-verified in Chromium (node Playwright):** triangles in the four colours on both pages, labels and
+  impact runs, legend entries, risks never hot, the HUD tile, the Risks slot, the Restore zone, the PDF button.
+- **Gate (final tree):** `ruff check .` clean; `ruff format --check .` clean; `mypy src/` clean (189 files);
+  `bandit -q -r src` rc 0; `node --check` both scripts; `tests/reports tests/lodestar tests/web/test_onepager_links_page.py
+  tests/web/test_monolith_split_contract.py tests/guards` → green after the re-pins (the last run: 64 passed on
+  the changed modules; 311 passed on the affected suites); the FULL `pytest -q` run is recorded in the closing line.
+- **CI round 1 on 43b0238b:** the browser job went red on ONE test — the twin that lifted
+  `text-rendering: geometricPrecision` expected the pixel-rounded overflow measured in the session's
+  container; CI's Chrome 153 runner rounds nothing, so nothing overflowed. The claim was an environment's,
+  not the product's: the twin now tracks the strip's face 0.4 px wider (deterministic) and asserts the
+  checker names the overrun while the painter's squeeze holds every painted line (node-measured here:
+  product 0 / 0, mutant 3 natural overruns / 0 painted); pushed as e5df3f87. 679 other browser tests passed.
+- **CI round 2 on 1c5e5499:** the browser job red on the LibreOffice interop twin the PowerPoint agent
+  appended — it asserted the alt-text records survive an Impress re-save; CI measured 0 of 5 back while
+  the reader still found LODESTAR data (the custom XML part). Re-pinned to the measured facts (the part
+  survives, the alt text does not); the README, the studio copy, the ADR and this handoff no longer
+  claim the alt-text fallback survives a re-save by any program (PowerPoint unverified).
+- **CI round 3 on 40478832:** `floor (declared minimum)` red on ONE test — the installer lockstep pin
+  (`tests/installer/test_installers.py::test_embedded_wheel_is_in_lockstep_with_the_source_tree`,
+  `lodestar_studio.py (content drifted)`): round 2's commit re-worded the studio's restore copy AFTER the
+  installers were built and rebuilt only the pyz. Reproduced locally (1 failed, 13 passed), the wheel and the
+  nine installers rebuilt at the same 1.0.299 (one PR, one version — the precedent is one bump per PR), the
+  installer + pyz suites green (109 passed); pushed as the follow-up commit. 6,439 other floor tests passed.
+  **Final head 4124cfef: all eight checks green** (run 36903412944 — check, test 3.11, test 3.13, floor,
+  browser, cui-guard; installer smoke linux + windows), mergeable state clean, no review threads; the PR
+  waits on the operator (mark ready, squash-merge). This docs-only line restarts CI once more.
+- **Closing line.** Draft pull request #732 (`claude/lodestar-app-updates-q4xos3`, head 43b0238b → e5df3f87 →
+  1c5e5499 → this docs/installer commit). FULL `python -m pytest -q` on 43b0238b: **6,451 passed, 6 failed, 407
+  skipped, 104 xfailed** in 2398 s (0:39:58) — the six, all fixed here and re-run green: the next-session
+  prompt's "Highest ADR / Version" line (0544 / 1.0.299); the four installer lockstep pins (the wheel and the
+  nine installers rebuilt — `python -m build --wheel` + `tools/installer/build_installers.py`, after
+  `git fetch --unshallow` so the MPXJ touch resolves; 75 installer tests green); the Compare page's PowerPoint
+  regex, which expected `name="…"/>` and now admits the shape's alt text. CI round 1: cui-guard green, the
+  browser job red on the one refuted twin (replaced); the remaining checks' outcome on the final head is in
+  HANDOFF's next STATUS line.
+

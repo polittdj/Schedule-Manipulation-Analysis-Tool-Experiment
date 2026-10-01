@@ -20,7 +20,7 @@ import threading
 from collections import OrderedDict
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field, fields
-from typing import Any, TypeVar, cast
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 from schedule_forensics.ai import (
     AIBackend,
@@ -96,6 +96,9 @@ from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
 from schedule_forensics.reports.onepager import OnePagerDoc
 from schedule_forensics.reports.onepager_links import Link
+
+if TYPE_CHECKING:
+    from schedule_forensics.reports.onepager_risks import RiskDoc
 
 
 @dataclass(frozen=True)
@@ -800,6 +803,9 @@ class SessionState:
     #: each One-Pager page's last laid-out slide, keyed by everything it was computed from
     #: (ADR-0540; ``web.onepager.cached_layout``)
     onepager_cache: dict[str, tuple[Any, Any]] = field(default_factory=dict)
+    #: The One-Pager risk register (ADR-0544) — loaded only by LODESTAR; Polaris²'s pages never
+    #: set it, and the shared layout code reads it as ``None`` here.
+    onepager_risks: RiskDoc | None = None
     # JCL joint cost-&-schedule confidence settings (ADR-0269). Blank targets (None) mean
     # "use the run's deterministic finish / EAC"; td_share is the time-dependent cost share
     # τ; the 1/1/1 multipliers mean cost-estimating uncertainty is OFF (duration-driven

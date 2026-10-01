@@ -17,7 +17,7 @@
 // Strict CSP (script-src 'self'): no inline script and no inline handlers anywhere.
 (function () {
   "use strict";
-  var NS = "http://www.w3.org/2000/svg";
+  var NS = "http://www.w3.org/2000/svg", D = document;
   var PAL = [3, 1, 2, 5, 4, 6]; // swimlane i → --viz-PAL[i mod 6] (the design's order)
 
   function el(tag, attrs, text) {
@@ -28,6 +28,9 @@
   }
   function pts(a) { return a.map(function (p) { return p[0] + "," + p[1]; }).join(" "); }
   function diamond(x, y, h) { return x + "," + (y - h) + " " + (x + h) + "," + y + " " + x + "," + (y + h) + " " + (x - h) + "," + y; }
+  // a risk's glyph (ADR-0544): a triangle pointing UP, its apex at the row's top, never a diamond
+  function triangle(x, y, h) { return x + "," + (y - h) + " " + (x + h) + "," + (y + h) + " " + (x - h) + "," + (y + h); }
+  function riskClass(p) { return "is-risk-" + (p.prob || "unknown"); }
   function laneColor(L, laneIdx) {
     var ln = L.lanes[laneIdx], i = ln && typeof ln.index === "number" ? ln.index : laneIdx;
     return "var(--viz-" + PAL[((i % 6) + 6) % 6] + ")";
@@ -78,6 +81,10 @@
   }
   function span(s, f) { return s === f ? f : s + " → " + f; }
   function tip(L, p) {
+    if (p.kind === "risk") {
+      var when = p.finish || p.current_finish || "";
+      return p.name + " — RISK · " + when + (p.impact || p.delta ? " · " + (p.impact || p.delta) : "") + " · probability " + (p.prob || "not read");
+    }
     if (p.status === undefined) {
       return p.name + (p.milestone ? " — " + p.finish : " — " + p.start + " → " + p.finish) +
         (p.done ? " · complete" + (L.status_label ? " (" + L.status_label + ")" : "") : "");
@@ -119,6 +126,7 @@
       else if (e.kind === "slip") moveArrow(g, e.x, e.x + 10, cy, 2.4, true);
       else if (e.kind === "pull") moveArrow(g, e.x + 10, e.x, cy, 2.4, false);
       else if (e.kind === "new") g.appendChild(el("text", { x: e.x, y: cy + 2, class: "lss-legend-new" }, "NEW"));
+      else if (e.kind.indexOf("risk-") === 0) g.appendChild(el("polygon", { points: triangle(e.x + 5, cy, 3.6), class: "lss-legend-risk is-" + e.kind }));
       else if (e.kind === "link") {
         g.appendChild(el("line", { x1: e.x, y1: cy, x2: e.x + 7.4, y2: cy, class: "lss-legend-linkline" }));
         g.appendChild(el("polygon", { points: (e.x + 10) + "," + cy + " " + (e.x + 7.4) + "," + (cy - 1.3) + " " + (e.x + 7.4) + "," + (cy + 1.3), class: "lss-head" }));
@@ -192,10 +200,11 @@
     var items = el("g", { class: "lss-items" }), index = {};
     var barH = L.bar_h, rowH = L.row_h || 10;
     L.items.forEach(function (p) {
-      var c = laneColor(L, p.lane), key = p.key || "", hot = !!(key && (!linkable || linkable[key]));
+      var risk = p.kind === "risk";
+      var c = laneColor(L, p.lane), key = p.key || "", hot = !!(key && !risk && (!linkable || linkable[key]));
       var g = el("g", {
-        class: "lss-item" + (hot ? " is-hot" : "") + (p.status ? " is-st-row-" + slug(p.status) : ""),
-        "data-key": key || null, "data-status": p.status || null,
+        class: "lss-item" + (hot ? " is-hot" : "") + (p.status ? " is-st-row-" + slug(p.status) : "") + (risk ? " is-risk" : ""),
+        "data-key": key || null, "data-status": p.status || null, "data-kind": p.kind || null,
       });
       g.appendChild(el("title", {}, tip(L, p)));
       var ext = extent(L, p);
@@ -208,7 +217,8 @@
       if (p.arrow_x0 !== null && p.arrow_x0 !== undefined) moveArrow(g, p.arrow_x0, p.arrow_x1, p.arrow_y, L.arrow_head, p.status === "slipped");
       if (p.x0 !== null && p.x0 !== undefined) {
         var origin = "transform-origin:" + p.x0 + "px " + p.y + "px;--d:" + (p.lane * 70 + 60) + "ms";
-        if (p.milestone) g.appendChild(el("polygon", { points: diamond(p.x0, p.y, (p.ms || L.ms) / 2), fill: c, class: "lss-glyph", style: origin }));
+        if (risk) g.appendChild(el("polygon", { points: triangle(p.x0, p.y, (p.ms || L.ms) / 2), class: "lss-glyph lss-risk " + riskClass(p), style: origin }));
+        else if (p.milestone) g.appendChild(el("polygon", { points: diamond(p.x0, p.y, (p.ms || L.ms) / 2), fill: c, class: "lss-glyph", style: origin }));
         else g.appendChild(el("rect", { x: p.x0, y: p.y - barH / 2, width: Math.max(0, p.x1 - p.x0), height: barH, rx: 1.2, fill: c, class: "lss-glyph", style: origin }));
       }
       if (p.done && p.done_x !== null && p.done_x !== undefined) doneBadge(g, p.done_x, p.y, p.done_r);
@@ -217,7 +227,8 @@
         x: tx, y: p.y + L.label_pt * 0.35, "text-anchor": p.label_anchor, "font-size": L.label_pt,
         class: "lss-label" + (p.inside ? " is-in" : ""), "stroke-width": p.inside ? null : (0.42 * L.label_pt).toFixed(3),
       }, p.label);
-      if (p.delta) t.appendChild(el("tspan", { class: "lss-delta is-st-" + slug(p.status) }, " " + p.delta));
+      var extra = risk ? (p.impact || p.delta) : p.delta;
+      if (extra) t.appendChild(el("tspan", { class: "lss-delta " + (risk ? riskClass(p) : "is-st-" + slug(p.status)) }, " " + extra));
       g.appendChild(t);
       if (p.badge) {
         g.appendChild(el("rect", { x: p.badge_x, y: p.y - L.label_pt * 0.6, width: p.badge_w, height: L.label_pt * 1.2, rx: 1, class: "lss-badge-bg is-st-" + slug(p.status) }));
@@ -251,20 +262,45 @@
     host.textContent = "";
     host.appendChild(svg);
     // a name the face draws wider than the layout reserved is held to its reserved width, so the
-    // server's geometry — what the router and the PowerPoint read — stays the truth
+    // server's geometry — what the router and the PowerPoint read — stays the truth; the summary
+    // strip's lines and the tags likewise (ADR-0544: the layout sizes them for a monospace face,
+    // and a face the browser substitutes may still run wider)
     fitLabels(index);
+    fitBoxes(svg);
+    refit(svg, index);
     return { svg: svg, L: L, index: index, rings: rings, lead: lead, dd: ddLayer };
   }
 
+  // ``tol`` is the overrun a text may keep: a label beside its shape may run 2% long (nothing
+  // bounds it); text INSIDE a box (a summary line, a tag) is held to the box exactly
+  function squeeze(t, w, tol) {
+    if (!w || !t.getComputedTextLength) return;
+    try {
+      t.removeAttribute("textLength"); // measure the face itself, never an earlier fit
+      var have = t.getComputedTextLength();
+      if (have > w * (tol || 1)) { t.setAttribute("textLength", w.toFixed(2)); t.setAttribute("lengthAdjust", "spacingAndGlyphs"); }
+    } catch (e) { /* not laid out (hidden): leave it */ }
+  }
   function fitLabels(index) {
     Object.keys(index).forEach(function (k) {
-      var it = index[k], t = it.label, w = it.p.label_w;
-      if (!w || it.p.inside || !t.getComputedTextLength) return;
-      try {
-        var have = t.getComputedTextLength();
-        if (have > w * 1.02) { t.setAttribute("textLength", w.toFixed(2)); t.setAttribute("lengthAdjust", "spacingAndGlyphs"); }
-      } catch (e) { /* not laid out (hidden): leave it */ }
+      var it = index[k];
+      if (!it.p.inside) squeeze(it.label, it.p.label_w, 1.02);
     });
+  }
+  function fitBoxes(svg) {
+    Array.prototype.forEach.call(svg.querySelectorAll(".lss-summary"), function (g) {
+      var box = g.querySelector(".lss-sum-bg"), w = box ? parseFloat(box.getAttribute("width")) - 5 : 0;
+      Array.prototype.forEach.call(g.querySelectorAll(".lss-sum-text"), function (t) { squeeze(t, w, 1); });
+    });
+    Array.prototype.forEach.call(svg.querySelectorAll(".lss-badge"), function (t) {
+      var bg = t.previousSibling, w = bg && bg.getAttribute ? parseFloat(bg.getAttribute("width")) - 3.2 : 0;
+      squeeze(t, w, 1);
+    });
+  }
+  // the first paint may precede the web fonts: once they are in, fit again against the real faces
+  function refit(svg, index) {
+    if (!D.fonts || !D.fonts.ready) return;
+    D.fonts.ready.then(function () { if (svg.isConnected) { fitLabels(index); fitBoxes(svg); } });
   }
 
   // ── overlays the studio drives ──

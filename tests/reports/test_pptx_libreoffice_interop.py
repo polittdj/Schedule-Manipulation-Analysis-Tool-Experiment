@@ -46,6 +46,7 @@ import pytest
 from schedule_forensics.reports.onepager import OnePagerDoc, OnePagerItem, build_layout
 from schedule_forensics.reports.onepager_compare import build_compare_layout, compare_onepager_docs
 from schedule_forensics.reports.pptx import render_onepager_compare_pptx, render_onepager_pptx
+from schedule_forensics.reports.pptx_read import read_pptx
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 #: A deck PowerPoint wrote — the control. Independent of everything this repo generates.
@@ -259,3 +260,62 @@ def test_libreoffice_keeps_column_ds_check_a_check(soffice: str, tmp_path: Path)
     assert set(strokes) == {f"Done tick: {n}" for n in done} | {"Done tick: legend"}, strokes
     for name, kinds in strokes.items():
         assert sorted(kinds) == ["falling", "rising"], (name, kinds)
+
+
+def test_libreoffice_resave_keeps_the_record_and_drops_the_alt_text(
+    soffice: str, tmp_path: Path
+) -> None:
+    """ADR-0544: a deck that carries the session is re-saved by Impress AS A DECK
+    (``--convert-to pptx``) and read back. MEASURED in CI on 2026-10-01 (run 36895548857, the
+    first version of this test): LibreOffice 24.2's PresentationML export DROPS the alt text on
+    every item shape (0 of 5 records came back) while the reader still found LODESTAR data in the
+    deck — the custom XML part is what carries a slide through a LibreOffice re-save, the alt text
+    only through a program that keeps it (PowerPoint: UNVERIFIED). Both facts are pinned here, so a
+    LibreOffice that starts keeping alt text, or stops keeping the part, moves this test on purpose.
+    The output lands in a directory of its own so the input is never overwritten, and the artifact
+    is the verdict (``soffice`` exits 0 on a refusal — see the module doc)."""
+    lay = build_layout(list(_items(0)), _TODAY, "Program One-Pager", "Prepared 2026-06-15")
+    settings = {"page": "timeline", "title": "Program One-Pager", "links": [], "sources": {}}
+    src = tmp_path / "carrier.pptx"
+    src.write_bytes(
+        render_onepager_pptx(
+            lay,
+            marking=_MARKING,
+            source="Source: probe.xlsx · 5 items",
+            payload=b'{"lodestar":{"format":1,"page":"timeline"}}',
+            settings=settings,
+        )
+    )
+    outdir = tmp_path / "resaved"
+    outdir.mkdir()
+    produced = outdir / "carrier.pptx"
+    done = subprocess.run(
+        [
+            soffice,
+            f"-env:UserInstallation=file://{outdir / '_lo_profile'}",
+            "--headless",
+            "--norestore",
+            "--convert-to",
+            "pptx",
+            "--outdir",
+            str(outdir),
+            str(src),
+        ],
+        capture_output=True,
+        timeout=_TIMEOUT,
+        check=False,
+    )
+    said = (done.stderr or done.stdout or b"").decode("utf-8", "replace").strip()
+    assert produced.exists(), f"LibreOffice did not re-save the carrier deck as .pptx: {said}"
+    deck = read_pptx(produced.read_bytes())
+    found = {
+        "payload": deck.payload is not None,
+        "settings": deck.settings is not None,
+        "items": len(deck.items),
+        "notes": deck.notes,
+    }
+    assert deck.problem == "", (deck.problem, found)
+    # the record survives the re-save: the restore reads THIS, never the alt text
+    assert deck.payload == b'{"lodestar":{"format":1,"page":"timeline"}}', found
+    # the measured loss, pinned: the item shapes come back with no LODESTAR alt text
+    assert deck.items == [], found

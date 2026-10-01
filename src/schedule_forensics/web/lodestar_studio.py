@@ -35,6 +35,7 @@ from schedule_forensics.reports.onepager_compare import (
     compare_layout_json,
 )
 from schedule_forensics.reports.onepager_links import LINK_NAMES, LINK_TYPES, MAX_LINKS, Link
+from schedule_forensics.reports.onepager_risks import PROB_NAMES, RiskDoc
 from schedule_forensics.web.htmlkit import _e
 from schedule_forensics.web.lodestar_actions import item_name
 from schedule_forensics.web.lodestar_history import History
@@ -48,6 +49,7 @@ from schedule_forensics.web.onepager import (
     onepager_title,
     onepager_view,
     option_label,
+    risks_view,
 )
 from schedule_forensics.web.onepager import EMPTY_SENTENCES as TIMELINE_EMPTY
 from schedule_forensics.web.onepager import slide_sentences as timeline_sentences
@@ -171,6 +173,44 @@ def window_head(window: tuple[dt.date, dt.date], shown: int, total: int, omitted
     )
 
 
+def _risk_notices(st: OnePagerSession, window: tuple[dt.date, dt.date] | None) -> list[Notice]:
+    """The risk register's own caveats (ADR-0544): the rows it skipped, what it read under an
+    assumption, and the risks a date window leaves off the slide — each by row, never silent."""
+    register: RiskDoc | None = st.onepager_risks
+    if register is None:
+        return []
+    out: list[Notice] = []
+    if register.problems:
+        out.append(Notice("risk-skipped", "fail", "Risk rows skipped", items=register.problems))
+    if register.notes:
+        out.append(
+            Notice(
+                "risk-read", "info", "Risk register — read with an assumption", items=register.notes
+            )
+        )
+    _kept, omitted = risks_view(st, window)
+    if omitted:
+        out.append(
+            Notice(
+                "risk-window",
+                "info",
+                "Risks outside the date window",
+                f"{len(omitted)} risk(s) dated outside the window are left off the slide:",
+                tuple(omitted),
+            )
+        )
+    return out
+
+
+def _risk_hud(
+    st: OnePagerSession, window: tuple[dt.date, dt.date] | None
+) -> list[tuple[str, str, str]]:
+    if st.onepager_risks is None:
+        return []
+    kept, _omitted = risks_view(st, window)
+    return [("RISKS", str(len(kept)), "warn")]
+
+
 def _link_notices(links: Sequence[Link], notes: Sequence[str]) -> list[Notice]:
     if not notes:
         return []
@@ -245,11 +285,13 @@ def timeline_model(st: OnePagerSession, today: dt.date, made: dt.date) -> PageMo
     if lay.today_note:
         notices.append(Notice("today", "info", "Data date", lay.today_note))
     notices += _link_notices(st.onepager_links, lay.link_notes)
+    notices += _risk_notices(st, win)
     hud = [
         ("SWIMLANES", str(len(lay.lanes)), ""),
         ("ACTIVITIES", str(len(view.items) - ms), ""),
         ("MILESTONES", str(ms), ""),
         ("LOGIC LINKS", str(len(st.onepager_links)), "accent"),
+        *_risk_hud(st, win),
         ("WINDOW", "set" if win is not None else "all", "gold"),
     ]
     return PageModel("timeline", "slide", head, sub, prov, lay, notices, hud, win, title)
@@ -334,12 +376,14 @@ def compare_model(st: OnePagerSession, today: dt.date, made: dt.date) -> PageMod
     if lay.today_note:
         notices.append(Notice("today", "info", "Data date", lay.today_note))
     notices += _link_notices(st.onepager_compare_links, lay.link_notes)
+    notices += _risk_notices(st, win)
     hud = [
         ("SLIPPED", str(t.slipped), "fail"),
         ("PULLED IN", str(t.pulled_in), "pass"),
         ("START MOVED", str(t.start_moved), "warn"),
         ("UNCHANGED", str(t.unchanged), "muted"),
         ("NEW", str(t.new), "info"),
+        *_risk_hud(st, win),
     ]
     return PageModel("compare", "slide", head, sub, prov, lay, notices, hud, win, title)
 
@@ -736,13 +780,43 @@ def _td(value: object, num: bool = False) -> str:
     return f"<td{' class=ls-num' if num else ''}>{_e(value)}</td>"
 
 
+def _risk_rows(st: OnePagerSession, window: tuple[dt.date, dt.date] | None) -> str:
+    """The DATA drawer's second table: the risk register's rows on the slide (ADR-0544)."""
+    register: RiskDoc | None = st.onepager_risks
+    if register is None:
+        return ""
+    kept, _omitted = risks_view(st, window)
+    rows = "".join(
+        "<tr>"
+        + _td(r.lane)
+        + _td(r.name)
+        + _td(r.date.isoformat(), True)
+        + _td(r.impact_text)
+        + _td(r.impact_days if r.impact_days is not None else "—", True)
+        + _td(PROB_NAMES.get(r.prob, r.prob))
+        + _td(r.row, True)
+        + "</tr>"
+        for r in kept
+    )
+    return (
+        "<table class=ls-table><caption>Risks on the slide — swimlane, risk, date of occurrence, "
+        "potential impact as typed and in calendar days, probability, sheet row</caption>"
+        "<thead><tr><th>Swimlane</th><th>Risk</th><th>Date</th><th>Impact</th><th>cal d</th>"
+        f"<th>Probability</th><th>Row</th></tr></thead><tbody>{rows}</tbody></table>"
+    )
+
+
 def _data_drawer(st: OnePagerSession, model: PageModel) -> str:
-    """The DATA drawer — the parsed (Timeline) or compared (Compare) rows, as the v1 ▦ DATA."""
+    """The DATA drawer — the parsed (Timeline) or compared (Compare) rows, as the v1 ▦ DATA,
+    and the risks on the slide when a register is loaded (ADR-0544)."""
     if model.page == "compare":
         cdoc, _omitted = onepager_compare_view(st)
         if cdoc is None:
             return ""
-        return _compare_rows(cdoc)
+        risks = _risk_rows(st, model.window)
+        if not risks:
+            return _compare_rows(cdoc)
+        return _compare_rows(cdoc).replace("</table></div>", f"</table>{risks}</div>", 1)
     view, _omitted = onepager_view(st)
     if view is None or not view.items:
         return ""
@@ -762,7 +836,8 @@ def _data_drawer(st: OnePagerSession, model: PageModel) -> str:
         "<div class=ls-data id=lsData hidden><table class=ls-table>"
         "<caption>Parsed rows — swimlane, item, type, start, finish, complete, sheet row</caption>"
         "<thead><tr><th>Swimlane</th><th>Item</th><th>Type</th><th>Start</th><th>Finish</th>"
-        f"<th>Complete</th><th>Row</th></tr></thead><tbody>{rows}</tbody></table></div>"
+        f"<th>Complete</th><th>Row</th></tr></thead><tbody>{rows}</tbody></table>"
+        f"{_risk_rows(st, model.window)}</div>"
     )
 
 
@@ -1224,15 +1299,114 @@ def _export_section(model: PageModel) -> str:
             attrs=" download id=lsXlsx",
         )
         + button(
-            "Print / PDF",
+            "PDF",
             variant="secondary",
+            size="sm",
+            left="file-down",
+            href=f"/export/pdf/{stem}",
+            attrs=" download id=lsPdf",
+        )
+        + "</div>"
+        + button(
+            "Print",
+            variant="ghost",
             size="sm",
             left="printer",
             attrs=" data-ls-print id=lsPrint",
         )
-        + "</div>"
+        + "<div class=ls-fine>Every export carries the slide — its lists, dates, logic links and "
+        "risks — so dropping it on “Restore a slide” brings the slide back. Print makes a page "
+        "for paper; a PDF saved from the Print dialog cannot be restored.</div>"
     )
     return _sec("4 · Take it with you", body, tour="export")
+
+
+#: The risk register's columns, stated once (ADR-0544).
+RISK_COLUMNS_HELP = (
+    "<b>A</b> the swimlane name, <b>B</b> the risk, <b>C</b> the potential impact in days "
+    "(<code>30</code>, <code>30 d</code>, <code>6 wk</code>, <code>2 mo</code> — anything else "
+    "is kept as typed), <b>D</b> the probability — <b>High</b>, <b>Medium</b> or <b>Low</b> — "
+    "and <b>E</b> the date of occurrence. With a header row the columns may stand in any order. "
+    "A risk is drawn in its swimlane at its date as a triangle — red, amber or green by its "
+    "probability — labelled RISK, its name, its date and its impact; it is never a task or a "
+    "milestone, and never a link's end."
+)
+
+
+def _risks_section(st: OnePagerSession, page: str) -> str:
+    """Risks (optional) — the register's card, its drop zone, Clear, the template (ADR-0544).
+    ONE register for both pages; the section stands on each."""
+    base = PAGES[page][0]
+    register: RiskDoc | None = st.onepager_risks
+    card = ""
+    if register is not None:
+        counts = {p: 0 for p in PROB_NAMES}
+        for r in register.risks:
+            counts[r.prob] = counts.get(r.prob, 0) + 1
+        by_prob = " · ".join(f"{n} {PROB_NAMES.get(p, p)}" for p, n in counts.items() if n)
+        skipped = f" · {len(register.problems)} row(s) skipped" if register.problems else ""
+        card = (
+            f'<div class=ls-file>{icon("triangle-alert", 20)}<div style="min-width:0;flex:1">'
+            f"<div class=ls-file-name data-no-i18n>{_e(register.source)}</div>"
+            f"<div class=ls-file-sub>{len(register.risks)} risk(s) · {_e(by_prob)}{skipped}</div>"
+            "</div></div>"
+        )
+    verb = (
+        "Replace the risks — drop a workbook here, or"
+        if register
+        else "Drop the risk register here, or"
+    )
+    clear = (
+        f'<form action="{base}/risks" method=post class=ls-inline>'
+        "<input type=hidden name=action value=clear>"
+        + button("Clear risks", variant="ghost", size="sm", kind="submit")
+        + "</form>"
+        if register
+        else ""
+    )
+    form = (
+        f'<form class=ls-drop id=lsDropRisks data-ls-drop=risks action="{base}/risks/upload" '
+        'method=post enctype="multipart/form-data">'
+        f"<span>{verb}</span>"
+        '<input type=file name=file accept=".xlsx" id=lsFileRisks class=ls-file-input>'
+        '<div class=ls-row style="justify-content:center">'
+        '<label for=lsFileRisks class="aismat-btn aismat-btn--secondary aismat-btn--sm" data-ls-choose=risks>'
+        f"{icon('upload', 14)}<span>Choose a file</span></label>"
+        + button("Upload", variant="primary", size="sm", kind="submit", attrs=" data-ls-nojs")
+        + "</div>"
+        '<a href="/export/xlsx/risks-template" download>Download the risk template</a>'
+        "</form>"
+    )
+    help_ = (
+        "<details><summary>What the risk register holds</summary>"
+        f'<p style="margin:8px 0 0">{RISK_COLUMNS_HELP}</p></details>'
+    )
+    return _sec(
+        "Risks (optional)", f"{card}{form}<div class=ls-row>{clear}</div>{help_}", tour="risks"
+    )
+
+
+def _restore_section(page: str) -> str:
+    """Restore a slide — a drop zone for any file LODESTAR exported (ADR-0544): the slide,
+    its dates, its logic links and its risks come back, on the page the export came from."""
+    base = PAGES[page][0]
+    form = (
+        f'<form class=ls-drop id=lsDropRestore data-ls-drop=restore action="{base}/restore/upload" '
+        'method=post enctype="multipart/form-data">'
+        "<span>Drop a PowerPoint, PDF or Excel file LODESTAR exported, or</span>"
+        '<input type=file name=file accept=".pptx,.pdf,.xlsx" id=lsFileRestore class=ls-file-input>'
+        '<div class=ls-row style="justify-content:center">'
+        '<label for=lsFileRestore class="aismat-btn aismat-btn--secondary aismat-btn--sm" data-ls-choose=restore>'
+        f"{icon('upload', 14)}<span>Choose a file</span></label>"
+        + button("Restore", variant="primary", size="sm", kind="submit", attrs=" data-ls-nojs")
+        + "</div></form>"
+        "<div class=ls-fine>The slide comes back as it was exported — its lists, title, dates, "
+        "data date, marking, logic links and risks — and lands on the page it came from. A "
+        "PowerPoint re-saved by another program restores only if that program kept the record or the "
+        "alt text on its shapes (LibreOffice's export drops the alt text; PowerPoint is unverified). "
+        "A PDF saved from the browser's Print dialog carries no slide data.</div>"
+    )
+    return _sec("Restore a slide", form, tour="restore")
 
 
 def _showme_section() -> str:
@@ -1248,11 +1422,13 @@ def rail_region(st: OnePagerSession, model: PageModel, history: History) -> str:
     """The RAIL's HTML (the region the script swaps)."""
     parts = [_log(history)]
     parts.append(_two_lists_section(st) if model.page == "compare" else _list_section(st))
+    parts.append(_risks_section(st, model.page))
     if model.kind in ("slide", "window"):
         parts.append(_shape_section(model))
     if model.kind == "slide":
         parts.append(_links_section(st, model))
         parts.append(_export_section(model))
+    parts.append(_restore_section(model.page))
     parts.append(_showme_section())
     return "".join(parts)
 
@@ -1405,6 +1581,7 @@ def studio_state(
             "timeline": st.onepager is not None,
             "prior": st.onepager_prior is not None,
             "current": st.onepager_current is not None,
+            "risks": st.onepager_risks is not None,
         },
         "reveal": reveal,
     }

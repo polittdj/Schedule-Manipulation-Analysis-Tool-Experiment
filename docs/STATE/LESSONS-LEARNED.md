@@ -435,6 +435,48 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-10-01 (b) — A width model names a face, a browser paints pixels, and the pin you re-derive must prove what it always proved (ADR-0544)
+
+* **The number in the comment was for a face nobody painted.** `CHAR_W = 0.52` was documented as "Calibri's
+  average advance (a safe over-estimate)" — true for Calibri, true for Plex Sans (0.44–0.51), and 15 % short
+  for the monospace face the strip, the tags and the deltas were actually set in. The screenshot was the
+  first instrument that disagreed with the layout; the vendored font measured in Chromium was the second.
+  **A width model is a claim about a face: name the face in the constant, and measure the face.**
+* **The metric is not what the page paints.** Plex Mono advances 0.6000 em at 100 px and 0.667 em at a
+  1600-px window: Linux Chromium rounds each glyph's advance to a device pixel at slide scale, and the
+  overrun depends on the zoom. A server-side wrap can only be right for one zoom; `text-rendering:
+  geometricPrecision` made the paint match the metric at every scale (0.600), and the exact box squeeze stays
+  as the net. **When a check concerns what a page shows, measure the page at more than one size.**
+* **A browser check that measures after the fix is not a check.** `getComputedTextLength()` returns the
+  SQUEEZED length once `textLength` is set (421.44 → 100.00), so a test that measured the painted lines
+  could never go red. The test lifts `textLength` first, measures the face's own width, and asserts no line
+  NEEDED the squeeze — and its two mutants (the CSS line removed; the 0.52 model restored) go red by name.
+* **A mutant that depends on the runner's font stack is not a mutant.** The twin that lifted the
+  geometric-precision declaration went red here and green on CI's Chrome 153 runner, which rounds
+  no advances. A mutation must change the PRODUCT by a known amount (a 0.4-px tracking) so the
+  checker's teeth are proven on every machine; what an environment does to glyphs is a note, not a test.
+* **A pin re-derived whole proves nothing; split it.** The window digest covered both slides in one hash.
+  Ask 1 moved four Compare fields on purpose; re-pinning the whole hash would have silently accepted any
+  other drift. The Timeline's digest is the pristine tree's own, the Compare's with the moved fields stripped
+  is too, and only the whole Compare digest is new — the pin still proves everything it always proved.
+* **Hand the rows to the parser, not to a writer.** Rebuilding a workbook from the rows reproduced 50 of 53
+  sheet variants; a sheet name and a carriage return fell. The restore stores the rows AS READ and feeds
+  the parser directly — the same path a drop takes, with nothing re-serialised in between.
+* **The census you did not run is the pin that bites.** The plan named five pins; the attack's census found
+  eleven more (route tables, an export census that could not read a PDF, a `loaded` dict, a mutation anchor on
+  a JS line, a sheet-name substring gate, a version literal). Every one would have been a red CI cell found one
+  at a time. **Enumerate the pins by grep before the first edit, not by failure after it.**
+* **Three builders, one contract, no shared files.** The independent modules were built in parallel from a
+  written contract naming every signature and field; the only friction was a helper name the contract did
+  not mention (`risk_when`) and a field the lead needed and the contract omitted (`RiskDoc.rows`) — both
+  caught by the builder reading the lead's code, as the contract asked. The seam cost was an hour, not a day.
+* **"Rebuild the installers LAST" means after the last `src/` edit, not after the last big one.** CI round 3
+  went red on the lockstep pin because round 2's fix re-worded ONE studio sentence and rebuilt only the pyz;
+  the wheel embedded in the nine installers still carried the old sentence. The pin did its job (it named
+  the file), but a cell found on CI costs a 33-minute floor run. A `src/` diff of any size — a comment, a
+  string — re-runs `python -m build --wheel` + `build_installers.py` + `build_lodestar.py --check` before
+  the push, and the pre-push checklist should name all three, not the pyz alone.
+
 ### 2026-10-01 — A design handoff is a claim like any other: its tokens failed AA, its copy over-promised, and its rule removed a whole subsystem only once the premise was measured (ADR-0543)
 
 - **What happened.** The operator's "Console" design handoff for LODESTAR was built whole: a server-rendered,

@@ -320,7 +320,11 @@ body.ls-app{background:var(--bg-app);color:var(--text-primary);font-family:var(-
 .ls-toasts .aismat-toast{pointer-events:auto;animation:ls-rise .3s ease both}
 
 /* ═══ the slide (SVG, 960 × 540 points) — every colour a token, so the four views restyle it ═══ */
-.lss{display:block;user-select:none;touch-action:none;background:var(--bg-panel)}
+/* geometricPrecision: the slide is a scaled drawing, so every glyph advances by its true metric
+   (IBM Plex Mono 0.6 em) at any zoom — under the default rendering Chromium rounds each advance
+   to a device pixel at small sizes, widening a 6-pt line by 2.5% and a 10-pt tag by 6% (measured,
+   ADR-0544), past the boxes the server sized for the face */
+.lss{display:block;user-select:none;touch-action:none;background:var(--bg-panel);text-rendering:geometricPrecision}
 .lss-bg{fill:var(--bg-panel)}
 .lss-title{fill:var(--text-primary);font-family:var(--font-display);font-size:15px;font-weight:600}
 .lss-sub{fill:var(--text-muted);font-family:var(--font-mono);font-size:6.2px}
@@ -360,6 +364,14 @@ body.ls-app{background:var(--bg-app);color:var(--text-primary);font-family:var(-
 .is-st-new{fill:var(--status-info)}
 .is-st-removed{fill:var(--status-neutral)}
 .is-st-unchanged{fill:var(--text-muted)}
+/* a risk (ADR-0544): a triangle in its probability's colour — red / amber / green, neutral when the
+   register's word could not be read — outlined in the slide's ground; its impact text after the label */
+.lss-risk{stroke:var(--bg-panel);stroke-width:.7;stroke-linejoin:round}
+.lss-legend-risk{stroke:var(--bg-panel);stroke-width:.5}
+.is-risk-high{fill:var(--status-fail)}
+.is-risk-medium{fill:var(--status-warn)}
+.is-risk-low{fill:var(--status-pass)}
+.is-risk-unknown{fill:var(--status-neutral)}
 .lss-dd line{stroke:var(--status-fail);stroke-width:1;stroke-dasharray:3 2}
 .lss-dd polygon{fill:var(--status-fail)}
 .lss-dd text{fill:var(--status-fail);font-family:var(--font-mono);font-size:6px;font-weight:600;stroke:var(--bg-panel);stroke-width:1.6px;stroke-linejoin:round;paint-order:stroke}

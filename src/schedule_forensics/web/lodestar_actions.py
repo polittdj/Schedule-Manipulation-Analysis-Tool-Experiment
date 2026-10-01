@@ -35,10 +35,14 @@ from schedule_forensics.web.onepager_common import OnePagerSession
 
 #: The studio's two pages, by the name its API uses.
 PAGES: tuple[str, str] = ("timeline", "compare")
-#: What :func:`perform` accepts (``upload`` is a file; the rest are small JSON / form bodies).
+#: What :func:`perform` accepts (``upload`` is a file — a list, the risk register or an export to
+#: restore, by its ``kind`` field; the rest are small JSON / form bodies; ``risks`` clears the
+#: register, ADR-0544).
 ACTIONS: frozenset[str] = frozenset(
-    {"upload", "example", "title", "window", "today", "clear", "links", "swap", "marking"}
+    {"upload", "example", "title", "window", "today", "clear", "links", "swap", "marking", "risks"}
 )
+#: An upload's kinds: a One-Pager list (the default), the risk register, an export to restore.
+UPLOAD_KINDS: tuple[str, ...] = ("list", "risks", "restore")
 
 #: The example list's and the example pair's file names — named as examples wherever they show.
 EXAMPLE_LIST = "example-list.xlsx"
@@ -60,11 +64,14 @@ EXAMPLE_PRIOR_ROWS: tuple[tuple[Cell, ...], ...] = (
 class Outcome:
     """What one action did: the label it was logged under (``None`` when nothing changed — a
     refusal, or a no-op), and the toast the studio floats (``""`` for none) with its status
-    (``pass`` / ``warn`` / ``info``)."""
+    (``pass`` / ``warn`` / ``info``). ``page`` is the page the outcome belongs to when it is
+    not the page the action was posted from — a restore lands on the page the export came from
+    (ADR-0544); ``None`` otherwise."""
 
     label: str | None
     toast: str = ""
     status: str = "info"
+    page: str | None = None
 
 
 def page_of(value: str | None) -> str:
@@ -126,6 +133,23 @@ def perform(
             return Outcome(None, "No file arrived — choose the workbook again.", "warn")
         name, data = upload
         layout = get("layout", "auto") or "auto"
+        kind = (get("kind") or "list").strip().lower()
+        if kind == "risks":
+            had_risks = st.onepager_risks
+            actions.load_risks(st, page, name, data, max_bytes=max_bytes)
+            if st.onepager_risks is had_risks or st.onepager_risks is None:
+                return _refused(st, page)
+            label = f"Risks loaded: {st.onepager_risks.source}"
+            history.record(label, before, st, always=True)
+            return _loaded(st, page, label)
+        if kind == "restore":
+            got = actions.restore_export(st, page, name, data, max_bytes=max_bytes)
+            if isinstance(got, str):
+                _tell(st, page, got)
+                return Outcome(None, got, "warn")
+            label = f"Restored from {actions.source_name(name)}"
+            history.record(label, before, st, always=True)
+            return Outcome(label, got.message, "pass", page=got.page)
         if compare:
             slot = (get("slot") or "current").strip().lower()
             had = st.onepager_prior if slot == "prior" else st.onepager_current
@@ -202,6 +226,12 @@ def perform(
         return _logged(history, "List cleared", before, st)
     if action == "links":
         return _links(st, history, page, before, params)
+    if action == "risks":
+        verb = (get("action") or "clear").strip().lower()
+        if verb != "clear":
+            return Outcome(None, f"Unknown risks action “{verb[:20]}” — nothing changed.", "warn")
+        actions.clear_risks(st, page)
+        return _logged(history, "Risks cleared", before, st, toast=_message(st, page)[0])
     if action == "swap":
         actions.swap_compare(st)
         return _logged(history, "Prior and current swapped", before, st)
@@ -226,6 +256,14 @@ def st_unclassified(st: object) -> bool:
 
 def set_unclassified(st: object, value: bool) -> None:
     st.unclassified = value  # type: ignore[attr-defined]
+
+
+def _tell(st: OnePagerSession, page: str, msg: str) -> None:
+    """A refusal on the page's own banner — what a page view with scripting off shows."""
+    if page == "compare":
+        st.onepager_compare_msg, st.onepager_compare_is_error = msg, True
+    else:
+        st.onepager_msg, st.onepager_is_error = msg, True
 
 
 def _logged(

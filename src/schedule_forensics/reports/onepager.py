@@ -41,7 +41,7 @@ import hashlib
 import re
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict, dataclass, field, replace
-from typing import Any
+from typing import Any, Protocol
 
 from schedule_forensics.reports.onepager_links import (
     Anchor,
@@ -347,6 +347,12 @@ class OnePagerDoc:
     layout: str = START_FINISH
     status_column: str = ""
     layout_note: str = ""
+    #: The sheet's rows AS READ — ``(Excel row number, the cells of A to E)`` — and the layout the
+    #: operator forced at upload (``None``: detected), kept so an export can carry the list and a
+    #: restore can read it through this same parser again (ADR-0544): the same rows give the same
+    #: items, keys, skipped rows and notes.
+    rows: tuple[tuple[int, tuple[str, ...]], ...] = ()
+    forced_layout: str | None = None
 
     @property
     def completion(self) -> bool:
@@ -755,7 +761,8 @@ def parse_workbook(
     """The first sheet with any content becomes the document (a one-pager list is one sheet)."""
     for name, rows in sheets.items():
         if any(any(cell.strip() for cell in row) for row in rows):
-            return _doc(source, name, read_sheet(rows, layout=layout))
+            raw = tuple((i + 1, tuple(cells)) for i, cells in enumerate(rows))
+            return _doc(source, name, read_sheet(rows, layout=layout), raw, layout)
     return OnePagerDoc(source, "", (), ("the workbook has no rows",), ())
 
 
@@ -768,11 +775,19 @@ def parse_numbered_workbook(
     for name, numbered in sheets.items():
         if any(any(cell.strip() for cell in cells) for _n, cells in numbered):
             rows = [cells for _n, cells in numbered]
-            return _doc(source, name, read_sheet(rows, [n for n, _c in numbered], layout))
+            read = read_sheet(rows, [n for n, _c in numbered], layout)
+            raw = tuple((n, tuple(cells)) for n, cells in numbered)
+            return _doc(source, name, read, raw, layout)
     return OnePagerDoc(source, "", (), ("the workbook has no rows",), ())
 
 
-def _doc(source: str, sheet: str, read: SheetRead) -> OnePagerDoc:
+def _doc(
+    source: str,
+    sheet: str,
+    read: SheetRead,
+    rows: tuple[tuple[int, tuple[str, ...]], ...] = (),
+    forced_layout: str | None = None,
+) -> OnePagerDoc:
     """The document, every item keyed over the WHOLE sheet in sheet order (:func:`item_keys`)."""
     return OnePagerDoc(
         source,
@@ -784,6 +799,8 @@ def _doc(source: str, sheet: str, read: SheetRead) -> OnePagerDoc:
         read.layout,
         read.status_column,
         read.layout_note,
+        rows,
+        forced_layout if forced_layout in (START_FINISH, DATE_STATUS) else None,
     )
 
 
@@ -811,6 +828,14 @@ FLOORS = ((7.0, 5.0), (6.0, 4.6), (5.5, 4.2))
 EMERGENCY = (3.6, 3.4)
 BAR_F, MS_F = 0.68, 0.62  # bar height / diamond size as fractions of the row
 CHAR_W = 0.52  # Calibri's average advance as a fraction of the font size (a safe over-estimate)
+#: The advance of a MONOSPACE face — every glyph 0.6 em (IBM Plex Mono, measured in Chromium
+#: against the vendored WOFF2 on 2026-10-01: 0.6000 on every sample; a generic ``monospace``
+#: 0.602). LODESTAR paints the compare slide's summary strip, the NEW / REMOVED / DUPLICATE NAME
+#: tags and every calendar-day delta in it (``lodestar_studio.css``), so text wrapped or sized at
+#: :data:`CHAR_W` painted 15% wider than its box (ADR-0544). Every other face a painter uses —
+#: Calibri in the .pptx, IBM Plex Sans (0.44 to 0.51 measured) on the page — is narrower, so what
+#: fits at 0.6 fits everywhere.
+MONO_CHAR_W = 0.6
 LANE_COLORS = 10  # the size of the ``--lane-N`` token set / the .pptx print palette
 
 # ── the FULL-PAGE FILL (ADR-0540) ─────────────────────────────────────────────────────────
@@ -844,22 +869,27 @@ def mdy(d: dt.date) -> str:
     return f"{d.month}/{d.day}/{d.year % 100:02d}"
 
 
-def text_w(s: str, size: float) -> float:
-    return len(s) * size * CHAR_W
+def text_w(s: str, size: float, char_w: float = CHAR_W) -> float:
+    """The width ``s`` takes at ``size`` pt in a face whose average advance is ``char_w`` em —
+    :data:`CHAR_W` for the labels, :data:`MONO_CHAR_W` for text a painter sets in a monospace
+    face."""
+    return len(s) * size * char_w
 
 
 def _lane_key(name: str) -> str:
     return re.sub(r"\s+", "", name).casefold()
 
 
-def wrap(text: str, size: float, width: float, max_lines: int = 2) -> list[str]:
+def wrap(
+    text: str, size: float, width: float, max_lines: int = 2, char_w: float = CHAR_W
+) -> list[str]:
     """Word-wrap ``text`` to ``width`` at ``size`` pt — at most ``max_lines``, the last one
-    ellipsised."""
+    ellipsised — in a face of average advance ``char_w`` (:func:`text_w`)."""
     lines: list[str] = []
     cur = ""
     for word in text.split():
         cand = f"{cur} {word}".strip()
-        if cur and text_w(cand, size) > width:
+        if cur and text_w(cand, size, char_w) > width:
             lines.append(cur)
             cur = word
         else:
@@ -868,7 +898,7 @@ def wrap(text: str, size: float, width: float, max_lines: int = 2) -> list[str]:
         lines.append(cur)
     if len(lines) > max_lines:
         lines = lines[:max_lines]
-        keep = max(1, int(width / (size * CHAR_W)) - 1)
+        keep = max(1, int(width / (size * char_w)) - 1)
         lines[-1] = lines[-1][:keep] + "…"
     return lines
 
@@ -972,6 +1002,13 @@ class Placed:
     #: a milestone's own diamond size — the slide's, clamped to the chart's edges (ADR-0540
     #: review F1); ``0`` for a bar
     ms: float = 0.0
+    #: ``"item"`` for a task or milestone, ``"risk"`` for a row of the risk register (ADR-0544): a
+    #: risk is a single moment (``x0 == x1``, ``milestone``) drawn as a TRIANGLE in the colour of
+    #: ``prob`` (high / medium / low / unknown), its ``impact`` text set after the label in that
+    #: colour (``impact +30 cal d``, or the register's own words)
+    kind: str = "item"
+    prob: str = ""
+    impact: str = ""
 
 
 @dataclass(frozen=True)
@@ -1189,8 +1226,15 @@ def build_layout(
     names: Mapping[str, str] | None = None,
     absent: Mapping[str, str] | None = None,
     status_column: str = "",
+    risks: Sequence[RiskLike] = (),
+    risk_impacts: Mapping[str, str] | None = None,
 ) -> Layout:
     """Place every item on the slide. Raises ``ValueError`` with nothing to place.
+
+    ``risks`` (ADR-0544) are the register's rows the caller scoped to the window: each is packed
+    into its swimlane's rows by its date like a milestone — a swimlane the list does not carry gets
+    a band of its own, named in the notes — and drawn as a triangle in its probability's colour
+    with ``risk_impacts[key]`` (its impact text) after its label. A risk is never a link's end.
 
     With a ``window`` (ADR-0527) the timescale is exactly that window; the caller has already left
     off the items wholly outside it (:func:`window_items`), and an item running past an edge is
@@ -1206,23 +1250,39 @@ def build_layout(
     the placed items by the Console rule (ADR-0543) — shafts under the items, heads and tags over
     them — so a link never moves an item, and every link whose two ends are on the slide is
     drawn."""
-    if not items:
+    if not items and not risks:
         raise ValueError("nothing to lay out")
     items = keyed(items)
     if window is not None:
         outside = [i for i in items if not overlaps(i.start, i.finish, window)]
         if outside:
             raise ValueError(f"{len(outside)} item(s) lie wholly outside the window")
+        if any(not window[0] <= r.date <= window[1] for r in risks):
+            raise ValueError("a risk lies outside the window")
     notes: list[str] = []
+    # a risk packs as a milestone of its lane: a synthetic item at its date, keyed by the
+    # register's own key (never an item's), remembered here so its placement is marked a risk
+    risk_of: dict[str, RiskLike] = {r.key: r for r in risks}
+    impacts = dict(risk_impacts or {})
+    all_items = [
+        *items,
+        *(OnePagerItem(r.lane, r.name, r.date, r.date, r.row, None, r.key) for r in risks),
+    ]
+    risk_lanes = {_lane_key(i.lane) for i in items}
     # swimlanes in first-seen order; spacing/case variants of one name merge, and say so
     lane_of: dict[str, int] = {}
     lane_names: list[str] = []
     merged: dict[int, list[str]] = {}
-    for it in items:
+    for it in all_items:
         key = _lane_key(it.lane)
         if key not in lane_of:
             lane_of[key] = len(lane_names)
             lane_names.append(it.lane)
+            if key not in risk_lanes:
+                notes.append(
+                    f"swimlane “{it.lane}” is named only in the risk register — drawn as a band of "
+                    "its own, holding its risks alone"
+                )
         elif it.lane != lane_names[lane_of[key]] and it.lane not in merged.setdefault(
             lane_of[key], []
         ):
@@ -1231,6 +1291,16 @@ def build_layout(
                 f"swimlane “{it.lane}” merged into “{lane_names[lane_of[key]]}” "
                 "(same name, different spacing or case)"
             )
+    if risks and items:
+        lo_i, hi_i = min(i.start for i in items), max(i.finish for i in items)
+        far = [r for r in risks if r.date < lo_i or r.date > hi_i]
+        if far and window is None:
+            notes.append(
+                f"{len(far)} risk(s) dated outside the list's own span ({mdy(lo_i)} to "
+                f"{mdy(hi_i)}) widen the timescale: "
+                + "; ".join(f"{r.name} ({mdy(r.date)})" for r in far)
+            )
+    items = all_items
     # the window: whole months, and today when it is anywhere near the data — or the operator's
     lo = min(i.start for i in items)
     hi = max(i.finish for i in items)
@@ -1250,7 +1320,8 @@ def build_layout(
     n_lanes = len(lane_names)
     labels = dict(names) if names is not None else {}
     for it in items:
-        labels.setdefault(it.key, item_label(it))
+        if it.key not in risk_of:
+            labels.setdefault(it.key, item_label(it))
 
     x1, lanes_max = X1, LANES_Y1
 
@@ -1268,8 +1339,16 @@ def build_layout(
         done_r = label_pt * DONE_F
         for it in sorted(lane_items, key=lambda i: (i.start, i.finish, i.row)):
             xs, xe = x_of(it.start), x_of(it.finish)
-            label = f"{it.name} ({mdy(it.finish)})"
-            lw = text_w(label, label_pt)
+            risk = risk_of.get(it.key)
+            if risk is not None:
+                label = risk_label(risk)
+                impact = impacts.get(it.key, "")
+                lw = text_w(label, label_pt) + (
+                    text_w(f" {impact}", label_pt, MONO_CHAR_W) if impact else 0.0
+                )
+            else:
+                label = f"{it.name} ({mdy(it.finish)})"
+                lw = text_w(label, label_pt)
             inside = clipped = False
             done = it.complete is True
             chk = 2 * done_r + DONE_GAP if done else 0.0
@@ -1383,11 +1462,17 @@ def build_layout(
                     done_r,
                     it.key,
                     ms=2 * diamond_half(xs, ms_w, X0, x1) if it.milestone else 0.0,
+                    kind="risk" if it.key in risk_of else "item",
+                    prob=risk_prob(risk_of[it.key].prob) if it.key in risk_of else "",
+                    impact=impacts.get(it.key, "") if it.key in risk_of else "",
                 )
             )
         y += h + LANE_GAP
     lanes_y1 = y - LANE_GAP
-    drawn, link_notes = _logic(items, placed, ms_w, row_h, lanes_max, window, links, labels, absent)
+    real_items = [i for i in items if i.key not in risk_of]
+    drawn, link_notes = _logic(
+        real_items, placed, ms_w, row_h, lanes_max, window, links, labels, absent
+    )
     # the header: a dotted line per month, a letter or abbreviation as room allows, year bands
     months, years, month_pt = timescale(t0, t1, X0, x1, window is not None)
     # today: the DD line spans header + lanes; its dated caption sits in the gap below the lanes
@@ -1406,6 +1491,7 @@ def build_layout(
             else []
         ),
         ("today", f"Data date ({mdy(today)})", -1),
+        *risk_legend_entries(placed),
         *([("link", link_legend(drawn), -1)] if drawn else []),
     ] + [("lane", ln.name, ln.color) for ln in lanes]
     for _ in range(3):
@@ -1473,6 +1559,60 @@ def item_label(it: OnePagerItem) -> str:
     return f"{it.lane} · {it.name} ({item_when(it)})"
 
 
+class RiskLike(Protocol):
+    """What the layout reads of a risk (ADR-0544): :class:`~.onepager_risks.OnePagerRisk` is one,
+    structurally — this module never imports the register's module (it imports this one)."""
+
+    @property
+    def lane(self) -> str: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def date(self) -> dt.date: ...
+    @property
+    def prob(self) -> str: ...
+    @property
+    def row(self) -> int: ...
+    @property
+    def key(self) -> str: ...
+
+
+#: The four probability words a risk is drawn in (the register's reader folds every spelling to
+#: these), and the legend's words for each (ADR-0544). ``unknown`` is a probability the reader could
+#: not read — drawn neutral and NAMED, never guessed.
+RISK_PROBS: tuple[str, ...] = ("high", "medium", "low", "unknown")
+RISK_LEGEND: Mapping[str, str] = {
+    "high": "Risk — high probability",
+    "medium": "Risk — medium probability",
+    "low": "Risk — low probability",
+    "unknown": "Risk — probability not read",
+}
+
+
+def risk_label(r: RiskLike) -> str:
+    """``RISK · name (m/d/yy)`` — the risk's name and its date of occurrence, prefixed so the reader
+    never takes it for a task or a milestone (ADR-0544)."""
+    return f"RISK · {r.name} ({mdy(r.date)})"
+
+
+def risk_prob(prob: str) -> str:
+    return prob if prob in RISK_PROBS else "unknown"
+
+
+class _RiskPlaced(Protocol):
+    @property
+    def kind(self) -> str: ...
+    @property
+    def prob(self) -> str: ...
+
+
+def risk_legend_entries(placed: Sequence[_RiskPlaced]) -> list[tuple[str, str, int]]:
+    """One legend entry per probability DRAWN on the slide, in the order high · medium · low ·
+    not read (ADR-0544) — ``("risk-high", "Risk — high probability", -1)`` and so on."""
+    drawn = {p.prob for p in placed if p.kind == "risk"}
+    return [(f"risk-{prob}", RISK_LEGEND[prob], -1) for prob in RISK_PROBS if prob in drawn]
+
+
 def link_legend(drawn: Sequence[PlacedLink]) -> str:
     """The legend's words for the drawn links: the default type, and the tags when any show."""
     tags = sorted({ln.tag for ln in drawn if ln.tag})
@@ -1527,11 +1667,13 @@ def subtitle_for(
     today: dt.date,
     window: Window | None = None,
     prepared: dt.date | None = None,
+    risks: int = 0,
 ) -> str:
     """The slide's subtitle. ``today`` is the DATA DATE the slide draws; ``prepared`` the day the
     slide was made (the computer's date — ``today`` itself when not given). When the two differ
     (the operator set a data date, ADR-0541) the subtitle says both: "Prepared" on the data date
-    would be a false statement on the slide."""
+    would be a false statement on the slide. ``risks`` is how many of the register's risks the
+    slide draws (ADR-0544) — named only when there are any."""
     ms = sum(i.milestone for i in doc.items)
     made = today if prepared is None else prepared
     return (
@@ -1540,6 +1682,7 @@ def subtitle_for(
         + (f"window {window_text(window)} · " if window is not None else "")
         + f"{len(doc.items)} items · {layout_lanes} swimlanes · "
         f"{ms} milestones · {len(doc.items) - ms} activities"
+        + (f" · {risks} risk{'s' if risks != 1 else ''}" if risks else "")
     )
 
 

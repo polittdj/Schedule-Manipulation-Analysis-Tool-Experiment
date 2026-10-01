@@ -33,6 +33,7 @@ from schedule_forensics.reports.onepager import (
     item_ident,
     item_label,
     layout_json,
+    mdy,
     subtitle_for,
     window_text,
     windowed_doc,
@@ -45,6 +46,7 @@ from schedule_forensics.reports.onepager_links import (
     PlacedLink,
     gone_reason,
 )
+from schedule_forensics.reports.onepager_risks import OnePagerRisk, impact_label
 from schedule_forensics.reports.tableset import Cell, Table, TableSet
 from schedule_forensics.web.htmlkit import _e, _panel_head, _shell_tools, _utility_takeaway
 from schedule_forensics.web.onepager_common import OnePagerSession as SessionState
@@ -113,6 +115,24 @@ def onepager_view(st: SessionState) -> tuple[OnePagerDoc | None, list[str]]:
     return windowed_doc(st.onepager, st.onepager_window)
 
 
+def risks_view(st: SessionState, window: Window | None) -> tuple[list[OnePagerRisk], list[str]]:
+    """``(kept, omitted)``: the session's risk register scoped to ``window`` (ADR-0544) — a
+    risk whose date lies outside it is left off the slide, and NAMED, as an item would be."""
+    reg = getattr(st, "onepager_risks", None)
+    if reg is None:
+        return [], []
+    if window is None:
+        return list(reg.risks), []
+    kept = [r for r in reg.risks if window[0] <= r.date <= window[1]]
+    gone = [r for r in reg.risks if not window[0] <= r.date <= window[1]]
+    return kept, [f"risk: {r.lane} · {r.name} ({mdy(r.date)}, row {r.row})" for r in gone]
+
+
+def risk_impacts(risks: list[OnePagerRisk]) -> dict[str, str]:
+    """Each risk's impact text, by its key — what the slide sets after the risk's label."""
+    return {r.key: impact_label(r) for r in risks}
+
+
 def linkable_items(st: SessionState) -> list[tuple[str, str, int | None]]:
     """``(key, label, sheet row)`` for every item ON THE SLIDE — what a logic link may join, in
     sheet order."""
@@ -167,6 +187,7 @@ def onepager_layout(
         today,
         made,
         link_key(snap.onepager_links),
+        snap.onepager_risks,
     )
     return cached_layout(st, "onepager", key, lambda: _onepager_layout(snap, today, made))
 
@@ -179,17 +200,23 @@ def _onepager_layout(
         return None
     win = st.onepager_window
     names, absent = _link_context(st)
-    lay = build_layout(doc.items, today, onepager_title(st), window=win)
+    risks, _omitted_risks = risks_view(st, win)
+    impacts = risk_impacts(risks)
+    lay = build_layout(
+        doc.items, today, onepager_title(st), window=win, risks=risks, risk_impacts=impacts
+    )
     return build_layout(
         doc.items,
         today,
         lay.title,
-        subtitle_for(doc, len(lay.lanes), today, win, prepared),
+        subtitle_for(doc, len(lay.lanes), today, win, prepared, len(risks)),
         window=win,
         links=st.onepager_links,
         names=names,
         absent=absent,
         status_column=doc.status_column,
+        risks=risks,
+        risk_impacts=impacts,
     )
 
 
