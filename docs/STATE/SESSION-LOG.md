@@ -20334,3 +20334,11 @@ commit, not a rebase. The resolution:
   `python -m mypy src/` rc 0 (184 files); `bandit -q -r src` rc 0; `node --check` every static script, 0 failures;
   installers 75 passed in the build worktree. The FULL suite and `-m parity` on the final tree: recorded in the
   follow-up line below.
+- **Follow-up — the gate on the final source.** On a clean detached worktree of `4a5e4eff` (the last commit that touches
+  `src/`, `installer/` or `tests/`; later commits are docs-only), with `PYTHONPATH` set to that worktree's own `src/`:
+  `python -u -m pytest -q` rc 0 — **6,752 passed, 9 skipped, 106 xfailed**, 1 warning in 3614.56s (1:00:14); the 9
+  skips are the environment-gated ones (four LibreOffice-without-Impress, two loopback forms) and the axis census's
+  three by-design; `tests/lodestar` alone 306 passed; `python -m pytest -m parity` rc 0 — **271 passed**, 6596
+  deselected, 1 warning in 671.63s (0:11:11). CI on `4a5e4eff` (run 36807470761 + the installer
+  smoke run 36807470693): **all EIGHT checks green** — test (3.11), test (3.13), floor, browser, cui-guard, check, linux,
+  windows.
