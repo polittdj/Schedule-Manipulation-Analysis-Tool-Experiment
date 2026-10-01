@@ -12,7 +12,7 @@ happen again. **Run these before the first edit:**
 
 ```bash
 git fetch --unshallow origin; git fetch --prune origin && git remote set-head origin -a
-git log --oneline -1 origin/main && git rev-list --count origin/main   # expect fac57735 (#729) or later, 828+
+git log --oneline -1 origin/main && git rev-list --count origin/main   # expect 64643f37 (#732) or later, 831+
 ls -d src app 2>&1; ls .github/workflows; grep -n '^version' pyproject.toml
 ls docs/adr | sort | tail -1                                          # expect 0542 or higher
 ```
@@ -34,11 +34,12 @@ that paints it — `MONO_CHAR_W` in `src/schedule_forensics/reports/onepager.py`
 every export carrying the slide's record — `src/schedule_forensics/reports/session_payload.py` — in the
 PowerPoint, a NEW std-lib PDF export (`src/schedule_forensics/reports/pdf.py`) and the Excel workbook,
 and a "Restore a slide" zone that reads it back, logic links included — v1.0.299, LODESTAR 2.1.0, archive
-53 members) is the draft pull request #732 of `claude/lodestar-app-updates-q4xos3`. Until it merges,
-`main` still expects ADR **0543** / version **1.0.298**; once it merges, ADR **0544** / **1.0.299**. Two
-flags for the operator ride in its handoff: column E of the register (the date of occurrence) is an
-assumption, and PowerPoint's own re-save keeping the custom XML part is UNVERIFIED (the alt-text fallback
-covers it).
+53 members) was pull request #732 of `claude/lodestar-app-updates-q4xos3`, **squash-merged as `64643f37`**
+(2026-10-01 20:42Z; tree identical to the green PR head). `main` expects ADR **0544** / version **1.0.299**;
+read `main`'s own CI run #2052 and installer-smoke #855 by their jobs first. Two flags for the operator ride
+in its handoff: column E of the register (the date of occurrence) is an assumption, and PowerPoint's own
+re-save keeping the custom XML part is UNVERIFIED (CI measured LibreOffice 24.2 keeping the part and dropping
+the shapes' alt text, so the part is the carrier that survives a re-save).
 
 ## Four feature pull requests beside the campaign (2026-09-29 – 10-01, ADR-0539, ADR-0540, ADR-0541 and ADR-0543)
 
