@@ -566,6 +566,74 @@ def test_mutation_a_commit_dropped_while_busy_is_named(
         assert s.state.onepager_title == "Late title" and s.state.onepager_today is None
 
 
+# ── the DATA drawer, the completion check, files dropped on the page ───────────────────────
+
+
+def test_the_data_drawer_opens_shows_the_rows_and_survives_a_change(browser: Any) -> None:
+    """v1's ▦ DATA: the panel's DATA button shows the parsed rows (pressed), keeps them open
+    across a change (the region the script swaps in is re-rendered), and hides them again."""
+    with _studio(browser) as s:
+        page = s.page
+        _load_example(page, s.base)
+        assert page.is_hidden("#lsData")
+        page.click("[data-ls-data]")
+        assert page.is_visible("#lsData")
+        assert page.get_attribute("[data-ls-data]", "aria-pressed") == "true"
+        assert page.locator("#lsData tbody tr").count() == 6
+        _act(page, "title", {"title": "Still open"})
+        assert page.is_visible("#lsData") and page.locator("#lsData tbody tr").count() == 6
+        page.click("[data-ls-data]")
+        assert page.is_hidden("#lsData")
+        assert page.get_attribute("[data-ls-data]", "aria-pressed") == "false"
+
+
+_DROP = """async ([b64, name, selector]) => {
+  const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  const file = new File([bytes], name, {type: 'application/octet-stream'});
+  const data = new DataTransfer();
+  data.items.add(file);
+  const target = document.querySelector(selector);
+  target.dispatchEvent(new DragEvent('drop',
+    {dataTransfer: data, bubbles: true, cancelable: true}));
+}"""
+
+
+def _drop(page: Any, rows: Any, name: str, selector: str) -> None:
+    """Drop ``rows`` as a workbook called ``name`` onto ``selector`` (a real DataTransfer)."""
+    import base64
+
+    data = base64.b64encode(twin_xlsx(rows, omit_blank=True)).decode("ascii")
+    page.evaluate(_DROP, [data, name, selector])
+
+
+def test_a_list_dropped_anywhere_on_the_timeline_loads(browser: Any) -> None:
+    with _studio(browser) as s:
+        page = s.page
+        page.goto(s.base + "/onepager")
+        _drop(page, ROWS, "Dropped list.xlsx", "#lsMain")
+        page.wait_for_function("() => LSStudio.state().layout !== null")
+        assert s.state.onepager is not None and s.state.onepager.source == "Dropped list.xlsx"
+
+
+def test_compare_never_guesses_which_list_a_drop_is(browser: Any) -> None:
+    """Dropped beside the slots, the workbook is refused by name — the page never guesses PRIOR
+    or CURRENT — and nothing is sent; dropped ON a slot, it loads into that slot."""
+    with _studio(browser) as s:
+        page = s.page
+        page.goto(s.base + "/onepager-compare")
+        sent: list[str] = []
+        page.on("request", lambda r: sent.append(r.url) if r.method == "POST" else None)
+        _drop(page, ROWS, "Which one.xlsx", "#lsMain")
+        page.wait_for_selector("#lsDropHint:not([hidden])")
+        assert "never guesses" in (page.text_content("#lsDropHint") or "")
+        page.wait_for_timeout(300)
+        assert sent == [] and s.state.onepager_prior is None and s.state.onepager_current is None
+        _drop(page, ROWS, "Prior list.xlsx", "#lsSlotPrior")
+        page.wait_for_function("() => LSStudio.state().loaded.prior === true")
+        assert s.state.onepager_prior is not None and s.state.onepager_current is None
+        assert s.state.onepager_prior.source == "Prior list.xlsx"
+
+
 # ── full screen, a demo ──────────────────────────────────────────────────────────────────────
 
 
@@ -809,6 +877,13 @@ def test_outside_labels_carry_a_halo_and_inside_labels_none(browser: Any, tmp_pa
         page.set_input_files("#lsFile", _list_file(tmp_path))
         page.wait_for_function("() => LSStudio.state().layout !== null")
         assert _halo_problems(page.evaluate(_HALO)) == []
+        # v1's completion check: the one row marked Complete carries the check, and the legend
+        # names it
+        done = page.evaluate(
+            "() => [document.querySelectorAll('#lsSlide g.lss-items .lss-done').length,"
+            " document.querySelectorAll('#lsSlide g.lss-legend[data-kind=done]').length]"
+        )
+        assert done == [1, 1], done
 
 
 @pytest.mark.parametrize(

@@ -260,6 +260,50 @@ def test_the_regions_the_script_swaps_in_are_the_pages_own(
     assert regions["rail"] == _region(served, "lsRail", "aside")
 
 
+def _drawer_rows(main: str) -> list[list[str]]:
+    """The DATA drawer's body rows (``#lsData``), each as its cells' text."""
+    start = main.index("id=lsData")
+    body = main[main.index("<tbody>", start) : main.index("</tbody>", start)]
+    return [
+        [re.sub(r"<[^>]+>", "", c) for c in re.findall(r"<td[^>]*>(.*?)</td>", row)]
+        for row in re.findall(r"<tr>(.*?)</tr>", body)
+    ]
+
+
+def test_the_data_drawer_lists_every_parsed_and_compared_row(live: Live) -> None:
+    """v1's ▦ DATA, at its 2.0 home (the panel's DATA drawer): the Timeline's parsed rows — one
+    per item, with its type and sheet row — and Compare's compared rows, the removed and the new
+    ones included, each with its status."""
+    rows = _drawer_rows(_call(live, "example", page="timeline")["regions"]["main"])
+    # the sheet's own order: the template's six rows
+    assert [r[1] for r in rows] == [
+        "Boots 1",
+        "Boots 2",
+        "Uncrewed Lander Campaign",
+        "CDR",
+        "MET Testing",
+        "MET On-Dock",
+    ]
+    assert {(r[1], r[2]) for r in rows} >= {("Boots 1", "Milestone"), ("MET Testing", "Activity")}
+    compared = _drawer_rows(_call(live, "example", page="compare")["regions"]["main"])
+    status = {r[1]: r[2] for r in compared}
+    assert len(compared) == 7, compared  # six current + the one removed
+    assert status["Crew Readiness Review"] == "removed" and status["CDR"] == "new"
+    assert status["Boots 1"] == "slipped" and status["Boots 2"] == "unchanged"
+
+
+def test_the_compare_page_says_how_it_matches_and_how_to_read_it(live: Live) -> None:
+    """v1's matching rules and "How to read this" explainer, at their 2.0 home (the Compare main
+    region): the rules on an empty page already, the per-swimlane summary and the explainer once
+    two lists are loaded."""
+    empty = _state(live, "compare")["regions"]["main"]
+    assert "How the two lists are matched" in empty and empty.count("<p>") >= 6
+    main = _call(live, "example", page="compare")["regions"]["main"]
+    for words in ("How the two lists are matched", "Per-swimlane summary", "How to read this"):
+        assert words in main, words
+    assert "<b>What it shows.</b>" in main and "<b>Why it matters.</b>" in main
+
+
 # ── every action, its label, and the refusals ─────────────────────────────────────────────────
 
 #: Each step: ``(action, fields, the label the log shows, a check on the answer)``.
@@ -290,6 +334,9 @@ def test_every_action_changes_the_state_and_logs_its_label(live: Live) -> None:
         "window", "Date window 2027-01-01 → 2027-12-31", start="2027-01-01", end="2027-12-31"
     )
     assert got["window"] == ["2027-01-01", "2027-12-31"]
+    # the items left off are NAMED, never dropped silently (v1's window notice, kept)
+    notice = [n for n in got["notices"] if n["key"] == "window"]
+    assert len(notice) == 1 and any("Boots 2" in x for x in notice[0]["items"]), notice
     assert step("window", "Date window cleared", action="clear")["window"] is None
     add = f"Add link {_ITEM_A} → {_ITEM_B} (FS)"
     got = step("links", add, action="add", pred=a, succ=b, kind="FS")

@@ -60,6 +60,16 @@ EXEMPT = {
     "home.js",
     "launch_audio.js",
     "legend_toggle.js",
+    # ADR-0543 (LODESTAR 2.0): the launch page's script. It cycles the hero's three stories, steps
+    # the star fix's stage words and reads the opt-out; the list→slide animation beside it is
+    # server-rendered inline SVG and CSS. It draws nothing.
+    "lodestar_launch.js",
+    # ADR-0543: LODESTAR's studio controller. It owns no chart: it posts the studio's changes and
+    # swaps in the server's regions, and paints only overlays (pick rings, the drag lead, the
+    # demos' rings) INTO the slide SVG that lodestar_slide.js builds — see SLIDE_PREVIEWS.
+    "lodestar_studio.js",
+    # ADR-0543: LODESTAR's view switch — sets <html data-theme> before the first paint.
+    "lodestar_view.js",
     # ADR-0521: the load/draw seam. It wraps other modules' drawing callbacks so a draw throw is
     # reported as a draw failure instead of a load failure; it plots nothing of its own.
     "loader.js",
@@ -82,6 +92,20 @@ EXEMPT = {
     "tooltips.js",
     "translate.js",
     "vizhints.js",
+}
+
+#: SVG data visuals that are, by design, a PREVIEW of an exported slide and so carry exactly
+#: what that slide carries — which is no axis caption. ``lodestar_slide.js`` (ADR-0543) paints
+#: LODESTAR 2.0's One-Pager slide from the SAME layout JSON the PowerPoint export draws, in the
+#: slide's own 960 x 540-pt coordinates; the deck has no axis caption (its time scale is the
+#: slide's own year / month header, its rows are named swimlanes), and the page shows the slide
+#: the operator will hand to a review board, one to one. Polaris²'s ``onepager.js`` still
+#: captions ITS rendering of the same layout (``AXIS_CALL_SITES``): the two painters diverge here
+#: on purpose, and this bucket is where that decision is written down rather than hidden in
+#: ``EXEMPT`` (whose entries render no data visual at all). It is not a parking spot: an entry
+#: must render SVG and must not call the helper (asserted below).
+SLIDE_PREVIEWS = {
+    "lodestar_slide.js",
 }
 
 #: Visuals rendered as HTML/DOM rather than SVG — tables, chip rows, DOM bars, and the HTML
@@ -235,17 +259,31 @@ def _src(p: Path) -> str:
 def test_every_module_is_classified_exactly_once() -> None:
     """A new chart module must be triaged deliberately — it cannot slip through unnoticed."""
     names = {p.name for p in modules()}
-    stale = (EXEMPT | NO_SVG_AXES | PENDING) - names
+    stale = (EXEMPT | NO_SVG_AXES | PENDING | SLIDE_PREVIEWS) - names
     assert not stale, f"ledger names files that no longer exist: {sorted(stale)}"
 
     captioned = {p.name for p in modules() if CALLS_HELPER.search(_src(p))}
-    unclassified = names - EXEMPT - NO_SVG_AXES - PENDING - captioned
+    unclassified = names - EXEMPT - NO_SVG_AXES - PENDING - SLIDE_PREVIEWS - captioned
     assert not unclassified, (
         "these modules are in no bucket — add each to EXEMPT (no data visual), NO_SVG_AXES "
         f"(HTML/DOM visual), or PENDING (an SVG chart awaiting captions): {sorted(unclassified)}"
     )
+    buckets = (EXEMPT, NO_SVG_AXES, PENDING, SLIDE_PREVIEWS)
+    twice = sorted(n for n in names if sum(n in b for b in buckets) > 1)
+    assert not twice, f"classified more than once: {twice}"
     overlap = captioned & PENDING
     assert not overlap, f"already captioned but still parked in PENDING: {sorted(overlap)}"
+
+
+@pytest.mark.parametrize("name", sorted(SLIDE_PREVIEWS))
+def test_slide_previews_really_paint_an_svg_slide_and_caption_nothing(name: str) -> None:
+    """A slide preview is an SVG data visual (else it belongs in ``EXEMPT``) that draws no axis
+    caption of any kind — neither the helper's (it would be captioned, not a preview) nor a
+    second convention (which the whole-tree guard below also forbids)."""
+    src = _src(STATIC / name)
+    assert RENDERS_SVG.search(src), f"{name} renders no SVG — it belongs in EXEMPT"
+    assert not CALLS_HELPER.search(src), f"{name} calls the caption helper — it is captioned"
+    assert not SECOND_CONVENTION.search(src), f"{name} draws a caption a second way"
 
 
 @pytest.mark.parametrize("name", sorted(PENDING))

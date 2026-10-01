@@ -26,6 +26,7 @@ invariant that rots silently rather than failing loudly:
 from __future__ import annotations
 
 import ast
+import re
 from pathlib import Path
 
 import pytest
@@ -128,7 +129,17 @@ LAYER_ORDER = (
     "onepager.py",
     "onepager_compare.py",
     "onepager_actions.py",
+    # ADR-0543 (LODESTAR 2.0): the studio's own leaves — the inline icon sprite and the undo log,
+    # which import no web module — then the one door every change goes through (it calls the
+    # shared actions), the frame (it draws the sprite's icons), the studio (it renders inside the
+    # frame) and the launch page (it borrows the studio's list→slide animation). All of them sit
+    # below `state`, with the rest of what LODESTAR.pyz carries.
+    "lodestar_icons.py",
+    "lodestar_history.py",
+    "lodestar_actions.py",
     "lodestar_shell.py",
+    "lodestar_studio.py",
+    "lodestar_launch.py",
     "state.py",
     "chrome.py",
     "components.py",
@@ -189,7 +200,10 @@ VIEW_MODULES = (
     "htmlkit.py",
     "integrity.py",
     "launch.py",
+    "lodestar_icons.py",
+    "lodestar_launch.py",
     "lodestar_shell.py",
+    "lodestar_studio.py",
     "margin.py",
     "mission.py",
     "onepager.py",
@@ -306,6 +320,40 @@ def test_whole_view_layer_guards_actually_read_the_whole_view_layer(guard_file: 
         "'nowhere in the view layer', so it must read all of "
         f"{list(VIEW_MODULES)} — otherwise the guard quietly stops covering the moved code."
     )
+
+
+#: An HTML (or inline-SVG) element written in a module's source — what makes it "markup-carrying".
+_MARKUP = re.compile(
+    r"<(?:div|span|section|a|svg|symbol|path|form|button|main|header|footer|table|td|p|h[1-6])\b"
+)
+
+
+def _markup_modules() -> list[str]:
+    """Every web module whose source writes HTML or inline SVG — computed, never typed out."""
+    return sorted(p.name for p in WEB.glob("*.py") if _MARKUP.search(p.read_text(encoding="utf-8")))
+
+
+def test_every_markup_carrying_module_is_a_view_module() -> None:
+    """The census `VIEW_MODULES` is pinned against, computed: a module that writes markup is in
+    the view layer, so the whole-view-layer guards must read it. ADR-0541's `lodestar_launch.py`
+    and ADR-0543's `lodestar_studio.py` / `lodestar_icons.py` were each a markup module none of
+    them read — invisible by construction until this census."""
+    found = _markup_modules()
+    assert len(found) >= 30, f"the markup census found only {found} — it has gone blind"
+    missing = [m for m in found if m not in VIEW_MODULES]
+    assert not missing, f"markup-carrying modules missing from VIEW_MODULES: {missing}"
+
+
+def test_every_lodestar_web_module_is_layered_below_the_session() -> None:
+    """LODESTAR.pyz carries the `web/lodestar_*` modules with no engine behind them (ADR-0539), so
+    each one is in `LAYER_ORDER` — where the downward-import test reads it — and below `state.py`
+    (the engine-laden session), never above it."""
+    lodestar = sorted(p.name for p in WEB.glob("lodestar_*.py"))
+    assert len(lodestar) >= 6, lodestar
+    unlayered = [m for m in lodestar if m not in LAYER_ORDER]
+    assert not unlayered, f"LODESTAR web modules outside LAYER_ORDER: {unlayered}"
+    above = [m for m in lodestar if LAYER_ORDER.index(m) > LAYER_ORDER.index("state.py")]
+    assert not above, f"LODESTAR web modules layered above the session: {above}"
 
 
 def test_the_layout_lives_where_the_source_text_guards_look_for_it() -> None:
