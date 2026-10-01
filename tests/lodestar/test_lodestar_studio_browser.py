@@ -1131,21 +1131,27 @@ _NATURAL_FIT = """() => {
     const w = t.getComputedTextLength(); if (had !== null) t.setAttribute('textLength', had);
     return w;
   };
-  const over = [];
+  const over = [], held = [];
+  const painted = (t, box, kind) => {
+    const w = t.getComputedTextLength();
+    if (w > box + 0.5) held.push([kind, t.textContent, +w.toFixed(1), +box.toFixed(1)]);
+  };
   document.querySelectorAll('g.lss-summary').forEach((g) => {
     const box = parseFloat(g.querySelector('.lss-sum-bg').getAttribute('width')) - 2.5;
     g.querySelectorAll('.lss-sum-text').forEach((t) => {
       const w = nat(t);
       if (w > box + 0.5) over.push(['summary', t.textContent, +w.toFixed(1), +box.toFixed(1)]);
+      painted(t, box, 'summary');
     });
   });
   document.querySelectorAll('.lss-badge').forEach((t) => {
     const w = nat(t), box = parseFloat(t.previousSibling.getAttribute('width')) - 1.6;
     if (w > box + 0.5) over.push(['tag', t.textContent, +w.toFixed(1), +box.toFixed(1)]);
+    painted(t, box, 'tag');
   });
   const first = document.querySelector('.lss-sum-text');
   const cs = first ? getComputedStyle(first) : null;
-  return { over: over, lines: document.querySelectorAll('.lss-sum-text').length,
+  return { over: over, held: held, lines: document.querySelectorAll('.lss-sum-text').length,
     tags: document.querySelectorAll('.lss-badge').length,
     rendering: cs ? cs.textRendering : '', face: cs ? cs.fontFamily : '' };
 }"""
@@ -1196,10 +1202,19 @@ def test_mutation_the_calibri_width_model_on_the_strip_overflows_the_boxes(
         assert kinds == {"summary", "tag"}, got["over"]
 
 
-def test_mutation_without_geometric_precision_the_tags_overflow(browser: Any) -> None:
-    """MUTATION: the one CSS declaration lifted from the served sheet — Chromium rounds each
-    glyph advance to a device pixel at the tag's size and the pills no longer hold their word."""
-    patch = {"lodestar_studio.css": ("text-rendering:geometricPrecision", "text-rendering:auto")}
+def test_mutation_a_wider_face_runs_past_the_boxes_and_the_squeeze_holds_it(browser: Any) -> None:
+    """MUTATION: the strip's face tracked 0.4 px wider per glyph in the served sheet — the natural
+    widths run past the boxes (the SAME checker names them) while the painter's exact box squeeze
+    still holds every PAINTED line and tag inside its box. Deterministic on every Chromium: the
+    pixel-rounded advances this change also guards against (measured +2.5 % on a 6-pt line in the
+    session's container, absent on CI's runner) are an environment's, not a mutant's."""
+    patch = {
+        "lodestar_studio.css": (
+            ".lss-sum-text{fill:var(--text-primary);font-family:var(--font-mono)}",
+            ".lss-sum-text{fill:var(--text-primary);font-family:var(--font-mono);letter-spacing:.4px}",
+        )
+    }
     with _studio(browser, patch=patch) as s:
         got = _fit_pair(s)
-        assert got["rendering"] == "auto" and any(o[0] == "tag" for o in got["over"]), got
+        assert any(o[0] == "summary" for o in got["over"]), got
+        assert got["held"] == [], got["held"]
