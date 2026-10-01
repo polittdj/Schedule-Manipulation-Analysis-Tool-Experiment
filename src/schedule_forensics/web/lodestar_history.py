@@ -21,7 +21,8 @@ from dataclasses import dataclass, field
 from typing import Any
 
 #: The session attributes an undo restores: both pages' lists, titles, windows and links, the ONE
-#: data date, and the marking. Everything else a session holds is derived or one-shot.
+#: data date, the risk register (ADR-0544) and the marking. Everything else a session holds is
+#: derived or one-shot.
 CONTENT: tuple[str, ...] = (
     "onepager",
     "onepager_title",
@@ -33,6 +34,7 @@ CONTENT: tuple[str, ...] = (
     "onepager_compare_title",
     "onepager_compare_window",
     "onepager_compare_links",
+    "onepager_risks",
     "unclassified",
 )
 #: The one-shot messages an undo or redo clears — a sentence about the state it replaced would

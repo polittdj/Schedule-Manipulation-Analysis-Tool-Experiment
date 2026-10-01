@@ -31,7 +31,7 @@ from schedule_forensics.web.lodestar_icons import icon, sprite
 #: LODESTAR.pyz run on a machine with Polaris² installed must not report Polaris²'s).
 NAME = "LODESTAR"
 TAGLINE = "One-Pager Studio"
-VERSION = "2.0.0"
+VERSION = "2.1.0"
 #: The author's credit, shown on every page (operator request 2026-09-29): who created LODESTAR
 #: and where to send an issue or a question. A plain ``mailto:`` — never a web link (the air-gap
 #: scan flags any remote URL), and never pre-filled with anything from the page.

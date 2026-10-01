@@ -77,7 +77,9 @@
       .then(function (res) {
         form.classList.remove("is-busy");
         if (!res.ok) { toast(res.data && res.data.error ? res.data.error : "The list was not loaded.", "warn"); return; }
+        var moved = res.data && res.data.page && res.data.page !== view.page;
         apply(res.data);
+        if (moved) { stopDemo(); try { history.pushState({ page: res.data.page }, "", res.data.path); } catch (e) { /* file: */ } }
         maybeAutoTour(res.data);
       }, function () { form.classList.remove("is-busy"); toast("The upload did not reach LODESTAR.", "fail"); });
   }
@@ -282,7 +284,7 @@
   D.addEventListener("pointercancel", function () { view.drag = null; rings(); });
 
   // ── forms: every submit becomes a live call (scripting off, they post as they are) ──────────
-  var API = { title: 1, window: 1, today: 1, clear: 1, links: 1, swap: 1, example: 1 };
+  var API = { title: 1, window: 1, today: 1, clear: 1, links: 1, swap: 1, example: 1, risks: 1 };
   D.addEventListener("submit", function (ev) {
     var form = ev.target, url = form.getAttribute("action") || "";
     if (url === "/quit") { stopDemo(); return; } // the stopped page is a real navigation
@@ -359,7 +361,7 @@
     var pick = t.closest("[data-ls-pick]");
     if (pick) {
       var which = pick.getAttribute("data-ls-pick");
-      var input = $(which === "prior" ? "lsFilePrior" : which === "current" ? "lsFileCurrent" : "lsFile");
+      var input = $({ prior: "lsFilePrior", current: "lsFileCurrent", risks: "lsFileRisks", restore: "lsFileRestore" }[which] || "lsFile");
       if (input) input.click();
       return;
     }
@@ -519,10 +521,14 @@
       { label: "Go to Compare", hint: "page", run: function () { if (view.page !== "compare") loadPage("compare", true); } },
       { label: "Export PowerPoint", hint: "⤓ .pptx", run: function () { exportLink("lsPptx"); } },
       { label: "Export Excel", hint: "⤓ .xlsx", run: function () { exportLink("lsXlsx"); } },
+      { label: "Export PDF", hint: "⤓ .pdf", run: function () { exportLink("lsPdf"); } },
+      { label: S.loaded.risks ? "Replace the risk register" : "Load a risk register", hint: "risks", run: function () { var i = $("lsFileRisks"); if (i) i.click(); } },
+      { label: "Restore a slide from an export", hint: "restore", run: function () { var i = $("lsFileRestore"); if (i) i.click(); } },
       { label: "Print the slide as PDF", hint: "print", run: printSlide },
       { label: "Show all dates", hint: "window", run: function () { act("window", { action: "clear" }); } },
       { label: "Use the computer's date", hint: "data date", run: function () { act("today", { action: "clear" }); } },
       { label: "Remove all logic links", hint: "links", run: function () { act("links", { action: "clear" }); } },
+      { label: "Clear the risks", hint: "risks", run: function () { if (S.loaded.risks) act("risks", { action: "clear" }); else toast("No risk register is loaded.", "info"); } },
       { label: S.marking.flipLabel, hint: "marking", run: function () { act("marking", { marking: S.marking.flip }); } },
       { label: "Start the guided tour", hint: "help", run: function () { startTour(0); } },
       { label: "Undo — " + (S.canUndo ? S.undoLabel : "nothing to undo"), hint: "⌘Z", run: function () { act("undo", {}); } },

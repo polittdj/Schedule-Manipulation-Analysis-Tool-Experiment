@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import datetime as dt
 from dataclasses import dataclass
+from typing import Any
 from urllib.parse import quote
 
 from schedule_forensics.reports.onepager import (
@@ -40,14 +41,36 @@ from schedule_forensics.reports.onepager_links import (
     links_table,
     rebind,
 )
+from schedule_forensics.reports.onepager_risks import (
+    RiskDoc,
+    header_roles,
+    parse_risk_workbook,
+    read_risks,
+    risks_table,
+)
+from schedule_forensics.reports.pdf import render_onepager_compare_pdf, render_onepager_pdf
+from schedule_forensics.reports.pdf_read import read_pdf_payload
 from schedule_forensics.reports.pptx import render_onepager_compare_pptx, render_onepager_pptx
-from schedule_forensics.reports.tableset import TableSet
+from schedule_forensics.reports.pptx_read import read_pptx
+from schedule_forensics.reports.session_payload import (
+    PayloadError,
+    Restored,
+    build_payload,
+    parse_payload,
+    payload_bytes,
+    payload_from_sheets,
+    payload_tables,
+    restore_payload,
+    sniff_export,
+)
+from schedule_forensics.reports.tableset import Table, TableSet
 from schedule_forensics.reports.xlsx_read import XlsxError, read_xlsx_numbered
 from schedule_forensics.web.onepager import (
     link_idents,
     linkable_items,
     onepager_layout,
     onepager_view,
+    risks_view,
 )
 from schedule_forensics.web.onepager_common import OnePagerSession
 from schedule_forensics.web.onepager_compare import (
@@ -59,6 +82,19 @@ from schedule_forensics.web.onepager_compare import (
 )
 
 PPTX_MEDIA = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+PDF_MEDIA = "application/pdf"
+#: The columns the risk register's reader looks at (A to H — a header may put the date anywhere).
+RISK_COLUMNS = 8
+#: The columns an export workbook's restore sheets use (the links sheet is the widest, 13).
+RESTORE_COLUMNS = 13
+#: What a file dropped on a LIST slot is told when it is an export (ADR-0544): never guessed into
+#: a slot, never read as a list.
+_EXPORT_ON_SLOT = {
+    "pptx": (
+        "That is a PowerPoint, not a list — drop it on “Restore a slide” to bring its slide back."
+    ),
+    "pdf": ("That is a PDF, not a list — drop it on “Restore a slide” to bring its slide back."),
+}
 #: The columns a One-Pager list uses (A to E); a cell further right is never read, so it can never
 #: widen a row (the reader's width budget, ADR-0539).
 ONEPAGER_COLUMNS = 5
@@ -100,15 +136,54 @@ def read_list(
     exactly as the routes always behaved."""
     if len(data) > max_bytes:
         return f"List not loaded — file exceeds the {max_bytes // (1024 * 1024)} MB cap."
+    refusal = _EXPORT_ON_SLOT.get(sniff_export(data))
+    if refusal is not None:
+        return refusal
     try:
         # the numbered reader: every row the page cites is the row Excel shows (ADR-0524), and a
         # typed TRUE / FALSE (or a checkbox) reads as the word Excel shows, never as 1 / 0
         sheets = read_xlsx_numbered(data, max_columns=ONEPAGER_COLUMNS, booleans_as_text=True)
     except XlsxError as exc:
         return f"Could not read that file: {exc}"
+    if _is_risk_register(sheets):
+        return (
+            "That workbook is a risk register (its header names a probability and an impact), "
+            "not a list — drop it on the Risks slot."
+        )
+    if _is_export_workbook(data):
+        return (
+            "That workbook is a LODESTAR export, not a list — drop it on “Restore a slide” to "
+            "bring its slide back, or drop its “List (restore)” sheet as a list of its own."
+        )
     return parse_numbered_workbook(
         sheets, source_name(filename), _LAYOUT_CHOICES.get(layout.strip().lower())
     )
+
+
+def _is_risk_register(sheets: dict[str, list[tuple[int, list[str]]]]) -> bool:
+    """Whether the first sheet with content heads a RISK REGISTER — its first content row binds
+    the probability and impact roles (:func:`~.onepager_risks.header_roles`) — so a register
+    dropped on a list slot (the Timeline takes a drop anywhere) is refused by name, never read
+    as a list of unreadable dates that replaces the loaded one (ADR-0544)."""
+    for numbered in sheets.values():
+        for _n, cells in numbered:
+            if any(c.strip() for c in cells):
+                roles = header_roles([c.strip() for c in cells])
+                return "prob" in roles and "impact" in roles
+    return False
+
+
+def _is_export_workbook(data: bytes) -> bool:
+    """Whether the workbook carries the settings sheet every LODESTAR export does (ADR-0544)."""
+    try:
+        sheets = read_xlsx_numbered(data, max_columns=2)
+    except XlsxError:
+        return False
+    try:
+        payload_from_sheets(sheets)
+    except PayloadError:
+        return False
+    return True
 
 
 def _why_empty(doc: OnePagerDoc) -> str:
@@ -304,6 +379,228 @@ def clear_compare(st: OnePagerSession) -> None:
     st.onepager_compare_is_error = False
 
 
+# ── the risk register (both pages, ADR-0544) ──────────────────────────────────────────────────
+
+
+def _say(st: OnePagerSession, page: str, msg: str, error: bool) -> None:
+    if page == "compare":
+        st.onepager_compare_msg, st.onepager_compare_is_error = msg, error
+    else:
+        st.onepager_msg, st.onepager_is_error = msg, error
+
+
+def load_risks(
+    st: OnePagerSession, page: str, filename: str | None, data: bytes, *, max_bytes: int
+) -> None:
+    """Parse the risk register into the session — ONE register for both pages — with a one-shot
+    summary on ``page``. A bad workbook, an over-cap upload, an export dropped here, or a
+    register with no usable row is reported by name; the register already loaded stays."""
+    if len(data) > max_bytes:
+        _say(
+            st,
+            page,
+            f"Risks not loaded — file exceeds the {max_bytes // (1024 * 1024)} MB cap.",
+            True,
+        )
+        return
+    refusal = _EXPORT_ON_SLOT.get(sniff_export(data))
+    if refusal is not None:
+        _say(st, page, refusal, True)
+        return
+    parsed = read_risks(data, source_name(filename), max_bytes=max_bytes)
+    if isinstance(parsed, str):
+        _say(st, page, parsed, True)
+        return
+    if not parsed.risks:
+        why = (
+            f"{len(parsed.problems)} row(s) skipped; see the list below."
+            if parsed.problems
+            else "the sheet has no risk rows."
+        )
+        _say(st, page, f"No usable risks in {parsed.source} — {why}", True)
+        return
+    st.onepager_risks = parsed
+    skipped = f"; {len(parsed.problems)} row(s) skipped" if parsed.problems else ""
+    has_list = (
+        st.onepager is not None
+        if page != "compare"
+        else st.onepager_prior is not None and st.onepager_current is not None
+    )
+    where = (
+        "drawn on both slides as triangles, in the colour of each risk's probability"
+        if has_list
+        else "drawn as triangles once the list the risks threaten is loaded"
+    )
+    _say(
+        st,
+        page,
+        f"Loaded {len(parsed.risks)} risk(s) from {parsed.source}{skipped} — {where}.",
+        bool(parsed.problems),
+    )
+
+
+def clear_risks(st: OnePagerSession, page: str) -> None:
+    had = st.onepager_risks
+    st.onepager_risks = None
+    _say(
+        st,
+        page,
+        f"Risks cleared — {len(had.risks)} risk(s) from {had.source} no longer drawn."
+        if had is not None
+        else "No risk register is loaded.",
+        False,
+    )
+
+
+# ── restoring a slide from an export (ADR-0544) ───────────────────────────────────────────────
+
+#: What a browser-printed PDF — or any file that is none of LODESTAR's exports — is told.
+_NOT_AN_EXPORT = (
+    "That file carries no slide record — drop a PowerPoint, PDF or Excel file that LODESTAR 2.1 "
+    "or later exported (an older export, or a PDF saved from the browser's Print dialog, carries "
+    "none; load the original list instead)."
+)
+_TEMPLATE_HEAD = ("Swimlane Name", "Task", "Start", "Finish", "Complete")
+
+
+def restore_export(
+    st: OnePagerSession, page: str, filename: str | None, data: bytes, *, max_bytes: int
+) -> Restored | str:
+    """Put the slide an export carries back on the session — the lists through the parser,
+    the settings, the logic links, the risk register — or the sentence saying why not. The
+    export's kind is read from its BYTES; the slide lands on the page it came from."""
+    if len(data) > max_bytes:
+        return f"Nothing restored — file exceeds the {max_bytes // (1024 * 1024)} MB cap."
+    kind = sniff_export(data)
+    name = source_name(filename)
+    try:
+        if kind == "pdf":
+            raw = read_pdf_payload(data)
+            if raw is None:
+                return _NOT_AN_EXPORT
+            payload = parse_payload(raw)
+        elif kind == "pptx":
+            deck = read_pptx(data)
+            if deck.problem:
+                return f"Nothing restored from {name}: {deck.problem}"
+            if deck.payload is not None:
+                payload = parse_payload(deck.payload)
+            elif deck.items:
+                payload = _payload_from_deck(deck.settings or {}, deck.items, page, name)
+                got = restore_payload(st, payload, risks_reader=parse_risk_workbook)
+                return Restored(
+                    got.page,
+                    got.message
+                    + " Rebuilt from the deck's shapes — its record was gone — so rows the slide "
+                    "left off (skipped, or outside its window) and the risk register are not "
+                    "carried.",
+                    got.counts,
+                )
+            else:
+                return _NOT_AN_EXPORT
+        elif kind == "xlsx":
+            try:
+                sheets = read_xlsx_numbered(data, max_columns=RESTORE_COLUMNS)
+            except XlsxError as exc:
+                return f"Could not read that file: {exc}"
+            payload = payload_from_sheets(sheets)
+        else:
+            return _NOT_AN_EXPORT
+    except PayloadError as exc:
+        return f"Nothing restored from {name}: {exc}."
+    return restore_payload(st, payload, risks_reader=parse_risk_workbook)
+
+
+def _payload_from_deck(
+    settings: dict[str, Any], items: list[dict[str, Any]], page: str, name: str
+) -> dict[str, Any]:
+    """A record rebuilt from a deck's alt text alone — a deck re-saved by an app that dropped
+    the custom XML part (ADR-0544): every item shape names its swimlane, item, dates and status,
+    the Title shape the settings and the links. The rows are written in the template's layout,
+    so the parser reads them as a dropped list would."""
+    landed = settings.get("page") if settings.get("page") in ("timeline", "compare") else page
+
+    def rows(selected: list[dict[str, Any]]) -> list[list[Any]]:
+        out: list[list[Any]] = [[1, list(_TEMPLATE_HEAD)]]
+        for n, it in enumerate(selected, start=2):
+            done = it.get("complete")
+            out.append(
+                [
+                    n,
+                    [
+                        str(it.get("lane", "")),
+                        str(it.get("name", "")),
+                        str(it.get("start", "")),
+                        str(it.get("finish", "")),
+                        "Complete" if done is True else "",
+                    ],
+                ]
+            )
+        return out
+
+    real = [it for it in items if it.get("kind", "item") == "item"]
+    raw_sources = settings.get("sources")
+    sources: dict[str, Any] = raw_sources if isinstance(raw_sources, dict) else {}
+    lists: dict[str, Any] = {}
+    if landed == "compare":
+        current = [it for it in real if it.get("side", "current") == "current"]
+        prior = [it for it in real if it.get("side") == "prior"] + [
+            it for it in current if it.get("status") == "unchanged"
+        ]
+        lists["prior"] = {
+            "source": str(sources.get("prior") or f"{name} (prior)"),
+            "sheet": "Sheet1",
+            "layout": None,
+            "rows": rows(prior),
+        }
+        lists["current"] = {
+            "source": str(sources.get("current") or f"{name} (current)"),
+            "sheet": "Sheet1",
+            "layout": None,
+            "rows": rows(current),
+        }
+    else:
+        lists["list"] = {
+            "source": str(sources.get("list") or name),
+            "sheet": "Sheet1",
+            "layout": None,
+            "rows": rows(real),
+        }
+    links = settings.get("links") if isinstance(settings.get("links"), list) else []
+    return {
+        "lodestar": {
+            "format": 1,
+            "program": str(settings.get("program", "")),
+            "page": landed,
+            "title": str(settings.get("title", "")),
+            "window": settings.get("window"),
+            "today": settings.get("today"),
+            "marking": settings.get("marking", "cui"),
+            "lists": lists,
+            "links": links,
+            "risks": None,
+        }
+    }
+
+
+def _record(st: OnePagerSession, page: str, generator: str) -> tuple[bytes, dict[str, Any]]:
+    """The export's record as bytes, and the settings the PowerPoint's Title shape also carries
+    (the record's settings plus the links and the sources — what the alt-text fallback needs)."""
+    payload = build_payload(st, page, program=generator, today=st.onepager_today)
+    rec = payload["lodestar"]
+    settings = {
+        "page": rec["page"],
+        "title": rec["title"],
+        "window": rec["window"],
+        "today": rec["today"],
+        "marking": rec["marking"],
+        "program": rec["program"],
+        "links": rec["links"],
+        "sources": {slot: item["source"] for slot, item in rec["lists"].items()},
+    }
+    return payload_bytes(payload), settings
+
+
 # ── logic links (both pages) ──────────────────────────────────────────────────────────────────
 
 
@@ -409,10 +706,47 @@ def onepager_pptx(
         f"Source: {doc.source} · {len(doc.items)} items · generated {made.isoformat()} "
         f"by {generator}"
     )
+    payload, settings = _record(st, "timeline", generator)
     return Download(
-        render_onepager_pptx(lay, marking=marking, source=source, product=generator),
+        render_onepager_pptx(
+            lay,
+            marking=marking,
+            source=source,
+            product=generator,
+            payload=payload,
+            settings=settings,
+        ),
         PPTX_MEDIA,
         attachment(lay.title, "one-pager", "pptx"),
+    )
+
+
+def onepager_pdf(
+    st: OnePagerSession,
+    today: dt.date,
+    marking: str,
+    generator: str,
+    prepared: dt.date | None = None,
+) -> Download | str:
+    """The Timeline slide as a one-page PDF carrying its record (ADR-0544) — or the refusal."""
+    made = today if prepared is None else prepared
+    lay = onepager_layout(st, today, made)
+    doc, _omitted = onepager_view(st)
+    if lay is None or doc is None:
+        if st.onepager is not None and st.onepager.items:
+            return "no item falls inside the date window — there is no slide to export"
+        return "load a one-pager list first — there is no slide to export"
+    source = (
+        f"Source: {doc.source} · {len(doc.items)} items · generated {made.isoformat()} "
+        f"by {generator}"
+    )
+    payload, _settings = _record(st, "timeline", generator)
+    return Download(
+        render_onepager_pdf(
+            lay, marking=marking, source=source, product=generator, payload=payload
+        ),
+        PDF_MEDIA,
+        attachment(lay.title, "one-pager", "pdf"),
     )
 
 
@@ -436,15 +770,53 @@ def compare_pptx(
         f"Prior: {doc.prior_source} · Current: {doc.current_source} · {len(doc.rows)} rows · "
         f"moves in calendar days · generated {made.isoformat()} by {generator}"
     )
+    payload, settings = _record(st, "compare", generator)
     return Download(
-        render_onepager_compare_pptx(lay, marking=marking, source=source, product=generator),
+        render_onepager_compare_pptx(
+            lay,
+            marking=marking,
+            source=source,
+            product=generator,
+            payload=payload,
+            settings=settings,
+        ),
         PPTX_MEDIA,
         attachment(lay.title, "one-pager-compare", "pptx"),
     )
 
 
+def compare_pdf(
+    st: OnePagerSession,
+    today: dt.date,
+    marking: str,
+    generator: str,
+    prepared: dt.date | None = None,
+) -> Download | str:
+    """The Compare slide as a one-page PDF carrying its record (ADR-0544) — or the refusal."""
+    made = today if prepared is None else prepared
+    lay = onepager_compare_layout(st, today, made)
+    doc, _omitted = onepager_compare_view(st)
+    if lay is None or doc is None:
+        full = onepager_compare_doc(st)
+        if full is not None and full.rows:
+            return "no compared item falls inside the date window — there is no slide"
+        return "load a PRIOR and a CURRENT one-pager list first — there is no slide"
+    source = (
+        f"Prior: {doc.prior_source} · Current: {doc.current_source} · {len(doc.rows)} rows · "
+        f"moves in calendar days · generated {made.isoformat()} by {generator}"
+    )
+    payload, _settings = _record(st, "compare", generator)
+    return Download(
+        render_onepager_compare_pdf(
+            lay, marking=marking, source=source, product=generator, payload=payload
+        ),
+        PDF_MEDIA,
+        attachment(lay.title, "one-pager-compare", "pdf"),
+    )
+
+
 def onepager_workbook(
-    st: OnePagerSession, today: dt.date, prepared: dt.date | None = None
+    st: OnePagerSession, today: dt.date, prepared: dt.date | None = None, generator: str = ""
 ) -> TableSet | str:
     """The parsed list (scoped to the window), every parser decision, the sheet's layout and the
     operator's logic links — or the refusal sentence with nothing loaded."""
@@ -455,13 +827,14 @@ def onepager_workbook(
     ts = onepager_tableset(doc, st.onepager_window, omitted, extra_notes=layout_notes(doc))
     # no slide at all: the window hid every item — or the list has none to show (review SKL-5)
     why = _NO_SLIDE if st.onepager is not None and st.onepager.items else _NO_ITEMS
-    return _with_links(
+    ts = _with_links(
         ts, st.onepager_links, lay.links if lay else [], lay.link_notes if lay else [why]
     )
+    return _with_record(st, "timeline", ts, st.onepager_window, generator)
 
 
 def compare_workbook(
-    st: OnePagerSession, today: dt.date, prepared: dt.date | None = None
+    st: OnePagerSession, today: dt.date, prepared: dt.date | None = None, generator: str = ""
 ) -> TableSet | str:
     """The compared rows, summary, decisions and the operator's logic links — or the refusal."""
     doc, omitted = onepager_compare_view(st)
@@ -471,12 +844,40 @@ def compare_workbook(
     ts = compare_tableset(doc, st.onepager_compare_window, omitted)
     full = onepager_compare_doc(st)
     why = _NO_SLIDE if full is not None and full.rows else _NO_ROWS
-    return _with_links(
+    ts = _with_links(
         ts,
         st.onepager_compare_links,
         lay.links if lay else [],
         lay.link_notes if lay else [why],
     )
+    return _with_record(st, "compare", ts, st.onepager_compare_window, generator)
+
+
+def _with_record(
+    st: OnePagerSession,
+    page: str,
+    ts: TableSet,
+    window: Window | None,
+    generator: str = "",
+) -> TableSet:
+    """``ts`` plus the risk register's table (when one is loaded) and the record's sheets —
+    what makes the workbook a slide LODESTAR can restore (ADR-0544)."""
+    tables = list(ts.tables)
+    register: RiskDoc | None = st.onepager_risks
+    if register is not None:
+        tables.append(risks_table(register))
+        _kept, omitted = risks_view(st, window)
+        if omitted:
+            tables.append(
+                Table(
+                    "Risks outside the window",
+                    ("Risk",),
+                    tuple((o,) for o in omitted),
+                )
+            )
+    program = generator or ts.title.split(" — ", 1)[0]
+    payload = build_payload(st, page, program=program, today=st.onepager_today)
+    return TableSet(ts.title, (*tables, *payload_tables(payload)))
 
 
 #: The one note when there is no slide at all to draw a link on, by its cause: a date window

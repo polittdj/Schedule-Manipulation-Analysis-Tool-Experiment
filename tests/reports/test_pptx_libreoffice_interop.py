@@ -46,6 +46,7 @@ import pytest
 from schedule_forensics.reports.onepager import OnePagerDoc, OnePagerItem, build_layout
 from schedule_forensics.reports.onepager_compare import build_compare_layout, compare_onepager_docs
 from schedule_forensics.reports.pptx import render_onepager_compare_pptx, render_onepager_pptx
+from schedule_forensics.reports.pptx_read import read_pptx
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 #: A deck PowerPoint wrote — the control. Independent of everything this repo generates.
@@ -259,3 +260,55 @@ def test_libreoffice_keeps_column_ds_check_a_check(soffice: str, tmp_path: Path)
     assert set(strokes) == {f"Done tick: {n}" for n in done} | {"Done tick: legend"}, strokes
     for name, kinds in strokes.items():
         assert sorted(kinds) == ["falling", "rising"], (name, kinds)
+
+
+def test_libreoffice_resave_keeps_the_alt_text_records(soffice: str, tmp_path: Path) -> None:
+    """ADR-0544: a deck that carries the session is re-saved by Impress AS A DECK
+    (``--convert-to pptx``), and the alt-text records — the fallback the operator's restore
+    reads when a re-save drops the custom XML part — come back on the shapes. Whether the custom
+    XML part itself survives an Impress re-save is UNVERIFIED and not asserted: the fallback is
+    the contract. The output lands in a directory of its own so the input is never overwritten,
+    and the artifact is the verdict (``soffice`` exits 0 on a refusal — see the module doc)."""
+    lay = build_layout(list(_items(0)), _TODAY, "Program One-Pager", "Prepared 2026-06-15")
+    settings = {"page": "timeline", "title": "Program One-Pager", "links": [], "sources": {}}
+    src = tmp_path / "carrier.pptx"
+    src.write_bytes(
+        render_onepager_pptx(
+            lay,
+            marking=_MARKING,
+            source="Source: probe.xlsx · 5 items",
+            payload=b'{"lodestar":{"format":1,"page":"timeline"}}',
+            settings=settings,
+        )
+    )
+    outdir = tmp_path / "resaved"
+    outdir.mkdir()
+    produced = outdir / "carrier.pptx"
+    done = subprocess.run(
+        [
+            soffice,
+            f"-env:UserInstallation=file://{outdir / '_lo_profile'}",
+            "--headless",
+            "--norestore",
+            "--convert-to",
+            "pptx",
+            "--outdir",
+            str(outdir),
+            str(src),
+        ],
+        capture_output=True,
+        timeout=_TIMEOUT,
+        check=False,
+    )
+    said = (done.stderr or done.stdout or b"").decode("utf-8", "replace").strip()
+    assert produced.exists(), f"LibreOffice did not re-save the carrier deck as .pptx: {said}"
+    deck = read_pptx(produced.read_bytes())
+    assert deck.problem == "", deck
+    assert {(it["lane"], it["name"], it["start"], it["finish"]) for it in deck.items} == {
+        ("Design", "Preliminary design review", "2026-01-05", "2026-03-20"),
+        ("Design", "Critical design review", "2026-04-01", "2026-04-01"),
+        ("Build", "Structure fabrication", "2026-04-06", "2026-08-14"),
+        ("Test", "Environmental test campaign", "2026-08-17", "2026-11-27"),
+        ("Test", "Ready to Ship", "2026-12-04", "2026-12-04"),
+    }, "the re-saved deck lost the item records on its shapes' alt text"
+    assert deck.settings is not None and deck.settings.get("page") == "timeline"

@@ -58,6 +58,7 @@ from schedule_forensics.reports.onepager import (
     LANES_Y1,
     LEGEND_Y0,
     MON_Y1,
+    MONO_CHAR_W,
     MS_F,
     SUB_Y,
     TITLE_Y,
@@ -71,6 +72,7 @@ from schedule_forensics.reports.onepager import (
     LegendEntry,
     OnePagerDoc,
     OnePagerItem,
+    RiskLike,
     Tick,
     W,
     Window,
@@ -86,6 +88,9 @@ from schedule_forensics.reports.onepager import (
     mdy,
     overlaps,
     plot_window,
+    risk_label,
+    risk_legend_entries,
+    risk_prob,
     size_notes,
     status_label,
     text_w,
@@ -117,6 +122,9 @@ ADDED = "new"
 REMOVED = "removed"
 AMBIGUOUS = "ambiguous"
 STATUSES = (SLIPPED, PULLED_IN, START_MOVED, UNCHANGED, ADDED, REMOVED, AMBIGUOUS)
+#: A row of the risk register placed on the compare slide (ADR-0544) — never a status of a
+#: compared row, never counted in a summary: it lives only in the LAYOUT.
+RISK = "risk"
 
 
 #: Typographic twins a paste from Word or PowerPoint brings: every dash to a hyphen, every curly
@@ -586,9 +594,13 @@ X1 = 944.0 - SUMMARY_W - SUMMARY_GAP  # the chart area's right edge on the compa
 SUMMARY_X0, SUMMARY_X1 = X1 + SUMMARY_GAP, 944.0
 #: The slip / pull-in arrow: drawn just above the bar, this tall, with this head.
 ARROW_LIFT, ARROW_HEAD = 1.1, 1.8
-#: A "NEW" / "REMOVED" tag sits after the label, on its own filled box.
-BADGE_PAD = 1.6
+#: A "NEW" / "REMOVED" tag sits after the label, on its own filled box — set in a monospace face
+#: (:data:`MONO_CHAR_W`) tracked this much per glyph (``lodestar_studio.css``'s ``.lss-badge``).
+BADGE_PAD, BADGE_TRACK = 1.6, 0.4
 DELTA_UNIT = "cal d"
+#: The summary strip's sizes: 6 pt down to the ADR-0524 floor, and — only to keep the whole strip
+#: rather than cut it — down to this minimum (ADR-0544; see :func:`_summary_box`).
+SUMMARY_FLOOR, SUMMARY_MIN = 3.6, 3.2
 #: Column D's check (ADR-0524): a disc this fraction of the label size in radius, drawn BESIDE the
 #: current shape on its label's side — never on the bar, where a --muted disc on an opaque lane
 #: fill measured 1.04-1.94:1 — with this gap before the label text.
@@ -650,6 +662,12 @@ class PlacedCompare:
     #: F1); ``0`` for a bar or no such side
     ms: float = 0.0
     ghost_ms: float = 0.0
+    #: ``"risk"`` for a row of the risk register (``status`` is :data:`RISK` too): a single
+    #: moment drawn as a triangle in the colour of ``prob``, its ``impact`` text in ``delta``
+    #: (ADR-0544; the Timeline's :class:`~.onepager.Placed` carries the same three fields)
+    kind: str = "item"
+    prob: str = ""
+    impact: str = ""
 
 
 @dataclass(frozen=True)
@@ -777,8 +795,16 @@ def build_compare_layout(
     window: Window | None = None,
     links: Sequence[Link] = (),
     absent: Mapping[str, str] | None = None,
+    risks: Sequence[RiskLike] = (),
+    risk_impacts: Mapping[str, str] | None = None,
 ) -> CompareLayout:
     """Place every compared row on the slide. Raises ``ValueError`` with nothing to place.
+
+    ``risks`` (ADR-0544) are the register's rows the caller scoped to the window: each is packed
+    into its swimlane's rows as a CURRENT-side milestone at its date — a swimlane no compared row
+    holds gets a band of its own (named in the notes, with no summary strip) — and drawn as a
+    triangle in its probability's colour with ``risk_impacts[key]`` after its label. A risk is
+    never a link's end and never counted in a summary.
 
     With a ``window`` (ADR-0527) the timescale is exactly that window and the caller has already
     scoped the rows to it (:func:`window_compare`): a shape that runs past an edge is cut at it, a
@@ -787,19 +813,55 @@ def build_compare_layout(
 
     The rows FILL the slide and the slide is laid out ONCE: the logic links are routed between
     CURRENT positions by the Timeline's own Console rule (ADR-0543) and never move an item."""
-    if not doc.rows:
+    if not doc.rows and not risks:
         raise ValueError("nothing to lay out")
     if window is not None and not all(row_in_window(r, window) for r in doc.rows):
         raise ValueError("a row lies wholly outside the window")
+    if window is not None and any(not window[0] <= r.date <= window[1] for r in risks):
+        raise ValueError("a risk lies outside the window")
     notes: list[str] = []
+    # a risk packs as a current-side milestone of its lane: a synthetic row keyed by the
+    # register's own key (prefixed, so it can never collide with a compared row's)
+    risk_of: dict[str, RiskLike] = {f"risk:{r.key}": r for r in risks}
+    impacts = {f"risk:{k}": v for k, v in (risk_impacts or {}).items()}
+    rows_all: list[CompareRow] = [
+        *doc.rows,
+        *(
+            CompareRow(
+                r.lane,
+                r.name,
+                RISK,
+                None,
+                None,
+                r.date,
+                r.date,
+                None,
+                None,
+                None,
+                None,
+                None,
+                True,
+                None,
+                None,
+                f"risk:{r.key}",
+            )
+            for r in risks
+        ),
+    ]
+    compared_lanes = {lane_key(r.lane) for r in doc.rows}
     lane_of: dict[str, int] = {}
     lane_names: list[str] = []
     merged: dict[int, list[str]] = {}
-    for r in doc.rows:
+    for r in rows_all:
         key = lane_key(r.lane)
         if key not in lane_of:
             lane_of[key] = len(lane_names)
             lane_names.append(r.lane)
+            if key not in compared_lanes:
+                notes.append(
+                    f"swimlane “{r.lane}” is named only in the risk register — drawn as a band of "
+                    "its own, holding its risks alone"
+                )
         elif r.lane != lane_names[lane_of[key]] and r.lane not in merged.setdefault(
             lane_of[key], []
         ):
@@ -810,7 +872,7 @@ def build_compare_layout(
             )
     dates = [
         d
-        for r in doc.rows
+        for r in rows_all
         for d in (r.prior_start, r.prior_finish, r.current_start, r.current_finish)
         if d is not None
     ]
@@ -826,10 +888,10 @@ def build_compare_layout(
                 "move keeps its true dates: " + "; ".join(f"{r.name} ({r.status})" for r in cut)
             )
     by_lane: dict[int, list[CompareRow]] = {}
-    for r in doc.rows:
+    for r in rows_all:
         by_lane.setdefault(lane_of[lane_key(r.lane)], []).append(r)
     n_lanes = len(lane_names)
-    n_items = len(doc.rows)
+    n_items = len(rows_all)
     names = {r.key: row_label(r) for r in doc.rows if r.key}
 
     def sort_key(r: CompareRow) -> tuple[dt.date, dt.date, int, int]:
@@ -907,10 +969,21 @@ def build_compare_layout(
                 ext.append((min(arrow_ends), max(arrow_ends)))
             left = min(e[0] for e in ext)
             right = max(e[1] for e in ext)
-            label, delta, badge = _label_for(r)
-            text = " ".join(t for t in (label, delta) if t)
-            lw = text_w(text, label_pt)
-            bw = text_w(badge, label_pt) + 2 * BADGE_PAD if badge else 0.0
+            risk = risk_of.get(r.key)
+            if risk is not None:
+                label, delta, badge = risk_label(risk), impacts.get(r.key, ""), ""
+            else:
+                label, delta, badge = _label_for(r)
+            # the delta and the tag are set in a monospace face on the page (ADR-0544); the label
+            # in a face narrower than CHAR_W, as the Timeline's
+            lw = text_w(label, label_pt) + (
+                text_w(f" {delta}", label_pt, MONO_CHAR_W) if delta else 0.0
+            )
+            bw = (
+                text_w(badge, label_pt, MONO_CHAR_W) + len(badge) * BADGE_TRACK + 2 * BADGE_PAD
+                if badge
+                else 0.0
+            )
             full = lw + (bw + 2 if badge else 0.0)
             done = bool(r.current_complete) and cur is not None
             chk = 2 * done_r + DONE_GAP if done else 0.0
@@ -1077,6 +1150,9 @@ def build_compare_layout(
                     r.key,
                     ms=2 * diamond_half(x0, ms_w, X0, x1) if x0 is not None else 0.0,
                     ghost_ms=2 * diamond_half(gx0, ms_w, X0, x1) if gx0 is not None else 0.0,
+                    kind="risk" if r.key in risk_of else "item",
+                    prob=risk_prob(risk_of[r.key].prob) if r.key in risk_of else "",
+                    impact=pk.delta if r.key in risk_of else "",
                 )
             )
         s_ = by_summary.get(lane_key(lane_names[li]))
@@ -1105,6 +1181,7 @@ def build_compare_layout(
         ("removed", "REMOVED (ghost only)", -1),
         *([("done", complete_legend(doc.status_label), -1)] if doc.completion else []),
         ("today", f"Data date ({mdy(today)})", -1),
+        *risk_legend_entries(placed),
         *([("link", link_legend(drawn), -1)] if drawn else []),
     ] + [("lane", ln.name, ln.color) for ln in lanes]
     for _ in range(3):
@@ -1249,7 +1326,9 @@ def _summary_box(s: LaneSummary, lane: int, y0: float, y1: float) -> SummaryBox:
     """The swimlane's strip: every non-zero count — what did NOT slip and what column D marks
     complete included — and the worst slip named, at the LARGEST size (6 pt down to 3.6 pt) at
     which the whole of it fits the box. Only past 3.6 pt is anything cut, with an ellipsis: the
-    old three-line strip cut the new counts first, in exactly the lanes that moved."""
+    old three-line strip cut the new counts first, in exactly the lanes that moved. The lines are
+    wrapped for a MONOSPACE face (:data:`MONO_CHAR_W` — LODESTAR sets the strip in IBM Plex Mono,
+    ADR-0544): wrapped at Calibri's 0.52 they painted past the box's right edge."""
     parts = [
         f"{label} {n}"
         for label, n in (
@@ -1273,20 +1352,31 @@ def _summary_box(s: LaneSummary, lane: int, y0: float, y1: float) -> SummaryBox:
     width = SUMMARY_W - 5
     h = y1 - y0 - 1.5
     whole = 10**6  # wrap without cutting: the fit test below decides
+    mono = MONO_CHAR_W
+    strip = f"{counts} · {worst}"
     n_lines = 1
-    while (pt := min(6.0, h / (n_lines * 1.25))) >= 3.6:
-        if n_lines == 1:
-            lines = wrap(f"{counts} · {worst}", pt, width, max_lines=whole)
-        else:
-            lines = wrap(counts, pt, width, whole) + wrap(worst, pt, width, whole)
+    while (pt := min(6.0, h / (n_lines * 1.25))) >= SUMMARY_FLOOR:
+        # the counts and the worst slip each on their own line(s) read best; when that form
+        # needs a line more than the box holds at this size, the one running sentence may still
+        # fit it (greedy wrapping takes the fewest lines) — the same size, and nothing cut
+        split = wrap(counts, pt, width, whole, mono) + wrap(worst, pt, width, whole, mono)
+        lines = split if len(split) <= n_lines else wrap(strip, pt, width, whole, mono)
         if len(lines) <= n_lines:
             return SummaryBox(lane, SUMMARY_X0, SUMMARY_X1, y0, y1, lines, pt)
         n_lines += 1
-    pt = 3.6
+    # past the floor: a size down to SUMMARY_MIN that holds the WHOLE strip beats a cut (the
+    # 3.6-pt floor was ruled under the 0.52 width model, ADR-0524; a monospace face needs 15% more
+    # width for the same text, and 3.2 pt of it carries what 3.6 pt of Calibri did — ADR-0544)
+    for tenths in range(int(SUMMARY_FLOOR * 10) - 1, int(SUMMARY_MIN * 10) - 1, -1):
+        small = tenths / 10
+        n = max(1, int((h + 0.01) // (small * 1.25)))
+        lines = wrap(strip, small, width, whole, mono)
+        if len(lines) <= n:
+            return SummaryBox(lane, SUMMARY_X0, SUMMARY_X1, y0, y1, lines, small)
+    pt = SUMMARY_FLOOR
     fit = max(1, int((h + 0.01) // (pt * 1.25)))
-    return SummaryBox(
-        lane, SUMMARY_X0, SUMMARY_X1, y0, y1, wrap(f"{counts} · {worst}", pt, width, fit), pt
-    )
+    lines = wrap(strip, pt, width, fit, mono)
+    return SummaryBox(lane, SUMMARY_X0, SUMMARY_X1, y0, y1, lines, pt)
 
 
 def compare_layout_json(layout: CompareLayout) -> dict[str, Any]:
@@ -1298,9 +1388,11 @@ def compare_subtitle(
     today: dt.date,
     window: Window | None = None,
     prepared: dt.date | None = None,
+    risks: int = 0,
 ) -> str:
     """As :func:`~schedule_forensics.reports.onepager.subtitle_for`: ``today`` is the data date
-    the slide draws, ``prepared`` the day it was made, both named when they differ (ADR-0541)."""
+    the slide draws, ``prepared`` the day it was made, both named when they differ (ADR-0541);
+    ``risks`` the register's risks drawn, named only when there are any (ADR-0544)."""
     t = doc.totals
     made = today if prepared is None else prepared
     return (
@@ -1314,6 +1406,7 @@ def compare_subtitle(
             if doc.completion
             else ""
         )
+        + (f"{risks} risk{'s' if risks != 1 else ''} · " if risks else "")
         + "moves in calendar days"
     )
 

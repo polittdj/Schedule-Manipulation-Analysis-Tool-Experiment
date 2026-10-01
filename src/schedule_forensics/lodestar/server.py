@@ -63,6 +63,7 @@ from urllib.parse import parse_qs, urlsplit
 from schedule_forensics.reports.onepager import OnePagerDoc, layout_json, parse_date
 from schedule_forensics.reports.onepager_compare import compare_layout_json
 from schedule_forensics.reports.onepager_links import Link
+from schedule_forensics.reports.onepager_risks import RiskDoc, risk_template
 from schedule_forensics.reports.tableset import TableSet
 from schedule_forensics.reports.xlsx import render_xlsx
 from schedule_forensics.web import lodestar_actions as studio_actions
@@ -107,10 +108,26 @@ _BOUNDARY_PARAM = re.compile(r"(?i)(?:^|[;,\s])boundary(\*\d*\*?)?\s*=\s*")
 #: The rest of a delimiter's own line (RFC 2046's padding, then the line end — the email parser
 #: also takes a bare CR or LF): the part's headers start after it.
 _DELIMITER_LINE = re.compile(rb"[ \t]*(?:\r\n|\r|\n)")
-#: The upload routes and the page each belongs to: ``route -> (page, its tab's name)``.
+#: The upload routes and the page each belongs to: ``route -> (page, its tab's name)``. The risk
+#: register and an export to restore come in through their own routes (ADR-0544), every one
+#: ending in ``/upload`` — the studio's script and this server both key an upload on that.
 _UPLOAD_PAGES: dict[str, tuple[str, str]] = {
     "/onepager/upload": ("/onepager", "Timeline"),
     "/onepager-compare/upload": ("/onepager-compare", "Compare"),
+    "/onepager/risks/upload": ("/onepager", "Timeline"),
+    "/onepager-compare/risks/upload": ("/onepager-compare", "Compare"),
+    "/onepager/restore/upload": ("/onepager", "Timeline"),
+    "/onepager-compare/restore/upload": ("/onepager-compare", "Compare"),
+}
+#: What each upload route carries: a list (the slot named in the form), the risk register, or an
+#: export to restore — the ``kind`` the dispatcher reads (never guessed from the file).
+_UPLOAD_KINDS: dict[str, str] = {
+    "/onepager/upload": "list",
+    "/onepager-compare/upload": "list",
+    "/onepager/risks/upload": "risks",
+    "/onepager-compare/risks/upload": "risks",
+    "/onepager/restore/upload": "restore",
+    "/onepager-compare/restore/upload": "restore",
 }
 
 #: The ONLY static files LODESTAR serves (ADR-0543, LODESTAR 2.0 — none of Polaris²'s): the view
@@ -162,6 +179,8 @@ _FORM_ROUTES: dict[str, tuple[str, str]] = {
     "/onepager-compare/links": ("links", "compare"),
     "/onepager-compare/swap": ("swap", "compare"),
     "/onepager-compare/example": ("example", "compare"),
+    "/onepager/risks": ("risks", "timeline"),
+    "/onepager-compare/risks": ("risks", "compare"),
 }
 #: Where a form route lands after its redirect (the links block, as v1 did, for a link change).
 _LANDING = {"links": "#lsLinks"}
@@ -205,6 +224,8 @@ class LodestarState:
     onepager_compare_links_msg: str | None = None
     onepager_compare_links_is_error: bool = False
     onepager_cache: dict[str, tuple[Any, Any]] = field(default_factory=dict)
+    #: the operator's risk register (ADR-0544): one for both pages, optional
+    onepager_risks: RiskDoc | None = None
     unclassified: bool = False
     #: the session log — undo and redo for every committed change (ADR-0543)
     history: History = field(default_factory=History, repr=False)
@@ -630,6 +651,17 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             return self._download(actions.onepager_pptx(st, today, text, NAME, made))
         if path == "/export/pptx/onepager-compare":
             return self._download(actions.compare_pptx(st, today, text, NAME, made))
+        if path == "/export/pdf/onepager":
+            return self._download(actions.onepager_pdf(st, today, text, NAME, made))
+        if path == "/export/pdf/onepager-compare":
+            return self._download(actions.compare_pdf(st, today, text, NAME, made))
+        if path == "/export/xlsx/risks-template":
+            return _Reply(
+                200,
+                render_xlsx(risk_template()),
+                _EXPORT_MEDIA["xlsx"][0],
+                (("Content-Disposition", 'attachment; filename="risk-register-template.xlsx"'),),
+            )
         for stem, fname in (
             ("onepager-template", "one-pager-template"),
             ("onepager-compare", "one-pager-compare"),
@@ -641,9 +673,9 @@ class _Handler(http.server.BaseHTTPRequestHandler):
                 if stem == "onepager-template":
                     got: TableSet | str = onepager_template()
                 elif stem == "onepager":
-                    got = actions.onepager_workbook(st, today, made)
+                    got = actions.onepager_workbook(st, today, made, NAME)
                 else:
-                    got = actions.compare_workbook(st, today, made)
+                    got = actions.compare_workbook(st, today, made, NAME)
                 if isinstance(got, str):
                     return _json_error(got)
                 return _Reply(
@@ -664,17 +696,18 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         form: dict[str, str],
     ) -> _Reply:
         st = self.server.state
-        if path in ("/onepager/upload", "/onepager-compare/upload") and upload is not None:
+        if path in _UPLOAD_PAGES and upload is not None:
             fields, name, data = upload
             page = "compare" if path.startswith("/onepager-compare") else "timeline"
-            params = {**fields, "page": page}
+            params = {**fields, "page": page, "kind": _UPLOAD_KINDS[path]}
             outcome = studio_actions.perform(
                 st, st.history, "upload", params, max_bytes=MAX_UPLOAD_BYTES, upload=(name, data)
             )
+            landed = outcome.page or page  # a restore lands on the page its export came from
             if self._wants_json():
                 # the studio posts the file with fetch and repaints from the answer
-                return self._studio(page, reveal=outcome.label is not None, outcome=outcome)
-            return _redirect(PAGES[page][0])
+                return self._studio(landed, reveal=outcome.label is not None, outcome=outcome)
+            return _redirect(PAGES[landed][0])
         get = form.get
         if path == "/quit":
             self._quit = True  # the server stops once this page is written (``_dispatch``)

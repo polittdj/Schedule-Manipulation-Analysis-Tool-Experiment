@@ -14,13 +14,35 @@ Std-lib only (``zipfile``), byte-deterministic (fixed zip timestamps, fixed part
 same posture as the Word and Excel writers beside it. Like those, the slide carries the CUI
 marking top and bottom (Law 1 — every exported artifact carries its handling caveat); the text
 is the page's own marking, so a session asserted UNCLASSIFIED exports that wording instead.
+
+**The deck as a carrier (ADR-0544).** The operator asked to re-import any export and have the
+slide come back with its logic intact, so a deck can carry the session's record two ways at
+once, both opt-in and both leaving the default export byte-identical to before:
+
+* ``payload`` — the record's bytes (:mod:`~.session_payload`) in a custom XML part
+  (``customXml/item1.xml``, root ``<lodestar xmlns="urn:lodestar:session">``), related from
+  the presentation the way Word relates its data stores. :func:`~.pptx_read.read_pptx` finds
+  it by that NAMESPACE, never by the part's name.
+* ``settings`` — the same facts on the shapes' alt text (``descr``): the Title shape says
+  ``LODESTAR slide: {json}`` and every item shape ``LODESTAR item: {json}``. This is the
+  FALLBACK: a deck re-saved by another program may drop a custom XML part it does not
+  understand (LibreOffice — UNVERIFIED here, no Impress in this container; CI's interop test
+  measures it), but alt text is a property every editor keeps, so the slide can still be
+  rebuilt from its shapes.
+
+A risk (``Placed.kind == "risk"``) is an upward triangle — DrawingML's ``triangle`` preset
+points up — filled in its probability's colour (:data:`RISK_COLORS`) with the slide-white
+outline every item has, and its impact text after the label in that colour, exactly as the
+Compare slide paints a delta; the legend's ``risk-*`` kinds are the same triangle, small.
 """
 
 from __future__ import annotations
 
 import io
+import json
 import re
 import zipfile
+from collections.abc import Mapping
 
 from schedule_forensics.reports.onepager import Layout
 from schedule_forensics.reports.onepager_compare import CompareLayout
@@ -62,6 +84,40 @@ _YEAR_SHADE = ("F5F7FA", "EAEEF3")
 def _esc(value: str) -> str:
     """XML-escape text content (this module only WRITES XML; nothing is parsed)."""
     return value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def _attr(value: str) -> str:
+    """XML-escape an ATTRIBUTE value — text's three plus the double quote the attribute is
+    delimited by. Measured on the tree before ADR-0544: a shape named ``Say "hi"`` wrote a slide
+    no parser accepted, because names went through :func:`_esc` alone; the alt-text records this
+    change adds are JSON, so every one of them carries quotes."""
+    return _esc(value).replace('"', "&quot;")
+
+
+#: The print palette of a risk's probability (ADR-0544; the PDF painter imports these): high ·
+#: medium · low · ``unknown`` (a probability the register's reader could not read — neutral,
+#: never guessed). The medium is the Compare slide's DUPLICATE amber, the high its slip red.
+RISK_COLORS: Mapping[str, str] = {
+    "high": "B3261E",
+    "medium": "B8860B",
+    "low": "1E7B34",
+    "unknown": "6B7280",
+}
+#: The risk glyph's DrawingML preset — an isosceles triangle, apex UP, so no flip is needed. A
+#: module constant so a test can break it in memory and watch the glyph check go red by name.
+_RISK_PRST = "triangle"
+
+#: The alt-text records (``descr`` on ``p:cNvPr``), by prefix: the Title shape's settings and
+#: one per item shape. :mod:`~.pptx_read` reads them back by these same prefixes.
+SETTINGS_DESCR = "LODESTAR slide: "
+ITEM_DESCR = "LODESTAR item: "
+#: The custom XML part's namespace — what the reader looks for — and the fixed data-store item
+#: ID its properties part names (one deck, one store: a constant keeps the bytes deterministic).
+CUSTOM_XML_NS = "urn:lodestar:session"
+_DATASTORE_ITEM_ID = "{5B0E7A7C-3F1D-4C7A-9E2B-6D1A2C3E4F50}"
+#: XML 1.0 cannot carry a control character other than tab, newline and return, in any
+#: escaping; a payload holding one is refused by name rather than silently altered.
+_XML_FORBIDDEN_RE = re.compile("[^\x09\x0a\x0d\x20-퟿-�\U00010000-\U0010ffff]")
 
 
 def tint(hex6: str, keep: float) -> str:
@@ -108,6 +164,15 @@ _CONTENT_TYPES = (
     f'<Override PartName="/docProps/app.xml" ContentType="{_CT_BASE}extended-properties+xml"/>'
     "</Types>"
 )
+#: The content-type Override and the presentation relationship a deck gains ONLY when it carries
+#: a session record (ADR-0544): the item part itself is covered by the ``xml`` Default, its
+#: properties part needs the customXmlProperties type, and the presentation relates to the item
+#: the way a Word document relates to its data stores.
+_CUSTOM_XML_OVERRIDE = (
+    '<Override PartName="/customXml/itemProps1.xml" '
+    f'ContentType="{_CT_BASE}customXmlProperties+xml"/>'
+)
+_CUSTOM_XML_REL = ("customXml", "../customXml/item1.xml")
 _ROOT_RELS = _rels([("officeDocument", "ppt/presentation.xml")])
 _PRESENTATION = (
     _XML + f'<p:presentation {_NS} saveSubsetFonts="1">'
@@ -116,17 +181,39 @@ _PRESENTATION = (
     f'<p:sldSz cx="{_SLIDE_W}" cy="{_SLIDE_H}"/><p:notesSz cx="6858000" cy="9144000"/>'
     "</p:presentation>"
 )
-_PRESENTATION_RELS = _rels(
-    [
-        # rId1 / rId2 are named by <p:sldMasterId> / <p:sldId> in _PRESENTATION — appending only.
-        ("slideMaster", "slideMasters/slideMaster1.xml"),
-        ("slide", "slides/slide1.xml"),
-        ("theme", "theme/theme1.xml"),
-        ("presProps", "presProps.xml"),
-        ("viewProps", "viewProps.xml"),
-        ("tableStyles", "tableStyles.xml"),
-    ]
+_PRESENTATION_REL_PAIRS = [
+    # rId1 / rId2 are named by <p:sldMasterId> / <p:sldId> in _PRESENTATION — appending only.
+    ("slideMaster", "slideMasters/slideMaster1.xml"),
+    ("slide", "slides/slide1.xml"),
+    ("theme", "theme/theme1.xml"),
+    ("presProps", "presProps.xml"),
+    ("viewProps", "viewProps.xml"),
+    ("tableStyles", "tableStyles.xml"),
+]
+_PRESENTATION_RELS = _rels(_PRESENTATION_REL_PAIRS)
+_CUSTOM_XML_ITEM_RELS = _rels([("customXmlProps", "itemProps1.xml")])
+_CUSTOM_XML_PROPS = (
+    _XML + f'<ds:datastoreItem ds:itemID="{_DATASTORE_ITEM_ID}" '
+    'xmlns:ds="http://schemas.openxmlformats.org/officeDocument/2006/customXml">'
+    f'<ds:schemaRefs><ds:schemaRef ds:uri="{CUSTOM_XML_NS}"/></ds:schemaRefs>'
+    "</ds:datastoreItem>"
 )
+
+
+def _custom_xml_item(payload: bytes) -> str:
+    """The session record as the custom XML part's one element: its bytes as UTF-8 text,
+    XML-escaped, under the namespace the reader looks for. Not UTF-8, or a control character XML
+    cannot carry, is refused by name — never altered into something that would read back as a
+    different record."""
+    try:
+        text = payload.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise ValueError("the session record is not UTF-8 text") from exc
+    if _XML_FORBIDDEN_RE.search(text):
+        raise ValueError("the session record holds a character XML cannot carry")
+    return _XML + f'<lodestar xmlns="{CUSTOM_XML_NS}" format="1">{_esc(text)}</lodestar>'
+
+
 # The three parts every PowerPoint-authored package carries and this writer did not (R-52,
 # ADR-0498). All three are OPTIONAL — LibreOffice Impress loads both decks without them, measured;
 # the register's "does not load in LibreOffice 7" was an install with NO presentation import
@@ -280,6 +367,14 @@ class _Slide:
         self._next_id += 1
         return self._next_id
 
+    def _cnv(self, name: str, descr: str = "") -> str:
+        """One shape's non-visual properties: the next id, its selection-pane name and — only
+        when given — its alt text (``descr``, the attribute every editor keeps; ADR-0544's
+        fallback record). No ``descr`` attribute at all without one, so a deck that carries no
+        record is byte-identical to the deck written before records existed."""
+        alt = f' descr="{_attr(descr)}"' if descr else ""
+        return f'<p:cNvPr id="{self._id()}" name="{_attr(name)}"{alt}/>'
+
     def shape(
         self,
         x: float,
@@ -293,9 +388,10 @@ class _Slide:
         line_pt: float = 0.5,
         dash: str | None = None,
         name: str,
+        descr: str = "",
     ) -> None:
         self.parts.append(
-            f'<p:sp><p:nvSpPr><p:cNvPr id="{self._id()}" name="{_esc(name)}"/>'
+            f"<p:sp><p:nvSpPr>{self._cnv(name, descr)}"
             "<p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr>"
             f'<a:xfrm><a:off x="{_emu(x)}" y="{_emu(y)}"/>'
             f'<a:ext cx="{_emu(w)}" cy="{_emu(h)}"/></a:xfrm>'
@@ -312,7 +408,7 @@ class _Slide:
         ``flipH`` with its head still at ``x1``."""
         flip = ' flipH="1"' if x1 < x0 else ""
         self.parts.append(
-            f'<p:cxnSp><p:nvCxnSpPr><p:cNvPr id="{self._id()}" name="{_esc(name)}"/>'
+            f"<p:cxnSp><p:nvCxnSpPr>{self._cnv(name)}"
             "<p:cNvCxnSpPr/><p:nvPr/></p:nvCxnSpPr><p:spPr>"
             f'<a:xfrm{flip}><a:off x="{_emu(min(x0, x1))}" y="{_emu(y)}"/>'
             f'<a:ext cx="{_emu(abs(x1 - x0))}" cy="0"/></a:xfrm>'
@@ -341,7 +437,7 @@ class _Slide:
             x0, y0, x1, y1 = x1, y1, x0, y0
         flip = ' flipV="1"' if y1 < y0 else ""
         self.parts.append(
-            f'<p:cxnSp><p:nvCxnSpPr><p:cNvPr id="{self._id()}" name="{_esc(name)}"/>'
+            f"<p:cxnSp><p:nvCxnSpPr>{self._cnv(name)}"
             "<p:cNvCxnSpPr/><p:nvPr/></p:nvCxnSpPr><p:spPr>"
             f'<a:xfrm{flip}><a:off x="{_emu(x0)}" y="{_emu(min(y0, y1))}"/>'
             f'<a:ext cx="{_emu(x1 - x0)}" cy="{_emu(abs(y1 - y0))}"/></a:xfrm>'
@@ -363,13 +459,14 @@ class _Slide:
         anchor: str = "ctr",
         glow: bool = False,
         name: str,
+        descr: str = "",
     ) -> None:
         """One paragraph of several runs — ``(text, colour, bold)`` each — so a label can carry
         its calendar-day delta in the slip or pull-in colour beside the item's own name.
         ``glow`` gives every run the slide-white text glow (:data:`_GLOW`)."""
         body = "".join(_run(t, size_pt, c, b, glow) for t, c, b in runs)
         self.parts.append(
-            f'<p:sp><p:nvSpPr><p:cNvPr id="{self._id()}" name="{_esc(name)}"/>'
+            f"<p:sp><p:nvSpPr>{self._cnv(name, descr)}"
             '<p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr>'
             f'<a:xfrm><a:off x="{_emu(x)}" y="{_emu(y)}"/>'
             f'<a:ext cx="{_emu(w)}" cy="{_emu(h)}"/></a:xfrm>'
@@ -391,7 +488,7 @@ class _Slide:
         name: str,
     ) -> None:
         self.parts.append(
-            f'<p:cxnSp><p:nvCxnSpPr><p:cNvPr id="{self._id()}" name="{_esc(name)}"/>'
+            f"<p:cxnSp><p:nvCxnSpPr>{self._cnv(name)}"
             "<p:cNvCxnSpPr/><p:nvPr/></p:nvCxnSpPr><p:spPr>"
             f'<a:xfrm><a:off x="{_emu(x)}" y="{_emu(y0)}"/><a:ext cx="0" cy="{_emu(y1 - y0)}"/>'
             '</a:xfrm><a:prstGeom prst="line"><a:avLst/></a:prstGeom>'
@@ -402,7 +499,7 @@ class _Slide:
         self, x0: float, x1: float, y: float, color: str, width_pt: float, *, name: str
     ) -> None:
         self.parts.append(
-            f'<p:cxnSp><p:nvCxnSpPr><p:cNvPr id="{self._id()}" name="{_esc(name)}"/>'
+            f"<p:cxnSp><p:nvCxnSpPr>{self._cnv(name)}"
             "<p:cNvCxnSpPr/><p:nvPr/></p:nvCxnSpPr><p:spPr>"
             f'<a:xfrm><a:off x="{_emu(x0)}" y="{_emu(y)}"/><a:ext cx="{_emu(x1 - x0)}" cy="0"/>'
             '</a:xfrm><a:prstGeom prst="line"><a:avLst/></a:prstGeom>'
@@ -424,13 +521,14 @@ class _Slide:
         anchor: str = "ctr",
         glow: bool = False,
         name: str,
+        descr: str = "",
     ) -> None:
         paras = "".join(
             f'<a:p><a:pPr algn="{align}"/>{_run(line, size_pt, color, bold, glow)}</a:p>'
             for line in lines
         )
         self.parts.append(
-            f'<p:sp><p:nvSpPr><p:cNvPr id="{self._id()}" name="{_esc(name)}"/>'
+            f"<p:sp><p:nvSpPr>{self._cnv(name, descr)}"
             '<p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr>'
             f'<a:xfrm><a:off x="{_emu(x)}" y="{_emu(y)}"/>'
             f'<a:ext cx="{_emu(w)}" cy="{_emu(h)}"/></a:xfrm>'
@@ -472,7 +570,7 @@ class _Slide:
         )
         fill_mode = "" if closed else ' fill="none"'
         self.parts.append(
-            f'<p:sp><p:nvSpPr><p:cNvPr id="{self._id()}" name="{_esc(name)}"/>'
+            f"<p:sp><p:nvSpPr>{self._cnv(name)}"
             "<p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr>"
             f'<a:xfrm><a:off x="{_emu(x0)}" y="{_emu(y0)}"/><a:ext cx="{w}" cy="{h}"/></a:xfrm>'
             "<a:custGeom><a:avLst/><a:gdLst/><a:ahLst/><a:cxnLst/>"
@@ -501,7 +599,7 @@ class _Slide:
         box = f'<a:off x="{x0}" y="{y0}"/><a:ext cx="{cx}" cy="{cy}"/>'
         del self.parts[start:]
         self.parts.append(
-            f'<p:grpSp><p:nvGrpSpPr><p:cNvPr id="{self._id()}" name="{_esc(name)}"/>'
+            f"<p:grpSp><p:nvGrpSpPr>{self._cnv(name)}"
             "<p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr>"
             f'<a:xfrm>{box}<a:chOff x="{x0}" y="{y0}"/><a:chExt cx="{cx}" cy="{cy}"/></a:xfrm>'
             f"</p:grpSpPr>{''.join(inner)}</p:grpSp>"
@@ -514,14 +612,26 @@ class _Slide:
         )
 
 
-def _package(slide: _Slide, product: str = PRODUCT) -> bytes:
+def _package(slide: _Slide, product: str = PRODUCT, payload: bytes | None = None) -> bytes:
+    """The zip. With ``payload`` (ADR-0544) three parts join the sixteen — the custom XML item,
+    its properties, its rels — plus the item's content-type Override and the presentation's
+    relationship to it; without one, exactly the sixteen parts written before, byte for byte."""
+    carrying = payload is not None
+    content_types = (
+        _CONTENT_TYPES.replace("</Types>", _CUSTOM_XML_OVERRIDE + "</Types>")
+        if carrying
+        else _CONTENT_TYPES
+    )
+    presentation_rels = (
+        _rels([*_PRESENTATION_REL_PAIRS, _CUSTOM_XML_REL]) if carrying else _PRESENTATION_RELS
+    )
     parts = [
-        ("[Content_Types].xml", _CONTENT_TYPES),
+        ("[Content_Types].xml", content_types),
         ("_rels/.rels", _ROOT_RELS),
         ("docProps/core.xml", _core(product)),
         ("docProps/app.xml", _app(product)),
         ("ppt/presentation.xml", _PRESENTATION),
-        ("ppt/_rels/presentation.xml.rels", _PRESENTATION_RELS),
+        ("ppt/_rels/presentation.xml.rels", presentation_rels),
         ("ppt/theme/theme1.xml", _THEME),
         ("ppt/presProps.xml", _PRES_PROPS),
         ("ppt/viewProps.xml", _VIEW_PROPS),
@@ -533,6 +643,12 @@ def _package(slide: _Slide, product: str = PRODUCT) -> bytes:
         ("ppt/slides/slide1.xml", slide.xml()),
         ("ppt/slides/_rels/slide1.xml.rels", _SLIDE_RELS),
     ]
+    if payload is not None:
+        parts += [
+            ("customXml/item1.xml", _custom_xml_item(payload)),
+            ("customXml/itemProps1.xml", _CUSTOM_XML_PROPS),
+            ("customXml/_rels/item1.xml.rels", _CUSTOM_XML_ITEM_RELS),
+        ]
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         for name, content in parts:
@@ -593,12 +709,67 @@ def _link_heads(s: _Slide, links: list[PlacedLink]) -> None:
         s.group(start, f"Logic link arrowhead: {what}")
 
 
+def _settings_descr(settings: Mapping[str, object] | None) -> str:
+    """The Title shape's alt text: the settings as sorted JSON after :data:`SETTINGS_DESCR`;
+    ``""`` (no attribute) without settings."""
+    return SETTINGS_DESCR + json.dumps(settings, sort_keys=True) if settings is not None else ""
+
+
+def _item_descr(carrying: bool, **fields: object) -> str:
+    """One item shape's alt text: its facts as sorted JSON after :data:`ITEM_DESCR`, written
+    only when the deck carries settings (``carrying``) — the fallback is all-or-nothing, so a
+    deck is never half a record."""
+    return ITEM_DESCR + json.dumps(fields, sort_keys=True) if carrying else ""
+
+
+def _risk_color(prob: str) -> str:
+    return RISK_COLORS.get(prob, RISK_COLORS["unknown"])
+
+
+def _risk_glyph(
+    s: _Slide, x: float, y: float, ms: float, prob: str, *, name: str, descr: str = ""
+) -> None:
+    """The risk's triangle — apex at ``y - ms/2``, base at ``y + ms/2`` across ``x ± ms/2`` —
+    filled in its probability's colour with the slide-white outline a milestone has."""
+    s.shape(
+        x - ms / 2,
+        y - ms / 2,
+        ms,
+        ms,
+        _risk_color(prob),
+        prst=_RISK_PRST,
+        line=_WHITE,
+        name=name,
+        descr=descr,
+    )
+
+
+def _risk_legend(s: _Slide, kind: str, x: float, cy: float) -> None:
+    """A legend entry of kind ``risk-<prob>``: the small triangle, where a milestone's entry has
+    its small diamond."""
+    s.shape(x + 1.5, cy - 3.5, 7, 7, _risk_color(kind[5:]), prst=_RISK_PRST, name=f"Legend: {kind}")
+
+
+#: The read-me's extra clause when a slide draws a risk (ADR-0544) — only then, so a slide
+#: without one reads exactly as before.
+_RISK_READ_ME = " · triangles = risks (colour = probability)"
+
+
 def render_onepager_pptx(
-    layout: Layout, *, marking: str, source: str, product: str = PRODUCT
+    layout: Layout,
+    *,
+    marking: str,
+    source: str,
+    product: str = PRODUCT,
+    payload: bytes | None = None,
+    settings: Mapping[str, object] | None = None,
 ) -> bytes:
     """The layout as one 16:9 slide of native shapes. ``marking`` is the session's CUI banner
-    text (top and bottom strips); ``source`` is the provenance footer."""
+    text (top and bottom strips); ``source`` is the provenance footer. ``payload`` and
+    ``settings`` (ADR-0544) make the deck a carrier of the session — see the module doc; both
+    ``None`` writes the deck exactly as before."""
     lay = layout
+    carrying = settings is not None
     s = _Slide()
     s.text(0, 1, lay.w, 8, [marking], 6, _CUI, bold=True, align="ctr", name="CUI marking (top)")
     s.text(
@@ -614,7 +785,16 @@ def render_onepager_pptx(
         name="CUI marking (bottom)",
     )
     s.text(
-        lay.lane_col_x0, lay.title_y - 15, 760, 18, [lay.title], 16, _INK, bold=True, name="Title"
+        lay.lane_col_x0,
+        lay.title_y - 15,
+        760,
+        18,
+        [lay.title],
+        16,
+        _INK,
+        bold=True,
+        name="Title",
+        descr=_settings_descr(settings),
     )
     if lay.subtitle:
         s.text(
@@ -692,9 +872,28 @@ def render_onepager_pptx(
             name=f"Lane name: {lane.name}",
         )
     _link_shafts(s, lay.links)  # under every item (ADR-0543)
+    risks_drawn = False
     for p in lay.items:
         hue = LANE_PALETTE[lay.lanes[p.lane].color % len(LANE_PALETTE)]
-        if p.milestone:
+        descr = _item_descr(
+            carrying,
+            lane=lay.lanes[p.lane].name,
+            name=p.name,
+            start=p.start,
+            finish=p.finish,
+            # the list's status column, when it has one; ``None`` says the sheet had none —
+            # not "not complete" (the parser's own distinction); a risk has no such column
+            complete=p.done if lay.status_label and p.kind != "risk" else None,
+            key=p.key,
+            kind=p.kind,
+            prob=p.prob,
+            impact=p.impact,
+        )
+        if p.kind == "risk":
+            risks_drawn = True
+            ms = p.ms or lay.ms
+            _risk_glyph(s, p.x0, p.y, ms, p.prob, name=f"Risk: {p.name}", descr=descr)
+        elif p.milestone:
             ms = p.ms or lay.ms  # its own size at the chart's edge (ADR-0540 review F1)
             s.shape(
                 p.x0 - ms / 2,
@@ -705,6 +904,7 @@ def render_onepager_pptx(
                 prst="diamond",
                 line=_WHITE,
                 name=f"Milestone: {p.name}",
+                descr=descr,
             )
         else:
             s.shape(
@@ -716,11 +916,31 @@ def render_onepager_pptx(
                 prst="roundRect",
                 line=_WHITE,
                 name=f"Activity: {p.name}",
+                descr=descr,
             )
         if p.done and p.done_x is not None:
             _done_badge(s, p.done_x, p.y, p.done_r, name=p.name)
         box_w, box_y = p.label_w + 4, p.y - lay.row_h / 2
-        if p.inside:
+        if p.kind == "risk" and p.impact:
+            # the label with its impact after it in the probability's colour — the Compare
+            # slide's delta run, in the Timeline's own ink (a risk is never inside a bar)
+            runs: list[tuple[str, str, bool]] = [
+                (p.label, _INK, False),
+                (" " + p.impact, _risk_color(p.prob), True),
+            ]
+            at_end = p.label_anchor != "start"
+            s.text_runs(
+                p.label_x - box_w if at_end else p.label_x,
+                box_y,
+                box_w,
+                lay.row_h,
+                runs,
+                lay.label_pt,
+                align="r" if at_end else "l",
+                glow=True,
+                name=f"Label: {p.name}",
+            )
+        elif p.inside:
             s.text(
                 p.label_x,
                 box_y,
@@ -812,6 +1032,8 @@ def render_onepager_pptx(
                 closed=True,
                 name="Legend: link head",
             )
+        elif e.kind.startswith("risk-"):
+            _risk_legend(s, e.kind, e.x, cy)
         else:
             hue = LANE_PALETTE[e.color % len(LANE_PALETTE)]
             s.shape(e.x, cy - 3, 10, 6, hue, prst="roundRect", name=f"Legend: {e.label}")
@@ -826,14 +1048,14 @@ def render_onepager_pptx(
         8,
         [
             "Timeline: months and years · bars = activities · diamonds = milestones · "
-            "red line = data date"
+            "red line = data date" + (_RISK_READ_ME if risks_drawn else "")
         ],
         5.5,
         _MUTED,
         align="r",
         name="Read-me",
     )
-    return _package(s, product)
+    return _package(s, product, payload)
 
 
 # ── the One-Pager COMPARE slide (ADR-0465) ────────────────────────────────────────────────────
@@ -865,13 +1087,22 @@ def _done_badge(s: _Slide, cx: float, cy: float, r: float, *, name: str) -> None
 
 
 def render_onepager_compare_pptx(
-    layout: CompareLayout, *, marking: str, source: str, product: str = PRODUCT
+    layout: CompareLayout,
+    *,
+    marking: str,
+    source: str,
+    product: str = PRODUCT,
+    payload: bytes | None = None,
+    settings: Mapping[str, object] | None = None,
 ) -> bytes:
     """The compare layout as one 16:9 slide of native shapes: the ADR-0446 slide with the PRIOR
     position as a dashed ghost, the CURRENT one solid, an arrow per moved finish carrying its
     calendar-day delta, NEW / REMOVED / DUPLICATE NAME tags, and the per-swimlane summary
-    column. Same geometry as the page (one layout unit = one point = 12,700 EMU)."""
+    column. Same geometry as the page (one layout unit = one point = 12,700 EMU). ``payload``
+    and ``settings`` as on :func:`render_onepager_pptx`; here every item record also carries
+    its ``side`` (``prior`` on a ghost, ``current`` on a solid shape) and its ``status``."""
     lay = layout
+    carrying = settings is not None
     s = _Slide()
     s.text(0, 1, lay.w, 8, [marking], 6, _CUI, bold=True, align="ctr", name="CUI marking (top)")
     s.text(
@@ -887,7 +1118,16 @@ def render_onepager_compare_pptx(
         name="CUI marking (bottom)",
     )
     s.text(
-        lay.lane_col_x0, lay.title_y - 15, 760, 18, [lay.title], 16, _INK, bold=True, name="Title"
+        lay.lane_col_x0,
+        lay.title_y - 15,
+        760,
+        18,
+        [lay.title],
+        16,
+        _INK,
+        bold=True,
+        name="Title",
+        descr=_settings_descr(settings),
     )
     if lay.subtitle:
         s.text(
@@ -996,9 +1236,27 @@ def render_onepager_compare_pptx(
             name=f"Summary text: {lay.lanes[box.lane].name}",
         )
     _link_shafts(s, lay.links)  # under every item (ADR-0543)
+    risks_drawn = False
     for p in lay.items:
         hue = LANE_PALETTE[lay.lanes[p.lane].color % len(LANE_PALETTE)]
+        lane_name = lay.lanes[p.lane].name
         if p.ghost_x0 is not None and p.ghost_x1 is not None:
+            # the PRIOR list's row: its dates; its completion is not on this layout (column
+            # D's check is the CURRENT list's), so ``None`` — never a guess
+            ghost_descr = _item_descr(
+                carrying,
+                side="prior",
+                status=p.status,
+                lane=lane_name,
+                name=p.name,
+                start=p.prior_start,
+                finish=p.prior_finish,
+                complete=None,
+                key=p.key,
+                kind=p.kind,
+                prob=p.prob,
+                impact=p.impact,
+            )
             if p.ghost_milestone:
                 gms = p.ghost_ms or lay.ms
                 s.shape(
@@ -1012,6 +1270,7 @@ def render_onepager_compare_pptx(
                     line_pt=0.75,
                     dash="dash",
                     name=f"Prior milestone: {p.name}",
+                    descr=ghost_descr,
                 )
             else:
                 s.shape(
@@ -1025,6 +1284,7 @@ def render_onepager_compare_pptx(
                     line_pt=0.75,
                     dash="dash",
                     name=f"Prior activity: {p.name}",
+                    descr=ghost_descr,
                 )
         if p.arrow_x0 is not None and p.arrow_x1 is not None:
             slip = p.status == "slipped"
@@ -1037,7 +1297,26 @@ def render_onepager_compare_pptx(
                 name=f"{'Slip' if slip else 'Pull-in'}: {p.name}",
             )
         if p.x0 is not None and p.x1 is not None:
-            if p.milestone:
+            descr = _item_descr(
+                carrying,
+                side="current",
+                status=p.status,
+                lane=lane_name,
+                name=p.name,
+                start=p.current_start,
+                finish=p.current_finish,
+                complete=p.done if lay.status_label and p.kind != "risk" else None,
+                key=p.key,
+                kind=p.kind,
+                prob=p.prob,
+                impact=p.impact,
+            )
+            if p.kind == "risk":
+                risks_drawn = True
+                _risk_glyph(
+                    s, p.x0, p.y, p.ms or lay.ms, p.prob, name=f"Risk: {p.name}", descr=descr
+                )
+            elif p.milestone:
                 ms = p.ms or lay.ms
                 s.shape(
                     p.x0 - ms / 2,
@@ -1048,6 +1327,7 @@ def render_onepager_compare_pptx(
                     prst="diamond",
                     line=_WHITE,
                     name=f"Milestone: {p.name}",
+                    descr=descr,
                 )
             else:
                 s.shape(
@@ -1059,10 +1339,15 @@ def render_onepager_compare_pptx(
                     prst="roundRect",
                     line=_WHITE,
                     name=f"Activity: {p.name}",
+                    descr=descr,
                 )
         if p.done and p.done_x is not None:
             _done_badge(s, p.done_x, p.y, p.done_r, name=p.name)
-        delta_color = {"slipped": _SLIP, "pulled in": _PULL}.get(p.status, _DUP)
+        delta_color = (
+            _risk_color(p.prob)
+            if p.kind == "risk"
+            else {"slipped": _SLIP, "pulled in": _PULL}.get(p.status, _DUP)
+        )
         ink = _WHITE if p.inside else _INK
         runs: list[tuple[str, str, bool]] = [(p.label, ink, bool(p.inside))]
         if p.delta:
@@ -1186,6 +1471,8 @@ def render_onepager_compare_pptx(
                 closed=True,
                 name="Legend: link head",
             )
+        elif e.kind.startswith("risk-"):
+            _risk_legend(s, e.kind, e.x, cy)
         else:
             hue = LANE_PALETTE[e.color % len(LANE_PALETTE)]
             s.shape(e.x, cy - 3, 10, 6, hue, prst="roundRect", name=f"Legend: {e.label}")
@@ -1201,10 +1488,11 @@ def render_onepager_compare_pptx(
         [
             "Solid = current (unchanged: once) · ghost = prior · arrow = finish moved "
             "(\u00b1N cal d) · check = complete (col. D) · red line = data date"
+            + (_RISK_READ_ME if risks_drawn else "")
         ],
         5.5,
         _MUTED,
         align="r",
         name="Read-me",
     )
-    return _package(s, product)
+    return _package(s, product, payload)

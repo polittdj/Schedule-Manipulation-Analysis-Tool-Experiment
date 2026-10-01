@@ -22,6 +22,23 @@ and **To** lists beside the slide; choose the type (Finish-to-Start by default, 
 Finish-to-Finish, Start-to-Finish) and add the link. Add as many pairs as you need (up to 200).
 Only the links you add are drawn — on the page and in the PowerPoint export.
 
+**Risks (optional).** Drop a risk register on the **Risks** slot of either page — one sheet: **A** the
+swimlane, **B** the risk, **C** the potential impact in days (`30`, `30 d`, `6 wk`, `2 mo`; anything else
+is kept as typed), **D** the probability — High, Medium or Low — and **E** the date of occurrence (with a
+header row the columns may stand in any order; **Download the risk template** has them ready). Each risk
+is drawn in its swimlane at its date as a **triangle** — red, amber or green by its probability, neutral
+when the word could not be read — labelled RISK, its name, its date and its impact, so it is never taken
+for a task or a milestone; it is never a link's end and never counted in the Compare summary. One register
+serves both pages; **Clear risks** removes it.
+
+**Restore a slide.** Every PowerPoint, Excel and PDF LODESTAR exports carries the slide — its lists,
+title, dates, data date, marking, logic links and risks. Drop any of them on **Restore a slide** (either
+page) and the slide comes back as it was exported, on the page it came from; the logic links are
+recreated, so nothing starts from scratch. A PowerPoint edited and saved again still restores from the
+alt text its shapes carry (its skipped rows and risks are then not carried, and the page says so). A PDF
+saved from the browser's **Print** dialog carries no slide data — use the **PDF** export. Exports from
+LODESTAR 2.0 carry no record.
+
 The slide always fills the page: a short list gets large bars and text, a long one smaller, and it
 is never split onto a second slide. Every link takes the shortest square-cornered route from the
 predecessor to the successor and is drawn **behind** the bars, diamonds and names it passes — so
@@ -44,8 +61,9 @@ Every change redraws the slide at once — no page reload.
 * **Load the example list** (or the example pair on Compare) to try it before you have a list.
 * Above the slide: **DATA** shows the list the slide was drawn from, **Excel** downloads it, and
   the full-screen button shows the slide on its own.
-* **Print** prints the slide alone, with its marking — choose *Save as PDF* in the print dialog
-  for a PDF.
+* **PowerPoint**, **Excel** and **PDF** export the slide — each file carries the slide's record, so
+  it can be dropped back on **Restore a slide**. **Print** prints the slide alone, with its marking,
+  for paper.
 * The view menu at the top switches between four views — **Dark**, **Bright**, **High contrast**
   and **Console**; the browser remembers your choice.
 
@@ -117,4 +135,4 @@ list is not CUI. The Excel downloads always keep the CUI marking.
 
 LODESTAR is built from the same modules as the One-Pager pages of POLARIS², so both draw the same
 slide from the same list. Its fonts (IBM Plex Sans and Mono, Space Grotesk) and icons (Lucide) are
-carried inside the program under their own open licences — nothing is fetched. Version 2.0.0.
+carried inside the program under their own open licences — nothing is fetched. Version 2.1.0.

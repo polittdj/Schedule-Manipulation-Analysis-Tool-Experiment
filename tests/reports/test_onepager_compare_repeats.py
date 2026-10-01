@@ -410,7 +410,12 @@ def test_the_summary_strip_shows_every_non_zero_count_without_cutting_one(
 def test_a_one_row_lane_on_a_dense_slide_still_shows_every_count() -> None:
     """The case the old three-line strip cut first: a ONE-row lane on a slide dense enough to step
     the rows down to a floor (here 6 pt). The old rule gave the counts one line at 3.8 pt and cut
-    "removed 1 · complete 2" behind an ellipsis — what the operator most needs to see."""
+    "removed 1 · complete 2" behind an ellipsis — what the operator most needs to see.
+
+    Re-baselined on purpose (ADR-0544): the strip is wrapped for the monospace face LODESTAR paints
+    it in (0.6 em per glyph, where the 3.6-pt floor was ruled under Calibri's 0.52), so this strip
+    no longer fits two 3.6-pt lines; rather than cut it, the strip steps down — to 3.5 pt here,
+    never below ``SUMMARY_MIN`` — and stays whole (``test_onepager_summary_fit.py``)."""
     # six milestones two months apart, so the lane packs into ONE row
     moving_prior = [["L", f"Item {i}", f"{1 + 2 * i}/1/2027"] for i in range(5)]
     moving_current = [
@@ -434,7 +439,7 @@ def test_a_one_row_lane_on_a_dense_slide_still_shows_every_count() -> None:
     text = " ".join(box.lines)
     for part in ("slipped 1", "pulled in 1", "unchanged 2", "new 1", "removed 1", "complete 2"):
         assert part in text, (part, box.lines, box.pt)
-    assert "…" not in text and box.pt >= 3.6
+    assert "…" not in text and box.pt >= oc.SUMMARY_MIN
     assert len(box.lines) * box.pt * 1.25 <= (box.y1 - box.y0) - 1.5 + 0.01
 
 

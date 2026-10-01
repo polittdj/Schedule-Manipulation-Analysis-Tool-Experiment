@@ -968,8 +968,12 @@ _UPLOAD_ROUTES = pytest.mark.parametrize(
     [
         ("/onepager/upload", "/onepager", {}),
         ("/onepager-compare/upload", "/onepager-compare", {"slot": "current"}),
+        ("/onepager/risks/upload", "/onepager", {}),
+        ("/onepager-compare/risks/upload", "/onepager-compare", {}),
+        ("/onepager/restore/upload", "/onepager", {}),
+        ("/onepager-compare/restore/upload", "/onepager-compare", {}),
     ],
-    ids=["timeline", "compare"],
+    ids=["timeline", "compare", "risks", "compare-risks", "restore", "compare-restore"],
 )
 
 
@@ -982,6 +986,8 @@ _UPLOAD_ROUTES = pytest.mark.parametrize(
     [
         ("/onepager/upload", _UPLOAD_BODY_CAP),
         ("/onepager-compare/upload", _UPLOAD_BODY_CAP),
+        ("/onepager/risks/upload", _UPLOAD_BODY_CAP),
+        ("/onepager/restore/upload", _UPLOAD_BODY_CAP),
         ("/onepager/title", MAX_FORM_BYTES),
     ],
 )
@@ -1010,7 +1016,10 @@ def test_a_list_just_over_the_cap_is_refused_by_name_on_its_page(
     )
     assert (got.status, got.headers.get("location")) == (303, page), got.body[:120]
     shown = request(live.port, "GET", page).text
-    assert "List not loaded — file exceeds the 20 MB cap." in shown
+    # the sentence is the route's own (ADR-0544): a list, the risk register, a restore
+    what = "Risks" if "/risks/" in route else "Nothing restored" if "/restore/" in route else "List"
+    verb = "" if what == "Nothing restored" else " not loaded"
+    assert f"{what}{verb} — file exceeds the 20 MB cap." in shown
     assert live.state.onepager is None and live.state.onepager_current is None
 
 
@@ -1472,6 +1481,9 @@ def test_a_post_from_another_loopback_port_is_refused_without_fetch_metadata(liv
         ("xlsx", "onepager"),
         ("xlsx", "onepager-compare"),
         ("xlsx", "onepager-template"),
+        ("xlsx", "risks-template"),
+        ("pdf", "onepager"),
+        ("pdf", "onepager-compare"),
     ],
 )
 def test_every_export_lodestar_serves_is_lodestars_never_polaris(
@@ -1482,6 +1494,9 @@ def test_every_export_lodestar_serves_is_lodestars_never_polaris(
     _load_both(live)
     got = request(live.port, "GET", f"/export/{fmt}/{stem}")
     assert got.status == 200
+    if fmt == "pdf":
+        assert got.body[:5] == b"%PDF-" and not re.search(rb"(?i)polaris", got.body)
+        return
     parts = deck_members(got.body)
     assert [n for n, b in parts.items() if re.search(rb"(?i)polaris", b)] == []
     if fmt == "pptx":

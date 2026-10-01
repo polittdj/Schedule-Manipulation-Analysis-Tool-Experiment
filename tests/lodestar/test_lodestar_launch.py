@@ -83,7 +83,7 @@ def test_the_launch_page_is_lodestars_own_and_never_polaris(
     page = got.text
     assert "<title>Launch — LODESTAR</title>" in page
     assert "LODESTAR" in page and "One-Pager Studio" in page and "&#10022;" in page  # the ✦ mark
-    assert "LODESTAR 2.0.0" in page  # the version the program reports (README lockstep: pyz test)
+    assert "LODESTAR 2.1.0" in page  # the version the program reports (README lockstep: pyz test)
     # not Polaris²'s words, on either side of the transit
     for polaris in ("POLARIS", "Polaris", "Twelve chapters", "ENTER THE DECK", "GO TO IMPORT"):
         assert polaris not in page, polaris

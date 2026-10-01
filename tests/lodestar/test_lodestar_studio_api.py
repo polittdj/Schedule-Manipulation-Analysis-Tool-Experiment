@@ -88,6 +88,7 @@ OWNED = (
     "onepager_compare_title",
     "onepager_compare_window",
     "onepager_compare_links",
+    "onepager_risks",
     "unclassified",
 )
 
@@ -359,7 +360,7 @@ def test_every_action_changes_the_state_and_logs_its_label(live: Live) -> None:
     assert got["marking"]["cls"] == "unclassified"
     assert step("marking", "Marking switched to CUI", marking="cui")["marking"]["cls"] == "cui"
     got = step("example", "Both lists loaded", page="compare")
-    assert got["loaded"] == {"timeline": True, "prior": True, "current": True}
+    assert got["loaded"] == {"timeline": True, "prior": True, "current": True, "risks": False}
     got = step("swap", "Prior and current swapped", page="compare")
     assert got["prov"].startswith("PRIOR: example-current.xlsx · CURRENT: example-prior.xlsx")
     got = step("clear", "Both lists cleared", page="compare")

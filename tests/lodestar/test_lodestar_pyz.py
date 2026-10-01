@@ -468,7 +468,9 @@ def test_members_are_exactly_the_allowlist_and_each_is_its_source_verbatim(
 #: the icon, eleven vendored fonts and their OFL licence — and NONE of Polaris²'s static files any
 #: more (v1 carried sixteen: ``app.css`` ``base.css`` ``hud.css`` ``sf-themes.css`` ``theme.js``
 #: ``gantt.js`` ``chartframe.js`` ``panelkit.js`` ``onepager*.js`` ``launch*`` ``favicon.ico``
-#: and v1's ``lodestar.css``). An INDEPENDENT oracle: the lockstep and the test above both judge
+#: and v1's ``lodestar.css``), and ADR-0544 (53 — the risk register's reader, the slide's record
+#: and the carriers that read it back: ``onepager_risks``, ``session_payload``, ``pdf`` /
+#: ``pdf_read``, ``pptx_read``). An INDEPENDENT oracle: the lockstep and the test above both judge
 #: the archive against the builder's own list, so a module added to ``MODULES`` and rebuilt would
 #: pass them both (SLA-7). Changing what LODESTAR ships means changing this list, on purpose.
 MEMBERS = (
@@ -483,7 +485,12 @@ MEMBERS = (
     "schedule_forensics/reports/onepager.py",
     "schedule_forensics/reports/onepager_compare.py",
     "schedule_forensics/reports/onepager_links.py",
+    "schedule_forensics/reports/onepager_risks.py",
+    "schedule_forensics/reports/pdf.py",
+    "schedule_forensics/reports/pdf_read.py",
     "schedule_forensics/reports/pptx.py",
+    "schedule_forensics/reports/pptx_read.py",
+    "schedule_forensics/reports/session_payload.py",
     "schedule_forensics/reports/tableset.py",
     "schedule_forensics/reports/xlsx.py",
     "schedule_forensics/reports/xlsx_read.py",
@@ -536,10 +543,10 @@ def _member_list_problem(names: list[str]) -> str | None:
     return f"archive members: extra {extra}, missing {missing}, a Word writer {docx}"
 
 
-def test_the_archive_holds_exactly_the_48_members_adr_0539_0541_and_0543_name(
+def test_the_archive_holds_exactly_the_53_members_adr_0539_0541_0543_and_0544_name(
     tool: ModuleType,
 ) -> None:
-    assert len(MEMBERS) == 48
+    assert len(MEMBERS) == 53
     static = [m for m in MEMBERS if m.startswith("schedule_forensics/web/static/")]
     assert all("/lodestar" in m or "/fonts/" in m for m in static), static  # LODESTAR's own
     with zipfile.ZipFile(PYZ) as zf:

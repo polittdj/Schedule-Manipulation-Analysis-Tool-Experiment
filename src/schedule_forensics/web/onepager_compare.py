@@ -52,6 +52,8 @@ from schedule_forensics.web.onepager import (
     layout_select,
     links_form,
     links_list,
+    risk_impacts,
+    risks_view,
     today_form,
     today_words,
     window_form,
@@ -146,6 +148,7 @@ def onepager_compare_layout(
         today,
         made,
         link_key(snap.onepager_compare_links),
+        snap.onepager_risks,
     )
     return cached_layout(st, "compare", key, lambda: _onepager_compare_layout(snap, today, made))
 
@@ -169,14 +172,17 @@ def _onepager_compare_layout(
         for key, ident in ((ln.pred, ln.pred_ident), (ln.succ, ln.succ_ident)):
             if key not in idents:
                 absent[key] = gone_reason(ident, idents)
+    risks, _omitted_risks = risks_view(st, win)
     return build_compare_layout(
         doc,
         today,
         onepager_compare_title(st),
-        compare_subtitle(doc, today, win, prepared),
+        compare_subtitle(doc, today, win, prepared, len(risks)),
         window=win,
         links=st.onepager_compare_links,
         absent=absent,
+        risks=risks,
+        risk_impacts=risk_impacts(risks),
     )
 
 

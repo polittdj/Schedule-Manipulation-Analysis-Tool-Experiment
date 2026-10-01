@@ -20344,3 +20344,33 @@ commit, not a rebase. The resolution:
   windows.
 - **Merged + ruled.** #730 squash-merged as `ad2cfa14` (tree `d5683fec` = the PR head's). The operator ruled the
   head-over-label overlap: **NO** label nudge — the overlap stays (recorded in HANDOFF; not to be re-proposed).
+
+## 2026-10-01 (b) — LODESTAR 2.1: the Compare strip fits, a risk register, every export restores (ADR-0544 · v1.0.299)
+
+- **Branch** `claude/lodestar-app-updates-q4xos3` from `main` @ `e75a751e`; a feature session outside the audit.
+- **The ask (operator, with a screenshot):** fix the CHANGE SUMMARY overflow; risks on the One-Pager from an Excel
+  register (A lane, B risk, C impact, D probability), drawn as a moment by date, red/yellow/green, unmistakable;
+  re-import any export (PPTX / XLSX / PDF) on both pages with the links; a separate Risks page only if better.
+- **Plan attacked first (QC-3), ten assumptions, five refuters + a critic:** A1/A2/A3/A5/A6/A7/A8 PARTLY
+  REFUTED, A4/A9 HELD; the critic's REFUTED findings applied (register refused on a list slot by header; the
+  restore names the data date and marking it applies; a risk beyond the list's span named; bounded readers).
+  Measured: Plex Mono 0.6000 em every sample; Chromium hinting +2.5 % at 6 pt / +6 % on a 10-pt tag;
+  geometricPrecision 0.600 at every scale; 50 / 53 sheet variants reproduce through a rebuilt workbook, 53 / 53
+  through the parser; poppler accepts the std-lib PDF on four oracles.
+- **Built.** The width model and the painter fit (ask 1); `onepager_risks.py` + the layout's `kind/prob/impact`
+  + three painters + the studio's Risks slot (ask 2); `session_payload.py` + the pptx customXml/alt-text carrier
+  + `pptx_read.py` + the new `pdf.py` / `pdf_read.py` + Excel restore sheets + the Restore zone + the ⤓ PDF
+  button (ask 3); no separate page (ask 4). Three agents built the independent modules in parallel from one
+  contract; the lead wired, re-pinned and verified.
+- **Found and fixed red → green:** the strip cut at 3.6 pt in the mono face (now steps to 3.2 first); a PowerPoint
+  shape name with `"` wrote a malformed slide (pre-existing; escaped now); the workbook record said POLARIS² in
+  LODESTAR (the generator is named now); a refused restore left no banner with scripting off; `round()` site
+  avoided (the ledger census is unchanged).
+- **Render-verified in Chromium (node Playwright):** triangles in the four colours on both pages, labels and
+  impact runs, legend entries, risks never hot, the HUD tile, the Risks slot, the Restore zone, the PDF button.
+- **Gate (final tree):** `ruff check .` clean; `ruff format --check .` clean; `mypy src/` clean (189 files);
+  `bandit -q -r src` rc 0; `node --check` both scripts; `tests/reports tests/lodestar tests/web/test_onepager_links_page.py
+  tests/web/test_monolith_split_contract.py tests/guards` → green after the re-pins (the last run: 64 passed on
+  the changed modules; 311 passed on the affected suites); the FULL `pytest -q` run is recorded in the closing line.
+- **Closing line:** (filled at push) the full-suite count, the PR link.
+

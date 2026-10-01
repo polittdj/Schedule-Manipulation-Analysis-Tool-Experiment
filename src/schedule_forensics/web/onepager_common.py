@@ -12,10 +12,13 @@ from __future__ import annotations
 import datetime as dt
 from collections.abc import Callable, Sequence
 from dataclasses import astuple, dataclass, fields
-from typing import Any, Protocol, TypeVar
+from typing import TYPE_CHECKING, Any, Protocol, TypeVar
 
 from schedule_forensics.reports.onepager import OnePagerDoc
 from schedule_forensics.reports.onepager_links import Link
+
+if TYPE_CHECKING:
+    from schedule_forensics.reports.onepager_risks import RiskDoc
 
 #: The Compare page's title (the rail entry, the kicker and the explainer key).
 COMPARE_TITLE = "One-Pager Compare"
@@ -71,6 +74,9 @@ class OnePagerSession(Protocol):
     #: (ADR-0540): a page, its PowerPoint and its Excel export in one session read one layout,
     #: and the 144-item, 200-link stress case (15 s) is laid out once, not three times
     onepager_cache: dict[str, tuple[Any, Any]]
+    #: the operator's risk register (ADR-0544) — ONE for both pages, drawn on whichever slide is
+    #: shown; ``None`` is no register loaded (risks are an option, never a requirement)
+    onepager_risks: RiskDoc | None
 
 
 @dataclass
@@ -105,6 +111,7 @@ class OnePagerSnapshot:
     onepager_compare_links_msg: str | None
     onepager_compare_links_is_error: bool
     onepager_cache: dict[str, tuple[Any, Any]]
+    onepager_risks: RiskDoc | None
 
 
 def snapshot(st: OnePagerSession) -> OnePagerSnapshot:
