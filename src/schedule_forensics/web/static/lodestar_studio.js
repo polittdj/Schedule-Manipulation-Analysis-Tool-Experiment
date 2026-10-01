@@ -31,7 +31,7 @@
     page: S.page, slide: null, full: null,
     pick: { from: "", to: "", kind: "FS" }, hover: "", drag: null,
     dataOpen: false, historyOpen: false, tour: null, demo: null, timers: [],
-    scrubbing: false, previewSeq: 0, autoTourDone: false, busy: false,
+    scrubbing: false, previewSeq: 0, autoTourDone: false, busy: false, pendingToday: null,
   };
   try { view.autoTourDone = sessionStorage.getItem("lodestar-tour-seen") === "1"; } catch (e) { /* none */ }
 
@@ -49,10 +49,23 @@
     var body = Object.assign({ page: view.page }, fields || {});
     return post("/api/" + action, body).then(function (res) {
       view.busy = false;
-      if (!res.ok) { toast(res.data && res.data.error ? res.data.error : "LODESTAR refused that.", "warn"); return null; }
+      if (!res.ok) { toast(res.data && res.data.error ? res.data.error : "LODESTAR refused that.", "warn"); flushPendingToday(); return null; }
       apply(res.data);
+      flushPendingToday();
       return res.data;
-    }, function () { view.busy = false; toast("LODESTAR is not answering — is its window still open?", "fail"); return null; });
+    }, function () { view.busy = false; toast("LODESTAR is not answering — is its window still open?", "fail"); flushPendingToday(); return null; });
+  }
+  // a data date set while another request is in flight is never dropped: the LATEST one waits
+  // and is sent the moment the server answers (an arrow key held on the scrubber, a quick drag)
+  function commitToday(iso) {
+    if (view.busy) { view.pendingToday = iso; return; }
+    act("today", { today: iso, action: "apply" });
+  }
+  function flushPendingToday() {
+    var next = view.pendingToday;
+    if (!next) return;
+    view.pendingToday = null;
+    setTimeout(function () { commitToday(next); }, 0);
   }
   function upload(form, file) {
     var fd = new FormData(form);
@@ -408,15 +421,30 @@
     if (view.slide) LSSlide.moveDataDate(view.slide, iso);
     previewToday(iso);
   });
+  // A pointer drag commits once, on release. The keyboard fires input AND change on EVERY arrow
+  // key, so its nudges are gathered into ONE commit — 700 ms after the last key, or at once when
+  // the slider loses focus — one step in the session log, however many keys were pressed.
+  var commitTimer = null, scrubByKey = false;
+  D.addEventListener("keydown", function (ev) { if (ev.target && ev.target.id === "lsScrubRange") scrubByKey = true; }, true);
+  D.addEventListener("pointerdown", function (ev) { if (ev.target && ev.target.id === "lsScrubRange") scrubByKey = false; }, true);
+  function flushScrub() {
+    clearTimeout(commitTimer);
+    commitTimer = null;
+    var t = $("lsScrubRange");
+    if (!t || !view.scrubbing) return;
+    view.scrubbing = false;
+    view.previewSeq++;
+    commitToday(addDays(t.getAttribute("data-first"), +t.value));
+  }
   function commitScrub(ev) {
     var t = ev.target;
     if (!t || t.id !== "lsScrubRange" || !view.scrubbing) return;
-    view.scrubbing = false;
-    view.previewSeq++;
-    var iso = addDays(t.getAttribute("data-first"), +t.value);
-    act("today", { today: iso, action: "apply" });
+    clearTimeout(commitTimer);
+    if (scrubByKey) commitTimer = setTimeout(flushScrub, 700);
+    else flushScrub();
   }
   D.addEventListener("change", commitScrub);
+  D.addEventListener("focusout", function (ev) { if (ev.target && ev.target.id === "lsScrubRange" && commitTimer) flushScrub(); });
 
   // ── keyboard ───────────────────────────────────────────────────────────────────────────────
   D.addEventListener("keydown", function (ev) {
