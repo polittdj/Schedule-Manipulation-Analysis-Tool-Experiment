@@ -20389,6 +20389,9 @@ commit, not a rebase. The resolution:
   installers were built and rebuilt only the pyz. Reproduced locally (1 failed, 13 passed), the wheel and the
   nine installers rebuilt at the same 1.0.299 (one PR, one version — the precedent is one bump per PR), the
   installer + pyz suites green (109 passed); pushed as the follow-up commit. 6,439 other floor tests passed.
+  **Final head 4124cfef: all eight checks green** (run 36903412944 — check, test 3.11, test 3.13, floor,
+  browser, cui-guard; installer smoke linux + windows), mergeable state clean, no review threads; the PR
+  waits on the operator (mark ready, squash-merge). This docs-only line restarts CI once more.
 - **Closing line.** Draft pull request #732 (`claude/lodestar-app-updates-q4xos3`, head 43b0238b → e5df3f87 →
   1c5e5499 → this docs/installer commit). FULL `python -m pytest -q` on 43b0238b: **6,451 passed, 6 failed, 407
   skipped, 104 xfailed** in 2398 s (0:39:58) — the six, all fixed here and re-run green: the next-session

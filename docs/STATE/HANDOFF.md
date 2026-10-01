@@ -5,8 +5,9 @@
 > 050 / 051, A0923-CPM-040's demo instance, A0923-IMP-005 and A0923-DOC-003 strict-xfail) are carried
 > UNCHANGED in the archived 2026-10-01 handoff and `docs/STATE/AUDIT-2026-09-23.md`; this session touched none.
 
-STATUS (current) — **ADR-0544 built, gated locally, draft PR open** (the PR number is in the session log's
-closing line). Highest ADR on disk **0544**. Version **1.0.299**; LODESTAR **2.1.0** (`lodestar/LODESTAR.pyz`
+STATUS (current) — **ADR-0544 built, gated locally, draft PR #732 GREEN and mergeable on 4124cfef** (all eight
+checks on run 36903412944 after three CI rounds, each named in the session log; the operator marks it ready and
+squash-merges). Highest ADR on disk **0544**. Version **1.0.299**; LODESTAR **2.1.0** (`lodestar/LODESTAR.pyz`
 **53 members**). QC-1 / QC-2 / QC-3 bind every session.
 
 ## What ADR-0544 did (operator request 2026-10-01, four asks)
@@ -37,7 +38,7 @@ closing line). Highest ADR on disk **0544**. Version **1.0.299**; LODESTAR **2.1
 - **UNVERIFIED here:** PowerPoint keeping the custom XML part on its own re-save (CI MEASURED LibreOffice 24.2's export
   keeping the part and dropping the shapes' alt text, so the part — not the alt text — is the carrier
   that survives a re-save; the interop test pins both); PDF rendering outside poppler;
-  Windows / macOS; the three new browser tests ran only through node Playwright in the session.
+  Windows / macOS. (The three new browser tests passed on CI's browser job, run 36903412944.)
 - **Deferred, named in the ADR:** OWNED == CONTENT mutation test; a browser test for the page switch after a
   restore; a Compare round trip with a DUPLICATE NAME pair; bomb-size tests on the three readers; Polaris²'s own
   wording for an export dropped on its list slot.
