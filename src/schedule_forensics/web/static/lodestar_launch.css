@@ -1,49 +1,47 @@
-/* lodestar_launch.css — what makes LODESTAR's launch page LODESTAR's (ADR-0541).
- *
- * Loaded by /launch of LODESTAR only, AFTER launch.css (the boot screen's one sanctioned
- * departure from theme-following, DESIGN-SYSTEM §7a: a dark ground in every view, the particles
- * coloured from the --boot-accent / --boot-warm pair). This sheet re-points ONE of that pair —
- * the accent — to the lodestar's gold in every view, daylight included, so the same lightshow
- * is unmistakably this program's; --boot-warm keeps following each view's --warn, so the four
- * views still differ. Nothing below hard-codes a colour at a call site: the accent is declared
- * once, here, on :root, exactly as launch.css declares its own.
- */
-:root,
-html[data-theme=daylight], html[data-theme=light] {
-  --boot-accent: #f0c24b; /* the lodestar's gold, in every view */
-}
-
-/* the brand block: the ✦ mark, the name and its line, above the hero copy */
-.ls-boot-brand {
-  display: flex;
-  align-items: baseline;
-  gap: .5em;
-  margin: 0 0 6px;
-  font-family: ui-monospace, "IBM Plex Mono", Consolas, monospace;
-  letter-spacing: .3em;
-  text-transform: uppercase;
-  color: var(--boot-ink);
-  pointer-events: none;
-}
-.ls-boot-mark { color: var(--boot-accent); font-size: 30px; letter-spacing: 0; line-height: 1; }
-.ls-boot-name { font-size: 22px; font-weight: 700; }
-.ls-boot-tagline { font-size: 11px; color: var(--boot-muted); letter-spacing: .2em; }
-
-/* the credit the frame carries on every page (§7c): under the version line and above the
-   bottom marking bar — the boot page has no header or footer to hold it */
-.ls-boot-credit {
-  margin: 0;
-  padding: 2px 12px 0;
-  text-align: center;
-  font-size: 11px;
-  color: var(--boot-muted);
-  flex: 0 0 auto;
-}
-.ls-boot-credit a { color: var(--boot-accent); }
-.ls-boot-foot { padding: 4px 12px 6px; }
-
-@media (max-width: 480px) {
-  .ls-boot-brand { flex-wrap: wrap; justify-content: center; letter-spacing: .2em; }
-  .ls-boot-mark { font-size: 24px; }
-  .ls-boot-name { font-size: 18px; }
-}
+/* LODESTAR 2.0 — the launch page (ADR-0543, the "Console" design handoff). Tokens only
+   (lodestar_tokens.css); the A1 components come from lodestar_studio.css. */
+.ls-launch .ls-root{height:100vh}
+.ls-launch-main{flex:1;min-height:0;overflow:auto;position:relative;background-color:var(--bg-void);background-image:var(--texture-grid);background-size:var(--texture-grid-size);display:flex;flex-direction:column}
+.ls-launch-top{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:14px 28px;font-family:var(--font-mono);font-size:11px;color:var(--text-muted);letter-spacing:.08em}
+.ls-launch-top b{color:var(--text-secondary)}
+.ls-launch-drawer{flex:1;display:flex;justify-content:center;letter-spacing:0;font-family:var(--font-sans)}
+.ls-launch-grid{flex:1;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:56px;align-items:center;max-width:1280px;width:100%;margin:0 auto;padding:24px 48px 32px}
+.ls-launch-left{display:flex;flex-direction:column;gap:22px}
+.ls-launch-brand{display:flex;align-items:baseline;gap:12px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.3em}
+.ls-launch-mark{color:var(--accent-gold);font-size:34px;letter-spacing:0;line-height:1}
+.ls-launch-name{font-size:24px;font-weight:700;color:var(--text-primary)}
+.ls-launch-tagline{font-size:11px;color:var(--text-muted);letter-spacing:.2em}
+.ls-hero{display:flex;flex-direction:column;gap:14px;min-height:230px}
+.ls-hero-k{font:600 11px var(--font-mono);letter-spacing:.14em;color:var(--accent-gold)}
+.ls-hero-h{margin:0;font:600 44px/1.1 var(--font-display);letter-spacing:-.02em;text-wrap:balance}
+.ls-hero-s{margin:0;max-width:560px;font-size:16px;line-height:1.55;color:var(--text-secondary);text-wrap:pretty}
+.ls-hero.is-swap .ls-hero-h,.ls-hero.is-swap .ls-hero-s,.ls-hero.is-swap .ls-hero-k{animation:ls-rise .5s ease both}
+.ls-hero-dots{display:flex;gap:8px}
+.ls-hero-dot{width:28px;height:4px;border:0;border-radius:2px;cursor:pointer;background:var(--border-strong);padding:0}
+.ls-hero-dot[aria-pressed=true]{background:var(--accent-gold)}
+.ls-welcome{display:flex;flex-direction:column;gap:16px;animation:ls-rise .5s ease both}
+.ls-welcome-status{display:flex;align-items:center;gap:8px;font:600 11px var(--font-mono);letter-spacing:.14em;color:var(--status-pass)}
+.ls-welcome-lede{margin:0;font-size:16px;line-height:1.5;color:var(--text-secondary)}
+.ls-quicks{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ls-quick{text-align:left;text-decoration:none;cursor:pointer;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;color:var(--text-primary);display:flex;flex-direction:column;gap:6px}
+.ls-quick:hover{background:var(--surface-hover);border-color:var(--accent-border)}
+.ls-quick-k{font:600 10px var(--font-mono);letter-spacing:.14em;color:var(--accent-gold)}
+.ls-quick-t{font:600 17px var(--font-display)}
+.ls-quick-s{font-size:13px;line-height:1.45;color:var(--text-muted)}
+.ls-launch-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.ls-tel{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--border);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.ls-tel-cell{background:var(--bg-panel);padding:12px 14px}
+.ls-tel-k{font:600 10px var(--font-mono);letter-spacing:.14em;color:var(--text-muted)}
+.ls-tel-v{margin-top:6px;font:500 13px var(--font-mono);color:var(--text-primary)}
+.ls-tel-v.is-gold{font-weight:600;color:var(--accent-gold)}
+.ls-launch-right{display:flex;flex-direction:column;gap:18px}
+.ls-launch-card{background:var(--bg-panel);border:1px solid var(--border);border-radius:10px;padding:22px 22px 14px;box-shadow:var(--shadow-panel)}
+.ls-stages{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}
+.ls-stage{display:flex;flex-direction:column;gap:6px}
+.ls-stage-bar{height:3px;border-radius:2px;background:var(--border);transition:background .4s}
+.ls-stage-label{font:600 9px var(--font-mono);letter-spacing:.1em;color:var(--text-faint)}
+.ls-stage.is-done .ls-stage-bar,.ls-stage.is-active .ls-stage-bar{background:var(--accent-gold)}
+.ls-stage.is-done .ls-stage-label{color:var(--text-secondary)}
+.ls-stage.is-active .ls-stage-label{color:var(--accent-gold)}
+.ls-launch-foot{font:500 11px var(--font-mono);letter-spacing:.14em;color:var(--text-muted);text-align:center}
+@media (max-width:980px){.ls-launch-grid{grid-template-columns:1fr;gap:28px;padding:16px}}

@@ -1,54 +1,52 @@
-"""LODESTAR's launch page — the boot screen the program opens on (ADR-0541, operator ask
-2026-09-30: "a launch page very similar to that of Polaris², but different enough that the user
-can easily identify the tool").
+"""LODESTAR's launch page — the front door the program opens on (ADR-0541; rebuilt to the
+"Console" design handoff by ADR-0543, LODESTAR 2.0).
 
-The SAME screen as Polaris²'s ``/launch`` (ADR-0426): the particle lightshow and the staged
-transit of ``static/launch.js``, the styles of ``static/launch.css``, the Boot Audio Hum and its
-controls, the compliance chrome top and bottom, real facts in the tiles and a welcome panel that
-hands the operator in. What makes it LODESTAR's is served in the page, never forked in the
-script: its own name and mark (the ✦ lodestar), its own hero copy and stage words (the star to
-steer by, the bearing, the course), its own accent (``lodestar_launch.css`` re-points the boot
-palette to the lodestar's gold in every view), its own three facts (the lists aboard, the items,
-the data date), and quick actions that name the two pages it has. ``launch.js`` reads those
-tables out of the page's JSON block and falls back to Polaris²'s own when a page gives none —
-one painter, two identities, and Polaris²'s screen byte-for-byte what it was.
+Two columns on the graticule. On the left: the mark, a hero that cycles through LODESTAR's three
+stories every 6.5 s, **Take a star fix** (a six-stage transit — PRE-FLIGHT to STUDIO OPEN — that
+ends on a welcome panel handing the operator to either page), **Skip to the studio**, the "go
+straight to the studio next time" opt-out, and three real facts: the lists aboard, the data date,
+the stage. On the right: the list→slide animation that shows what the program does, the six
+stages, and the sentence that matters most — nothing leaves this computer, and there is no AI.
 
-§7a's four rules hold here as there: the compliance chrome is not optional off the shell; no
-invented number (an empty studio shows an em dash); the ground is dark in every view; reduced
-motion is a still frame. Std-lib only, so ``LODESTAR.pyz`` carries it verbatim.
+The v1 page borrowed Polaris²'s boot screen (its particle field and its Boot Audio Hum); the
+design replaces that column with the teaching animation and has no sound, so LODESTAR 2.0 loads
+nothing of Polaris²'s here. The opt-out keeps v1's storage key (``sf-boot-skip``, read by
+``static/lodestar_launch.js`` before the page paints) so an operator who chose it keeps it.
+
+§7a's rules hold: the compliance chrome is not optional off the shell (the marking bars top and
+bottom, the handling drawer, the credit); no invented number (an empty studio shows an em dash);
+reduced motion is a still frame. Std-lib only, so ``LODESTAR.pyz`` carries it verbatim.
 """
 
 from __future__ import annotations
 
 import datetime as dt
-import json
 
 from schedule_forensics.web.htmlkit import _e
+from schedule_forensics.web.lodestar_icons import icon, sprite
 from schedule_forensics.web.lodestar_shell import (
     NAME,
     TAGLINE,
     VERSION,
     compliance_drawer,
     credit_html,
-    marking,
+    json_block,
+    mark_bar,
 )
+from schedule_forensics.web.lodestar_studio import list_to_slide
 from schedule_forensics.web.onepager_common import OnePagerSession
 
 #: The design system's em dash for "the session cannot supply this" — the literal character.
 _NONE = "—"
 
-#: LODESTAR's hero scenes: ``(kicker, headline, sub, shape)`` — the shape is the index of the
-#: particle scene ``launch.js`` composes (0 helix · 1 wave · 2 galaxy · 3 nebula). Three scenes,
-#: none of them Polaris²'s: the galaxy for the star to steer by, the wave for the movement
-#: between two lists, the nebula for the logic the operator draws out of it.
-HEROES: tuple[tuple[str, str, str, int], ...] = (
+#: LODESTAR's hero copy, ``(kicker, headline, sub)`` — the design handoff's, verbatim.
+HEROES: tuple[tuple[str, str, str], ...] = (
     (
         "01 — LODESTAR · ONE-PAGER STUDIO",
         "One list. One slide. One star to steer by.",
         "Drop a plain Excel list and get the one-slide swimlane timeline a review board reads in "
         "a minute — and a PowerPoint of the same slide, built from native, editable shapes. "
         "Nothing you load leaves this computer, and there is no AI in it.",
-        2,
     ),
     (
         "02 — PRIOR AND CURRENT · WHAT MOVED",
@@ -56,7 +54,6 @@ HEROES: tuple[tuple[str, str, str, int], ...] = (
         "Compare lays last month's list under this month's on one slide: what slipped, what "
         "pulled in, what is new and what was removed — every move in calendar days, every "
         "decision the page made named by row.",
-        1,
     ),
     (
         "03 — YOUR LOGIC · YOUR ARROWS",
@@ -64,7 +61,6 @@ HEROES: tuple[tuple[str, str, str, int], ...] = (
         "Pick two items and add the link — Finish-to-Start, Start-to-Start, Finish-to-Finish or "
         "Start-to-Finish. Only the links you add are drawn, every one fitted on the slide, and "
         "each carried into PowerPoint as an arrow.",
-        3,
     ),
 )
 
@@ -97,17 +93,8 @@ QUICK_ACTIONS: tuple[tuple[str, str, str, str], ...] = (
 #: Where the studio opens: the Timeline page (the skip, the Escape key and the "go straight to
 #: the studio next time" opt-out all land here).
 HOME = "/onepager"
-
-
-def _quick_action_html(action: tuple[str, str, str, str]) -> str:
-    kicker, title, sub, route = action
-    return (
-        f'<button type=button data-sf-boot-href="{_e(route)}">'
-        f"<div class=qk>{_e(kicker)}</div>"
-        f"<div class=qt>{_e(title)}</div>"
-        f"<div class=qs>{_e(sub)}</div>"
-        f"</button>"
-    )
+#: The hero's dwell, and one transit stage's, in milliseconds (the design's figures).
+HERO_MS, STAGE_MS = 6500, 650
 
 
 def facts(st: OnePagerSession) -> tuple[int, int]:
@@ -117,12 +104,19 @@ def facts(st: OnePagerSession) -> tuple[int, int]:
     return len(docs), sum(len(d.items) for d in docs)
 
 
+def _quick(action: tuple[str, str, str, str]) -> str:
+    kicker, title, sub, route = action
+    return (
+        f'<a class=ls-quick href="{_e(route)}"><span class=ls-quick-k>{_e(kicker)}</span>'
+        f"<span class=ls-quick-t>{_e(title)}</span><span class=ls-quick-s>{_e(sub)}</span></a>"
+    )
+
+
 def lodestar_launch_html(
     st: OnePagerSession, *, unclassified: bool, today: dt.date, chosen: bool
 ) -> str:
     """The whole launch document. ``today`` is the data date in force (the operator's when
-    ``chosen``, else the computer's) — the third tile, a real session fact."""
-    cls, text = marking(unclassified)
+    ``chosen``, else the computer's) — the second tile, a real session fact."""
     lists, items = facts(st)
     aboard = (
         f"{lists} list{'s' if lists != 1 else ''} · {items:,} item{'s' if items != 1 else ''}"
@@ -130,95 +124,91 @@ def lodestar_launch_html(
         else f"{_NONE} nothing aboard"
     )
     dd = f"{today.isoformat()} · {'set by you' if chosen else 'computer date'}"
-    boot_json = json.dumps(
-        {
-            "files": lists,
-            "activities": items,
-            "dataDate": today.isoformat(),
-            "home": HOME,
-            "stages": list(STAGES),
-            "heroes": [{"k": k, "h": h, "s": s, "shape": shape} for k, h, s, shape in HEROES],
-        }
-    ).replace("<", "\\u003c")
-    dots = "".join(
-        f'<button type=button data-sf-boot-dot={i} title="{_e(h)}" '
-        f"aria-pressed={'true' if i == 0 else 'false'}></button>"
-        for i, (_k, h, _s, _shape) in enumerate(HEROES)
-    )
-    quick = "".join(_quick_action_html(a) for a in QUICK_ACTIONS)
     welcome = (
         "Every list you have loaded is parsed and waiting."
         if lists
         else "No list aboard yet — the studio is ready when you are."
     )
-    return f"""<!doctype html><html lang=en><head><meta charset=utf-8>
+    k0, h0, s0 = HEROES[0]
+    dots = "".join(
+        f'<button type=button class=ls-hero-dot data-ls-hero="{i}" title="{_e(h)}" '
+        f'aria-label="{_e(h)}" aria-pressed={"true" if i == 0 else "false"}></button>'
+        for i, (_k, h, _s) in enumerate(HEROES)
+    )
+    stages = "".join(
+        f'<div class="ls-stage{" is-active" if i == 0 else ""}" data-ls-stage="{i}">'
+        f"<div class=ls-stage-bar></div><div class=ls-stage-label>0{i + 1} {_e(s)}</div></div>"
+        for i, s in enumerate(STAGES)
+    )
+    boot = json_block(
+        "lsBoot",
+        {
+            "home": HOME,
+            "stages": list(STAGES),
+            "heroes": [{"k": k, "h": h, "s": s} for k, h, s in HEROES],
+            "heroMs": HERO_MS,
+            "stageMs": STAGE_MS,
+        },
+    )
+    return f"""<!doctype html><html lang=en class=no-js data-theme=dark><head><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1">
 <title>Launch — {NAME}</title>
 <link rel=icon href="/static/lodestar.ico">
-<script id=sfBootData type="application/json">{boot_json}</script>
-<script src="/static/theme.js"></script>
-<script src="/static/launch_audio.js"></script>
-<script src="/static/launch.js"></script>
-<link rel=stylesheet href="/static/base.css"><link rel=stylesheet href="/static/sf-themes.css">
-<link rel=stylesheet href="/static/launch.css"><link rel=stylesheet href="/static/lodestar_launch.css">
-</head><body class="boot-body lodestar-boot">
-<div class="cui-banner {cls}" data-no-i18n>{_e(text)}</div>
-{compliance_drawer()}
-<div class=boot-version data-no-i18n title="The version of this program — what LODESTAR --version reports">{_e(NAME)} {_e(VERSION)}</div>
-<p class="ls-credit ls-boot-credit">{credit_html()}</p>
-<div id=sfBoot>
-<canvas id=sfBootCanvas aria-hidden=true></canvas>
-<div class=boot-stage>
-
-<div class=ls-boot-brand aria-label="{_e(NAME)} — {_e(TAGLINE)}">
-<span class=ls-boot-mark aria-hidden=true>&#10022;</span>
-<span class=ls-boot-name>{_e(NAME)}</span>
-<span class=ls-boot-tagline>{_e(TAGLINE)}</span>
+<script src="/static/lodestar_view.js"></script>
+{boot}
+<script src="/static/lodestar_launch.js"></script>
+<link rel=stylesheet href="/static/lodestar_tokens.css"><link rel=stylesheet href="/static/lodestar_studio.css">
+<link rel=stylesheet href="/static/lodestar_launch.css">
+</head><body class="ls-app ls-launch lodestar-boot">{sprite()}
+<div class=ls-root>
+{mark_bar(unclassified, "top")}
+<div class=ls-launch-main>
+<div class=ls-launch-top>
+<span class=boot-version data-no-i18n title="The version of this program — what LODESTAR --version reports">{_e(NAME)} {_e(VERSION)}</span>
+<span class=ls-launch-drawer>{compliance_drawer()}</span>
+<span class="ls-credit-who ls-boot-credit">{credit_html()}</span>
 </div>
-
-<div class=boot-hero id=sfBootHero>
-<div class=boot-kicker id=sfBootKicker></div>
-<h1 class=boot-h1 id=sfBootH1></h1>
-<p class=boot-sub id=sfBootSub></p>
+<div class=ls-launch-grid>
+<div class=ls-launch-left>
+<div class=ls-launch-brand aria-label="{_e(NAME)} — {_e(TAGLINE)}">
+<span class=ls-launch-mark aria-hidden=true>&#10022;</span>
+<span class=ls-launch-name>{_e(NAME)}</span>
+<span class=ls-launch-tagline>{_e(TAGLINE)}</span>
 </div>
-
-<div class=boot-tel>
-<div><div class=boot-tel-k>LISTS ABOARD</div><div class=boot-tel-v>{_e(aboard)}</div></div>
-<div><div class=boot-tel-k>DATA DATE</div><div class=boot-tel-v>{_e(dd)}</div></div>
-<div><div class=boot-tel-k>SEQUENCE</div><div class=boot-tel-v id=sfBootSeq>{_e(STAGES[0])}</div></div>
+<div class=ls-hero id=lsHero>
+<div class=ls-hero-k id=lsHeroK>{_e(k0)}</div>
+<h1 class=ls-hero-h id=lsHeroH>{_e(h0)}</h1>
+<p class=ls-hero-s id=lsHeroS>{_e(s0)}</p>
+<div class="ls-hero-dots ls-js-only">{dots}</div>
 </div>
-
-<div class=boot-parked>
-<div class=boot-controls>
-<span>BOOT AUDIO</span>
-<button type=button id=humMute class=boot-alt aria-pressed=false>&#9834; HUM</button>
-<label>VOL<input type=range id=humVol min=0 max=100 value=40 aria-label="Boot audio volume"></label>
+<div class=ls-welcome id=lsWelcome hidden>
+<div class=ls-welcome-status><span class="ls-dot ls-dot-pass"></span>STUDIO OPEN</div>
+<h1 class=ls-hero-h>Welcome to the studio.</h1>
+<p class=ls-welcome-lede>{_e(welcome)}</p>
+<div class=ls-quicks>{"".join(_quick(a) for a in QUICK_ACTIONS)}</div>
+<div><a class="aismat-btn aismat-btn--primary aismat-btn--lg" href="{HOME}" id=lsEnter><span>Open the studio</span>{icon("arrow-right", 18)}</a></div>
 </div>
-<div class=boot-actions>
-<button type=button id=sfBootBegin class=boot-go>TAKE A STAR FIX</button>
-<button type=button id=sfBootSkip class=boot-alt>Skip to the studio</button>
+<div class=ls-launch-actions id=lsActions>
+<button type=button class="aismat-btn aismat-btn--primary aismat-btn--lg ls-js-only" id=lsStarFix>{icon("compass", 18)}<span>Take a star fix</span></button>
+<a class="aismat-btn aismat-btn--ghost aismat-btn--lg" href="{HOME}" id=lsSkip><span>Skip to the studio</span></a>
 </div>
-<div class=boot-dots>{dots}</div>
-<label class=boot-never><input type=checkbox id=sfBootNever> Go straight to the studio next time</label>
-</div>
-
-<div class=boot-travel>
-<div class=boot-stagelabel id=sfBootStage>{_e(STAGES[0])}</div>
-<div class=boot-stagenote>NOTHING LEAVES THIS COMPUTER · NO AI</div>
-</div>
-
-<div class=boot-ready>
-<div class=boot-ready-kick><i></i><span>STUDIO OPEN</span></div>
-<h2>Welcome to the studio.</h2>
-<p class=lede>{_e(welcome)}</p>
-<div class=boot-quick>{quick}</div>
-<div class=boot-actions>
-<button type=button id=sfBootEnter class=boot-go data-sf-boot-href="{HOME}">OPEN THE STUDIO</button>
+<label class="aismat-check ls-js-only" id=lsNeverWrap><input type=checkbox class=aismat-check__input id=lsNever><span class=aismat-check__box>{icon("check", 13)}</span><span>Go straight to the studio next time</span></label>
+<div class=ls-tel>
+<div class=ls-tel-cell><div class=ls-tel-k>LISTS ABOARD</div><div class=ls-tel-v>{_e(aboard)}</div></div>
+<div class=ls-tel-cell><div class=ls-tel-k>DATA DATE</div><div class=ls-tel-v>{_e(dd)}</div></div>
+<div class=ls-tel-cell><div class=ls-tel-k>SEQUENCE</div><div class="ls-tel-v is-gold" id=lsSeq>{_e(STAGES[0])}</div></div>
 </div>
 </div>
-
+<div class=ls-launch-right>
+<div class=ls-launch-card>
+<div class=ls-tel-k style="margin-bottom:12px">HOW IT WORKS · WATCH THE LIST BECOME THE SLIDE</div>
+{list_to_slide()}
+</div>
+<div class=ls-stages>{stages}</div>
+<div class=ls-launch-foot>NOTHING LEAVES THIS COMPUTER · NO AI</div>
 </div>
 </div>
-<p class="ls-credit ls-boot-credit ls-boot-foot">{credit_html()}</p>
-<div class="cui-banner bottom {cls}" data-no-i18n>{_e(text)}</div>
+</div>
+{mark_bar(unclassified, "bottom")}
+</div>
 </body></html>"""

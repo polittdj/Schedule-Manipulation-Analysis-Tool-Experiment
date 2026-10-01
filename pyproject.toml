@@ -152,7 +152,7 @@ where = ["src"]
 # dev environment never sees it because `pip install -e` reads the source tree. The installer
 # smoke tests (Linux in-container + windows-latest CI) now exercise the WHEEL, keeping it honest.
 [tool.setuptools.package-data]
-schedule_forensics = ["web/static/*", "web/examples/*"]
+schedule_forensics = ["web/static/*", "web/static/fonts/*", "web/examples/*"]
 
 # --- ruff: lint + format -------------------------------------------------------
 [tool.ruff]
@@ -182,6 +182,9 @@ select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
 "src/schedule_forensics/web/lodestar_shell.py" = ["E501"]
 # ADR-0541: LODESTAR's launch page is HTML too (the boot screen served outside the frame).
 "src/schedule_forensics/web/lodestar_launch.py" = ["E501"]
+# ADR-0543: LODESTAR 2.0's studio renders its two working regions as HTML (the server-rendered
+# studio the script swaps in), so it carries the same exemption as its frame.
+"src/schedule_forensics/web/lodestar_studio.py" = ["E501"]
 "src/schedule_forensics/web/htmlkit.py" = ["E501"]
 # `components.py` is the shared presentation kernel, extracted verbatim from app.py (ADR-0350).
 # At extraction ONE line needed the exemption — a `_metric_help_cell` docstring line already
