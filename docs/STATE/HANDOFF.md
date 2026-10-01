@@ -53,6 +53,9 @@ SESSION-LOG entry's gate line. QC-1 / QC-2 / QC-3 bind every session.
   a last leg.
 - **Three pre-existing PowerPoint defects** (reproduced 2026-10-01, NOT fixed here): month lines hidden under the opaque
   lane fills; the UNCLASSIFIED marking text painted in CUI purple (`_CUI` 4B2E83); `_rels/.rels` names no docProps part.
+- **Noted, not in scope:** `web/help.py`, `i18n.py`, `offload.py` and `system.py` are in no `LAYER_ORDER` row of
+  `tests/web/test_monolith_split_contract.py`, so the downward-import guard never checks them (found by the test
+  stream; pre-existing).
 - **Carried unchanged:** the size-cap ruling (`LABEL_MAX` 14 / `GLYPH_MAX` 40 / `LANE_NAME_MAX` 12 PROVISIONAL).
 - **UNVERIFIED:** PowerPoint itself (no Impress here); Firefox / WebKit; Windows / macOS; a physical printer; a blocked
   `www.google.com` CONNECT seen once during a lint run (LODESTAR's pages make no remote request — measured; the proxy log

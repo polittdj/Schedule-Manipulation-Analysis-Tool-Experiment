@@ -464,6 +464,11 @@ those fixed defects in earlier "closed" fixes:
   dead code" was measured three ways (the engine stream's 232 layouts; the lead's 60 lists / 1,238 links; the old
   router moving items on 4 of 60 as the check's teeth) before the gutter, the reorder, the dashed fallback and the
   footnote were deleted rather than left dormant.
+- **Two old lessons bit again, and were caught before they cost a verdict.** A worktree `checkout` refused to switch
+  (the build's installer files were still modified in it), so the first full-suite run measured the PREVIOUS commit —
+  read the HEAD a battery is about to measure, never the one you meant to put there. And a `pkill -f <pattern>` matched
+  its own shell's command line and killed it (exit 144) — the 2026-09-29 lesson about `pgrep -f`, verbatim; stop a
+  background task by its id, and check with `ps` and a bracketed pattern.
 
 ### 2026-09-30 (b) — A rule you set before the wave is the only rule you may close a lane on, a tier set before the second verifier is a draft, and a sniff that reads the first bytes is a guess (ADR-0542)
 
