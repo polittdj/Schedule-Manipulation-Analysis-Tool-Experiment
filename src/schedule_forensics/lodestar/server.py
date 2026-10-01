@@ -468,7 +468,7 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             body: dict[str, str] = {}
             preview: dict[str, Any] = {}
             if upload is None and path.startswith("/api/"):
-                preview = self._json_body()
+                preview = self._json_body(preview=path == "/api/preview")
                 body = {k: v for k, v in preview.items() if isinstance(v, str)}
             elif upload is None:
                 body = self._form()
@@ -491,10 +491,12 @@ class _Handler(http.server.BaseHTTPRequestHandler):
                 return self._get(path)
         raise _Refused(405, "method not allowed")
 
-    def _json_body(self) -> dict[str, Any]:
+    def _json_body(self, *, preview: bool) -> dict[str, Any]:
         """A studio API call's body: one small JSON object (``Content-Type: application/json``,
-        the form cap) whose values are strings — or, for a preview, a list of two dates and a
-        flag. Anything else is refused before the lock is taken."""
+        the form cap) whose values are strings, passed whole as the form path passes them (each
+        action caps its own field). A PREVIEW may also carry a flag (``example``) and a list of
+        two short dates (``window``). Anything else is refused by name before the lock is taken
+        — never read as a missing field (a ``"title": true`` once cleared the title)."""
         ctype = self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
         if ctype != "application/json":
             raise _Refused(415, "a studio call must be application/json")
@@ -509,18 +511,15 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         for key, value in data.items():
             if not isinstance(key, str) or len(key) > 32:
                 raise _Refused(400, "a request field name is not valid")
-            if isinstance(value, bool) or value is None:
-                out[key] = value
-            elif isinstance(value, str | int | float):
-                out[key] = str(value)[:256]
-            elif (
+            flag = isinstance(value, bool) or value is None
+            pair = (
                 isinstance(value, list)
                 and len(value) <= 2
                 and all(isinstance(v, str) and len(v) <= 40 for v in value)
-            ):
-                out[key] = list(value)
-            else:
+            )
+            if not (isinstance(value, str) or (preview and (flag or pair))):
                 raise _Refused(400, "a request field is not a string")
+            out[key] = list(value) if isinstance(value, list) else value
         return out
 
     def _studio(self, page: str, *, reveal: bool = False, outcome: Any = None) -> _Reply:
