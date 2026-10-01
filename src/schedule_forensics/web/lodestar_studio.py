@@ -28,12 +28,11 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
-from schedule_forensics.reports.onepager import Layout, layout_json, mdy, window_text
+from schedule_forensics.reports.onepager import Layout, layout_json, mdy
 from schedule_forensics.reports.onepager_compare import (
     CompareDoc,
     CompareLayout,
     compare_layout_json,
-    delta_text,
 )
 from schedule_forensics.reports.onepager_links import LINK_NAMES, LINK_TYPES, MAX_LINKS, Link
 from schedule_forensics.web.htmlkit import _e
@@ -49,8 +48,10 @@ from schedule_forensics.web.onepager import (
     onepager_title,
     onepager_view,
     option_label,
-    today_words,
 )
+from schedule_forensics.web.onepager import EMPTY_SENTENCES as TIMELINE_EMPTY
+from schedule_forensics.web.onepager import slide_sentences as timeline_sentences
+from schedule_forensics.web.onepager import window_empty_sentences as timeline_window_empty
 from schedule_forensics.web.onepager_common import COMPARE_EXPLAINER, OnePagerSession
 from schedule_forensics.web.onepager_compare import (
     _RULES,
@@ -59,6 +60,12 @@ from schedule_forensics.web.onepager_compare import (
     onepager_compare_layout,
     onepager_compare_title,
     onepager_compare_view,
+)
+from schedule_forensics.web.onepager_compare import EMPTY_SUB as COMPARE_EMPTY_SUB
+from schedule_forensics.web.onepager_compare import empty_head as compare_empty_head
+from schedule_forensics.web.onepager_compare import slide_sentences as compare_sentences
+from schedule_forensics.web.onepager_compare import (
+    window_empty_sentences as compare_window_empty,
 )
 
 #: The two pages: ``api name -> (v1 path, tab label, tab icon, panel eyebrow)``.
@@ -201,8 +208,7 @@ def timeline_model(st: OnePagerSession, today: dt.date, made: dt.date) -> PageMo
         return PageModel(
             "timeline",
             "window",
-            f"No item of {len(doc.items)} falls inside the date window {window_text(win)}.",
-            f"From <b>{_e(doc.source)}</b>. Widen the window, or show all dates.",
+            *timeline_window_empty(doc, win),
             notices=notices,
             window=win,
             title=title,
@@ -211,30 +217,13 @@ def timeline_model(st: OnePagerSession, today: dt.date, made: dt.date) -> PageMo
         return PageModel(
             "timeline",
             "unusable" if doc is not None else "empty",
-            "No list loaded — drop an Excel list to build the one-pager.",
-            "Swimlane · task or milestone · start · finish · complete. The page draws the slide, "
-            "draws the logic links you pick, and exports it to PowerPoint as editable shapes.",
+            *TIMELINE_EMPTY,
             notices=notices,
             window=win,
             title=title,
         )
+    head, sub, prov = timeline_sentences(lay, view, doc, win, today, chosen)
     ms = sum(i.milestone for i in view.items)
-    span = (
-        f"the date window {window_text(win)}"
-        if win is not None
-        else f"{lay.years[0].label} to {lay.years[-1].label}"
-    )
-    head = (
-        f"{len(lay.lanes)} swimlanes, {ms} milestones and {len(view.items) - ms} activities on one "
-        f"slide — {span}."
-    )
-    sub = (
-        f"From <b>{_e(doc.source)}</b>; {today_words(today, chosen)}. Every bar and diamond is "
-        "labelled with its name and finish date; ⤓ POWERPOINT exports the same slide as native, "
-        "editable shapes."
-    )
-    wtag = f" · WINDOW {win[0].isoformat()} to {win[1].isoformat()}" if win is not None else ""
-    prov = f"SOURCE: {doc.source} · DATA DATE {today.isoformat()}{wtag}"
     assumed = (
         tuple(lay.notes)
         + ((doc.layout_note,) if doc.layout_note else ())
@@ -297,64 +286,24 @@ def compare_model(st: OnePagerSession, today: dt.date, made: dt.date) -> PageMod
         return PageModel(
             "compare",
             "window",
-            f"No compared item of {len(full.rows)} falls inside the date window "
-            f"{window_text(win)} — neither its prior nor its current position.",
-            f"{_e(full.prior_source)} → {_e(full.current_source)}. Widen the window, or show all "
-            "dates.",
+            *compare_window_empty(full, win),
             notices=notices,
             window=win,
             title=title,
         )
     if cdoc is None or lay is None:
         have = sum(d is not None for d in (prior, current))
-        head = (
-            "Drop two One-Pager lists — a PRIOR and a CURRENT — to see what moved."
-            if have == 0
-            else (
-                "One list loaded — drop the other slot to compare."
-                if have == 1
-                else "Both lists are empty of usable rows — nothing to compare."
-            )
-        )
         return PageModel(
             "compare",
             "empty" if have < 2 else "unusable",
-            head,
-            "The same sheet the One-Pager takes, twice — with an optional status column. The slide "
-            "draws the current position solid (an unchanged item once), the prior as a ghost where "
-            "it moved, and every finish that moved as an arrow with its move in calendar days; NEW "
-            "and REMOVED items are tagged by name, and a check marks what is complete.",
+            compare_empty_head(have),
+            COMPARE_EMPTY_SUB,
             notices=notices,
             window=win,
             title=title,
         )
     t = cdoc.totals
-    worst = (
-        f" Worst slip: {t.worst_slip_name} {delta_text(t.worst_slip_days)}."
-        if t.worst_slip_name and t.worst_slip_days
-        else ""
-    )
-    done = (
-        f" {t.complete} marked complete in {cdoc.status_label or 'the status column'}."
-        if cdoc.completion
-        else ""
-    )
-    head = (
-        f"{t.slipped} slipped, {t.pulled_in} pulled in, {t.unchanged} unchanged, {t.new} new, "
-        f"{t.removed} removed — {cdoc.prior_source} → {cdoc.current_source}.{worst}{done}"
-    )
-    sub = (
-        "Every move is in <b>calendar days</b> — a One-Pager list carries no calendar. Solid is "
-        "the current list and an unchanged item is drawn once; a ghost is where a moved item was, "
-        "an arrow is the finish's move; NEW and REMOVED are tagged, and a check marks what the "
-        "status column says is complete. A rename or a swimlane move reads as one removed and one "
-        f"new: the sheet has no id to follow. On this slide {today_words(today, chosen)}."
-    )
-    wtag = f" · WINDOW {win[0].isoformat()} to {win[1].isoformat()}" if win is not None else ""
-    prov = (
-        f"PRIOR: {cdoc.prior_source} · CURRENT: {cdoc.current_source} · DATA DATE "
-        f"{today.isoformat()}{wtag}"
-    )
+    head, sub, prov = compare_sentences(cdoc, win, today, chosen)
     if cdoc.problems:
         notices.append(
             Notice(

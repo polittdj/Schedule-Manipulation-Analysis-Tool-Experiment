@@ -418,6 +418,52 @@ _SCRIPT = (
 )
 
 
+#: What the Timeline says with no usable list: ``(takeaway, its line)`` — ONE copy, read by this
+#: page and by LODESTAR's studio (ADR-0543), so the two programs never word it differently.
+EMPTY_SENTENCES: tuple[str, str] = (
+    "No list loaded — drop an Excel list to build the one-pager.",
+    "Swimlane · task or milestone · start · finish · complete. The page draws the slide, "
+    "draws the logic links you pick, and exports it to PowerPoint as editable shapes.",
+)
+
+
+def window_empty_sentences(doc: OnePagerDoc, win: Window) -> tuple[str, str]:
+    """``(takeaway, its line — HTML)`` when the date window holds no item of the list."""
+    return (
+        f"No item of {len(doc.items)} falls inside the date window {window_text(win)}.",
+        f"From <b>{_e(doc.source)}</b>. Widen the window, or show all dates.",
+    )
+
+
+def slide_sentences(
+    lay: Layout,
+    view: OnePagerDoc,
+    doc: OnePagerDoc,
+    win: Window | None,
+    today: dt.date,
+    chosen: bool,
+) -> tuple[str, str, str]:
+    """``(takeaway — plain text, its line — HTML, provenance — plain text)`` of a drawn slide:
+    ONE copy of the sentences, read by this page and by LODESTAR's studio (ADR-0543)."""
+    ms = sum(i.milestone for i in view.items)
+    span = (
+        f"the date window {window_text(win)}"
+        if win is not None
+        else f"{lay.years[0].label} to {lay.years[-1].label}"
+    )
+    head = (
+        f"{len(lay.lanes)} swimlanes, {ms} milestones and {len(view.items) - ms} activities on one "
+        f"slide — {span}."
+    )
+    sub = (
+        f"From <b>{_e(doc.source)}</b>; {today_words(today, chosen)}. Every bar and diamond is "
+        "labelled with its name and finish date; ⤓ POWERPOINT exports the same slide as native, "
+        "editable shapes."
+    )
+    wtag = f" · WINDOW {win[0].isoformat()} to {win[1].isoformat()}" if win is not None else ""
+    return head, sub, f"SOURCE: {doc.source} · DATA DATE {today.isoformat()}{wtag}"
+
+
 def _onepager_body(st: SessionState, today: dt.date, prepared: dt.date | None = None) -> str:
     """The page body. ``today`` is the data date in force (the operator's when the session holds
     one, else the computer's); ``prepared`` the computer's date (``today`` when not given)."""
@@ -434,10 +480,7 @@ def _onepager_body(st: SessionState, today: dt.date, prepared: dt.date | None = 
     view, omitted = onepager_view(st)
     if lay is None and doc is not None and doc.items and win is not None:
         # the window holds nothing: say so, and keep the control that clears it on the page
-        take = _utility_takeaway(
-            f"No item of {len(doc.items)} falls inside the date window {window_text(win)}.",
-            f"From <b>{_e(doc.source)}</b>. Widen the window, or show all dates.",
-        )
+        take = _utility_takeaway(*window_empty_sentences(doc, win))
         return (
             f'{take}{banner}<div class="viz-controls" data-noprint=1>'
             f"{window_form('/onepager/window', win)}</div>"
@@ -445,29 +488,13 @@ def _onepager_body(st: SessionState, today: dt.date, prepared: dt.date | None = 
             f"{_dropzone(st, loaded=True)}{_SCRIPT}"
         )
     if lay is None or doc is None or view is None:
-        take = _utility_takeaway(
-            "No list loaded — drop an Excel list to build the one-pager.",
-            "Swimlane · task or milestone · start · finish · complete. The page draws the slide, "
-            "draws the logic links you pick, and exports it to PowerPoint as editable shapes.",
-        )
+        take = _utility_takeaway(*EMPTY_SENTENCES)
         problems = _notice_list("Rows skipped", doc.problems, "warn", "alert") if doc else ""
         return f"{take}{banner}{problems}{_dropzone(st, loaded=False)}{_SCRIPT}"
-    ms = sum(i.milestone for i in view.items)
-    span = (
-        f"the date window {window_text(win)}"
-        if win is not None
-        else f"{lay.years[0].label} to {lay.years[-1].label}"
-    )
-    take = _utility_takeaway(
-        f"{len(lay.lanes)} swimlanes, {ms} milestones and {len(view.items) - ms} activities on one "
-        f"slide — {span}.",
-        f"From <b>{_e(doc.source)}</b>; {today_words(today, chosen)}. Every bar and diamond is "
-        "labelled with its name and finish date; ⤓ POWERPOINT exports the same slide as native, "
-        "editable shapes.",
-    )
+    head, sub, prov_text = slide_sentences(lay, view, doc, win, today, chosen)
+    take = _utility_takeaway(head, sub)
     blob = json.dumps(layout_json(lay)).replace("<", "\\u003c")
-    wtag = f" · WINDOW {win[0].isoformat()} to {win[1].isoformat()}" if win is not None else ""
-    prov = f"<span class=prov-chip data-no-i18n>SOURCE: {_e(doc.source)} · DATA DATE {today.isoformat()}{wtag}</span>"
+    prov = f"<span class=prov-chip data-no-i18n>{_e(prov_text)}</span>"
     tools = _shell_tools(export_title="Export the parsed list (swimlane · item · dates) to Excel")
     data_btn = (
         '<button type=button data-sf-data aria-pressed=false aria-label="Show the parsed rows">'
