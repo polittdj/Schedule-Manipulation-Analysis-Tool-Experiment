@@ -406,7 +406,7 @@ def icon_button(
 
 _CAVEAT_ICON = {"warn": "triangle-alert", "fail": "circle-alert", "info": "info"}
 _TOAST_ICON = {
-    "pass": "circle-check",
+    "pass": "circle-check",  # nosec B105 — a toast status and its icon, not a secret
     "warn": "triangle-alert",
     "fail": "circle-alert",
     "info": "info",
