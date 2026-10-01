@@ -470,6 +470,12 @@ those fixed defects in earlier "closed" fixes:
   written contract naming every signature and field; the only friction was a helper name the contract did
   not mention (`risk_when`) and a field the lead needed and the contract omitted (`RiskDoc.rows`) — both
   caught by the builder reading the lead's code, as the contract asked. The seam cost was an hour, not a day.
+* **"Rebuild the installers LAST" means after the last `src/` edit, not after the last big one.** CI round 3
+  went red on the lockstep pin because round 2's fix re-worded ONE studio sentence and rebuilt only the pyz;
+  the wheel embedded in the nine installers still carried the old sentence. The pin did its job (it named
+  the file), but a cell found on CI costs a 33-minute floor run. A `src/` diff of any size — a comment, a
+  string — re-runs `python -m build --wheel` + `build_installers.py` + `build_lodestar.py --check` before
+  the push, and the pre-push checklist should name all three, not the pyz alone.
 
 ### 2026-10-01 — A design handoff is a claim like any other: its tokens failed AA, its copy over-promised, and its rule removed a whole subsystem only once the premise was measured (ADR-0543)
 

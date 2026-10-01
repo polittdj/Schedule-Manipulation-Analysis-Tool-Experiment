@@ -20383,6 +20383,12 @@ commit, not a rebase. The resolution:
   the reader still found LODESTAR data (the custom XML part). Re-pinned to the measured facts (the part
   survives, the alt text does not); the README, the studio copy, the ADR and this handoff no longer
   claim the alt-text fallback survives a re-save by any program (PowerPoint unverified).
+- **CI round 3 on 40478832:** `floor (declared minimum)` red on ONE test — the installer lockstep pin
+  (`tests/installer/test_installers.py::test_embedded_wheel_is_in_lockstep_with_the_source_tree`,
+  `lodestar_studio.py (content drifted)`): round 2's commit re-worded the studio's restore copy AFTER the
+  installers were built and rebuilt only the pyz. Reproduced locally (1 failed, 13 passed), the wheel and the
+  nine installers rebuilt at the same 1.0.299 (one PR, one version — the precedent is one bump per PR), the
+  installer + pyz suites green (109 passed); pushed as the follow-up commit. 6,439 other floor tests passed.
 - **Closing line.** Draft pull request #732 (`claude/lodestar-app-updates-q4xos3`, head 43b0238b → e5df3f87 →
   1c5e5499 → this docs/installer commit). FULL `python -m pytest -q` on 43b0238b: **6,451 passed, 6 failed, 407
   skipped, 104 xfailed** in 2398 s (0:39:58) — the six, all fixed here and re-run green: the next-session
