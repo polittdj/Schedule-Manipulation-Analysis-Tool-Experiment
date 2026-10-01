@@ -20300,3 +20300,37 @@ commit, not a rebase. The resolution:
   (two consecutive new families with no new class under the pre-set rule; the stricter reading recorded). Next lane: MET.
 - **Deviations:** four sub-agents in flight for ~30 min (one over the cap); three assemblers died on a provider credit limit — the operator switched the model and directed "continue" (Ultracode on); a workflow resumed them from disk (conflict with charter §7.4 / §12 recorded); the README rebuilt as a 564-line front page with a 15-step "How to use POLARIS² — step by step" guide, troubleshooting and a "Known issues before you cite a figure" pointer; drafted, attacked by two adversarial lenses (claims against the tree; guards and pins), 23 defects applied, every guard re-run on the final text; eight test-pinned sentences kept verbatim.
 - **Gate on the final tree:** on a clean worktree of `04c49933` (the campaign commit + the README commit): `python -m ruff check .` rc 0; `python -m ruff format --check .` rc 0 1399 files already formatted; `python -m mypy src/` rc 0 Success: no issues found in 180 source files; `bandit -q -r src` rc 0; `node --check` per static file — files=65 failures=0; the FULL suite `python -u -m pytest -q` rc 0 6620 passed, 9 skipped, 106 xfailed, 1 warning in 5209.86s (1:26:49); `python -m pytest -m parity` rc 0 271 passed, 6464 deselected, 1 warning in 1061.00s (0:17:41); the 107 reproducers on the 3.13.12 venv rc 0 1 passed, 2 skipped, 104 xfailed, 1 warning in 177.00s (0:02:57); the charter's allowlist gate lists exactly one path, `README.md` (the operator's ask, recorded). Draft PR: the draft pull request of `claude/awesome-clarke-g4uy4s`.
+
+## 2026-10-01 — ADR-0543: LODESTAR 2.0 — the "Console" design handoff built whole; the One-Pager's logic links drawn shortest-route behind the items in both programs, ADR-0540's escalation retired — v1.0.298
+
+- **Branch / base.** `claude/wonderful-ptolemy-tl0xru` from `main` @ `fac57735` (#729, ADR-0542, v1.0.297, 828 commits
+  after `--unshallow`); draft pull request #730. A feature session outside AUDIT-2026-09-23; the campaign's disclosures
+  carried verbatim at the top of HANDOFF.
+- **The ask.** The operator attached `Lodestar_UI_redesign_proposal.zip` (a written spec, the A1 design system, a
+  clickable prototype) — "deep dive … update the UI for the Lodestar stand alone program … create [missing]
+  functionality". Not committed (the operator's design document; the intake channel is theirs).
+- **Plan attacked first (QC-3):** A1–A16 — A2 (reuse `theme.js`) REFUTED, A3 (linear timescale) PARTLY REFUTED, A6
+  (package-data recursive) REFUTED, A9 (a new opt-out key) REFUTED, A12 (sub-path statics) REFUTED, A13 (the band for
+  SS / FF) REFUTED, A14 (prototype ghost = spec text) REFUTED, A15 (one PPTX group) REFUTED; A1 / A4 / A5 / A7 / A11 /
+  A16 HELD; A8 HELD with one addition; A10 (every v1 feature has a 2.0 home) — the test stream re-aimed every v1 pin
+  with its intent kept and pinned the v1 features it found unpinned (its census is recorded in ADR-0543).
+- **Built.** The studio (JSON API, server-side undo/redo, palette, tour, demos, slider, drag-to-link, drawer, full
+  screen, one-page print), its own design system (A1 tokens, vendored fonts, Lucide sprite), a new launch page; in BOTH
+  programs the handoff's shortest-route link rule, the shaft under / head over z-order, the label halo / glow and the
+  escalation's removal; one copy of the pages' sentences. Three streams: the lead (studio, docs, integration), an
+  engine stream in a worktree (router, painters, PPTX, their tests — cherry-picked), a test stream (the LODESTAR suite
+  re-aimed with intent kept, the API / browser behaviour pinned, the global guards).
+- **Build attacked (QC-1).** Found and fixed red → green: print → two identical pages; ARIA tabs on navigation links;
+  the tour claiming the marking reaches "every export"; three README over-claims; the launch page's single credit; 93
+  text elements below AA; the slider losing keyboard presses; the JSON gate wiping a title; a bandit B105 false
+  positive. Independently re-derived: links never move an item (60 lists, 1,238 links; the old router moved items on 4
+  of 60); no-link layouts identical to `origin/main`; the sentence refactor byte-identical over 52 renders with a mutant
+  that moves both programs; the archive end to end under Python 3.10 `-I`.
+- **Re-derived pins, on purpose:** the static census 74 → 79 and a new fonts census; the axis-caption buckets
+  (`SLIDE_PREVIEWS` for LODESTAR's slide); the monolith layer / view lists; the round census 334 → 332 / 376 → 374 /
+  whole-percent 14 → 12; the window digest (retired fields stripped, re-derived on the pristine tree); the archive's 48
+  members; the kickoff's closing line.
+- **Gate:** statics on the final source tree — `python -m ruff check .` rc 0; `python -m ruff format --check .` rc 0;
+  `python -m mypy src/` rc 0 (184 files); `bandit -q -r src` rc 0; `node --check` every static script, 0 failures;
+  installers 75 passed in the build worktree. The FULL suite and `-m parity` on the final tree: recorded in the
+  follow-up line below.
