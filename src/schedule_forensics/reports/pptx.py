@@ -24,7 +24,7 @@ import zipfile
 
 from schedule_forensics.reports.onepager import Layout
 from schedule_forensics.reports.onepager_compare import CompareLayout
-from schedule_forensics.reports.onepager_links import HALO_W, LINK_W, PlacedLink
+from schedule_forensics.reports.onepager_links import LINK_W, PlacedLink
 
 _EMU_PER_PT = 12700
 _SLIDE_W, _SLIDE_H = 12192000, 6858000  # 13.333 x 7.5 in — 16:9
@@ -53,10 +53,6 @@ LANE_PALETTE = (
     "8C6D46",
 )
 _INK, _MUTED, _LINE, _GRID = "1C2330", "5B6675", "C9D1DC", "9AA5B5"
-#: the caution colour for print — the daylight view's ``--warn`` (the page paints the footnote
-#: in that token when a link is drawn dashed over other ink; ADR-0540 review F6: this is NOT the
-#: DUPLICATE-NAME badge's goldenrod)
-_WARN = "9A6B00"
 _TODAY, _WHITE, _CUI, _SYMBOL = "C00000", "FFFFFF", "4B2E83", "6B7280"
 #: The Timeline chart's right edge in points (the Compare slide's is its summary column's).
 _SLIDE_RIGHT = 944.0
@@ -251,11 +247,21 @@ def _ln(color: str | None, width_pt: float, dash: str | None = None) -> str:
     return f'<a:ln w="{_emu(width_pt)}">{_fill(color)}{dash_xml}</a:ln>'
 
 
-def _run(text: str, size_pt: float, color: str, bold: bool) -> str:
+#: A text glow in the slide's own white, ~1.5 pt (ADR-0543): it renders BEHIND the glyphs, so a
+#: label or a link's type tag stays readable where a logic link's shaft runs under it — the
+#: .pptx twin of the page's halo (``paint-order: stroke`` in the slide's ground). DrawingML's
+#: ``CT_TextCharacterProperties`` is a sequence: the fill, THEN ``effectLst``, then ``latin``.
+_GLOW = f'<a:effectLst><a:glow rad="{_emu(1.5)}"><a:srgbClr val="{_WHITE}"/></a:glow></a:effectLst>'
+
+
+def _run(text: str, size_pt: float, color: str, bold: bool, glow: bool = False) -> str:
+    """One run. ``glow`` is opt-in, never inferred from the colour: an item's label OUTSIDE its
+    bar and a link's type tag glow; a label inside its bar and a tag's badge text never do."""
     b = ' b="1"' if bold else ""
     return (
         f'<a:r><a:rPr lang="en-US" sz="{round(size_pt * 100)}"{b} dirty="0">'
-        f'{_fill(color)}<a:latin typeface="Calibri"/></a:rPr><a:t>{_esc(text)}</a:t></a:r>'
+        f'{_fill(color)}{_GLOW if glow else ""}<a:latin typeface="Calibri"/></a:rPr>'
+        f"<a:t>{_esc(text)}</a:t></a:r>"
     )
 
 
@@ -355,11 +361,13 @@ class _Slide:
         *,
         align: str = "l",
         anchor: str = "ctr",
+        glow: bool = False,
         name: str,
     ) -> None:
         """One paragraph of several runs — ``(text, colour, bold)`` each — so a label can carry
-        its calendar-day delta in the slip or pull-in colour beside the item's own name."""
-        body = "".join(_run(t, size_pt, c, b) for t, c, b in runs)
+        its calendar-day delta in the slip or pull-in colour beside the item's own name.
+        ``glow`` gives every run the slide-white text glow (:data:`_GLOW`)."""
+        body = "".join(_run(t, size_pt, c, b, glow) for t, c, b in runs)
         self.parts.append(
             f'<p:sp><p:nvSpPr><p:cNvPr id="{self._id()}" name="{_esc(name)}"/>'
             '<p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr>'
@@ -414,10 +422,11 @@ class _Slide:
         bold: bool = False,
         align: str = "l",
         anchor: str = "ctr",
+        glow: bool = False,
         name: str,
     ) -> None:
         paras = "".join(
-            f'<a:p><a:pPr algn="{align}"/>{_run(line, size_pt, color, bold)}</a:p>'
+            f'<a:p><a:pPr algn="{align}"/>{_run(line, size_pt, color, bold, glow)}</a:p>'
             for line in lines
         )
         self.parts.append(
@@ -438,15 +447,13 @@ class _Slide:
         line_pt: float,
         fill: str | None = None,
         closed: bool = False,
-        dash: str | None = None,
         name: str,
     ) -> None:
         """One custom-geometry shape through ``points`` (slide points): an OPEN path is a line
-        (a logic link's shaft, round-joined; ``dash`` a DrawingML preset dash for a flagged one),
-        a CLOSED one a filled polygon (its arrowhead). The path's own coordinates are the points
-        less the shape's offset, in EMU, so the shape lands exactly where the page draws it. A
-        degenerate extent (a straight vertical or horizontal leg) is widened to one EMU — a
-        zero-size path box has no scale."""
+        (a logic link's shaft, round-joined), a CLOSED one a filled polygon (its arrowhead). The
+        path's own coordinates are the points less the shape's offset, in EMU, so the shape lands
+        exactly where the page draws it. A degenerate extent (a straight vertical or horizontal
+        leg) is widened to one EMU — a zero-size path box has no scale."""
         xs = [x for x, _y in points]
         ys = [y for _x, y in points]
         x0, y0 = min(xs), min(ys)
@@ -458,9 +465,8 @@ class _Slide:
             + ("</a:moveTo>" if i == 0 else "</a:lnTo>")
             for i, (x, y) in enumerate(points)
         ) + ("<a:close/>" if closed else "")
-        dash_xml = f'<a:prstDash val="{dash}"/>' if dash else ""
         ln = (
-            f'<a:ln w="{_emu(line_pt)}" cap="rnd">{_fill(line)}{dash_xml}<a:round/></a:ln>'
+            f'<a:ln w="{_emu(line_pt)}" cap="rnd">{_fill(line)}<a:round/></a:ln>'
             if line
             else "<a:ln><a:noFill/></a:ln>"
         )
@@ -536,28 +542,35 @@ def _package(slide: _Slide, product: str = PRODUCT) -> bytes:
     return buf.getvalue()
 
 
-#: The logic-link ink (the page's ``--ink``, in the slide's print palette) and its halo — the
-#: slide's own white, so a leg crossing a bar or a label reads as crossing it (ADR-0539).
-_LINK, _HALO = _INK, _WHITE
+#: The logic-link ink in the slide's print palette (ADR-0543): the SHAFT in the secondary ink —
+#: it runs UNDER the items — and the arrowhead and type tag in the primary ink, over them.
+_SHAFT, _LINK = "384658", _INK
 
 
-def _logic_links(s: _Slide, links: list[PlacedLink]) -> None:
-    """Every drawn logic link as ONE group: a white halo under the shaft, the shaft, the
-    layout's own filled arrowhead (DrawingML's line-end heads are sized by the renderer, so the
-    head is a shape of the layout's points, exactly the page's), and the type tag beside the
-    head for anything but Finish-to-Start. A FLAGGED link (ADR-0540) has a dashed shaft, as the
-    page paints it; the slide's footnote names what it covers."""
+def _link_name(ln: PlacedLink) -> str:
+    return f"{ln.pred_name} → {ln.succ_name} ({ln.kind})"
+
+
+def _link_shafts(s: _Slide, links: list[PlacedLink]) -> None:
+    """Every drawn logic link's SHAFT — a native open freeform, round-joined, the layout's own
+    polyline — in a group of its own named ``Logic link: …``. Painted AFTER the lanes and BEFORE
+    the first item, so every bar, diamond and label sits over it (ADR-0543): no halo, no dash,
+    and no DrawingML line-end (the head is the layout's own polygon, :func:`_link_heads`)."""
     for ln in links:
         start = len(s.parts)
-        what = f"{ln.pred_name} → {ln.succ_name} ({ln.kind})"
-        s.freeform(ln.shaft, line=_HALO, line_pt=HALO_W, name=f"Logic link halo: {what}")
-        s.freeform(
-            ln.shaft,
-            line=_LINK,
-            line_pt=LINK_W,
-            dash="dash" if ln.flagged else None,
-            name=f"Logic link line{' (dashed, over other ink)' if ln.flagged else ''}: {what}",
-        )
+        what = _link_name(ln)
+        s.freeform(ln.shaft, line=_SHAFT, line_pt=LINK_W, name=f"Logic link line: {what}")
+        s.group(start, f"Logic link: {what}")
+
+
+def _link_heads(s: _Slide, links: list[PlacedLink]) -> None:
+    """Every drawn logic link's ARROWHEAD — the layout's own filled triangle, its tip on the
+    successor's edge — and, for anything but Finish-to-Start, its type tag (glowing in the
+    slide's white), grouped as ``Logic link arrowhead: …``. Painted AFTER the items' labels and
+    BEFORE the data-date line, so a head is never under an item (ADR-0543)."""
+    for ln in links:
+        start = len(s.parts)
+        what = _link_name(ln)
         s.freeform(
             ln.head, line=None, line_pt=0, fill=_LINK, closed=True, name=f"Logic link head: {what}"
         )
@@ -574,31 +587,10 @@ def _logic_links(s: _Slide, links: list[PlacedLink]) -> None:
                 _LINK,
                 bold=True,
                 align="l" if ln.tag_anchor == "start" else "r",
+                glow=True,
                 name=f"Logic link type: {what}",
             )
-        s.group(start, f"Logic link: {what}")
-
-
-def _footnote(s: _Slide, lay: Layout | CompareLayout, right: float) -> None:
-    """The slide's footnote (ADR-0540) where the page paints it: the caution colour when a link
-    is drawn dashed over other ink, the muted one for the fitting notes alone."""
-    if not lay.footnote:
-        return
-    color = _WARN if any(ln.flagged for ln in lay.links) else _MUTED
-    lines = lay.footnote.split("\n")  # one paragraph per line, the last on ``footnote_y``
-    height = len(lines) * lay.footnote_lh
-    s.text(
-        lay.footnote_x,
-        lay.footnote_y - height - 1.5,
-        right - lay.footnote_x,
-        height + 3,
-        lines,
-        lay.footnote_pt,
-        color,
-        bold=True,
-        anchor="b",
-        name="Footnote",
-    )
+        s.group(start, f"Logic link arrowhead: {what}")
 
 
 def render_onepager_pptx(
@@ -699,6 +691,7 @@ def render_onepager_pptx(
             bold=True,
             name=f"Lane name: {lane.name}",
         )
+    _link_shafts(s, lay.links)  # under every item (ADR-0543)
     for p in lay.items:
         hue = LANE_PALETTE[lay.lanes[p.lane].color % len(LANE_PALETTE)]
         if p.milestone:
@@ -748,6 +741,7 @@ def render_onepager_pptx(
                 [p.label],
                 lay.label_pt,
                 _INK,
+                glow=True,
                 name=f"Label: {p.name}",
             )
         else:
@@ -760,9 +754,10 @@ def render_onepager_pptx(
                 lay.label_pt,
                 _INK,
                 align="r",
+                glow=True,
                 name=f"Label: {p.name}",
             )
-    _logic_links(s, lay.links)
+    _link_heads(s, lay.links)  # over every item, under the data-date line (ADR-0543)
     if lay.today_x is not None:
         s.vline(lay.today_x, top, bot, _TODAY, 1.5, name="Data date")
         if lay.today_label_anchor == "start":
@@ -790,7 +785,6 @@ def render_onepager_pptx(
                 align="r",
                 name="Data date label",
             )
-    _footnote(s, lay, _SLIDE_RIGHT)
     s.hline(lay.lane_col_x0, lay.x1, lay.legend_y0, _LINE, 0.7, name="Legend line")
     lp = lay.legend_pt
     for e in lay.legend:
@@ -808,7 +802,7 @@ def render_onepager_pptx(
             s.vline(e.x + 5, cy - 4, cy + 4, _TODAY, 1.5, name="Legend: data date")
         elif e.kind == "link":
             s.freeform(
-                [(e.x, cy), (e.x + 7.4, cy)], line=_LINK, line_pt=LINK_W, name="Legend: link"
+                [(e.x, cy), (e.x + 7.4, cy)], line=_SHAFT, line_pt=LINK_W, name="Legend: link"
             )
             s.freeform(
                 [(e.x + 10, cy), (e.x + 7.4, cy - 1.3), (e.x + 7.4, cy + 1.3)],
@@ -1001,6 +995,7 @@ def render_onepager_compare_pptx(
             _INK,
             name=f"Summary text: {lay.lanes[box.lane].name}",
         )
+    _link_shafts(s, lay.links)  # under every item (ADR-0543)
     for p in lay.items:
         hue = LANE_PALETTE[lay.lanes[p.lane].color % len(LANE_PALETTE)]
         if p.ghost_x0 is not None and p.ghost_x1 is not None:
@@ -1083,11 +1078,19 @@ def render_onepager_compare_pptx(
                 runs,
                 lay.label_pt,
                 align="r",
+                glow=not p.inside,
                 name=f"Label: {p.name}",
             )
         else:
             s.text_runs(
-                p.label_x, box_y, box_w, lay.row_h, runs, lay.label_pt, name=f"Label: {p.name}"
+                p.label_x,
+                box_y,
+                box_w,
+                lay.row_h,
+                runs,
+                lay.label_pt,
+                glow=not p.inside,
+                name=f"Label: {p.name}",
             )
         if p.badge:
             s.shape(
@@ -1111,7 +1114,7 @@ def render_onepager_compare_pptx(
                 align="ctr",
                 name=f"Tag text: {p.badge} — {p.name}",
             )
-    _logic_links(s, lay.links)
+    _link_heads(s, lay.links)  # over every item, under the data-date line (ADR-0543)
     if lay.today_x is not None:
         s.vline(lay.today_x, top, bot, _TODAY, 1.5, name="Data date")
         if lay.today_label_anchor == "start":
@@ -1139,7 +1142,6 @@ def render_onepager_compare_pptx(
                 align="r",
                 name="Data date label",
             )
-    _footnote(s, lay, lay.summary_x1)
     s.hline(lay.lane_col_x0, lay.summary_x1, lay.legend_y0, _LINE, 0.7, name="Legend line")
     lp = lay.legend_pt
     for e in lay.legend:
@@ -1174,7 +1176,7 @@ def render_onepager_compare_pptx(
             s.vline(e.x + 5, cy - 4, cy + 4, _TODAY, 1.5, name="Legend: data date")
         elif e.kind == "link":
             s.freeform(
-                [(e.x, cy), (e.x + 7.4, cy)], line=_LINK, line_pt=LINK_W, name="Legend: link"
+                [(e.x, cy), (e.x + 7.4, cy)], line=_SHAFT, line_pt=LINK_W, name="Legend: link"
             )
             s.freeform(
                 [(e.x + 10, cy), (e.x + 7.4, cy - 1.3), (e.x + 7.4, cy + 1.3)],
