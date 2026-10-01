@@ -166,6 +166,9 @@
 
 /* ============================ BRIGHT ============================
    Daylight-readable. High default for conference-room screen-sharing. */
+/* Bright's text-bearing tokens are darkened from the handoff's values so every text use
+   reaches WCAG 2.1 AA (4.5:1) on the darkest ground it is drawn on, --bg-void (ADR-0543;
+   the repo's Section 508 commitment, ADR-0073). The print block below repeats them. */
 [data-theme="bright"] {
   color-scheme: light;
 
@@ -183,27 +186,27 @@
 
   --text-primary: #0C1420;
   --text-secondary: #384658;
-  --text-muted: #5E6E83;
+  --text-muted: #536276;
   --text-faint: #8A98AC;
   --text-inverse: #FFFFFF;
-  --text-accent: var(--cyan-700);
+  --text-accent: #096A63;
 
-  --accent: var(--cyan-600);
-  --accent-hover: var(--cyan-700);
-  --accent-active: var(--cyan-700);
+  --accent: var(--cyan-700);
+  --accent-hover: #096A63;
+  --accent-active: #096A63;
   --accent-contrast: #FFFFFF;
   --accent-muted: rgba(14, 158, 147, 0.10);
   --accent-border: rgba(14, 158, 147, 0.38);
-  --accent-gold: var(--gold-600);
+  --accent-gold: #835509;
 
-  --focus-ring: var(--cyan-600);
+  --focus-ring: var(--cyan-700);
 
-  --status-pass: var(--green-600);
-  --status-warn: var(--amber-600);
+  --status-pass: #13703F;
+  --status-warn: #8E550F;
   --status-fail: var(--red-600);
   --status-info: var(--blue-600);
   --status-driving: var(--gold-600);
-  --status-neutral: #5E6E83;
+  --status-neutral: #536276;
 
   --status-pass-bg: rgba(31, 139, 79, 0.10);
   --status-warn-bg: rgba(184, 112, 22, 0.10);
@@ -593,27 +596,27 @@
 
   --text-primary: #0C1420;
   --text-secondary: #384658;
-  --text-muted: #5E6E83;
+  --text-muted: #536276;
   --text-faint: #8A98AC;
   --text-inverse: #FFFFFF;
-  --text-accent: var(--cyan-700);
+  --text-accent: #096A63;
 
-  --accent: var(--cyan-600);
-  --accent-hover: var(--cyan-700);
-  --accent-active: var(--cyan-700);
+  --accent: var(--cyan-700);
+  --accent-hover: #096A63;
+  --accent-active: #096A63;
   --accent-contrast: #FFFFFF;
   --accent-muted: rgba(14, 158, 147, 0.10);
   --accent-border: rgba(14, 158, 147, 0.38);
-  --accent-gold: var(--gold-600);
+  --accent-gold: #835509;
 
-  --focus-ring: var(--cyan-600);
+  --focus-ring: var(--cyan-700);
 
-  --status-pass: var(--green-600);
-  --status-warn: var(--amber-600);
+  --status-pass: #13703F;
+  --status-warn: #8E550F;
   --status-fail: var(--red-600);
   --status-info: var(--blue-600);
   --status-driving: var(--gold-600);
-  --status-neutral: #5E6E83;
+  --status-neutral: #536276;
 
   --status-pass-bg: rgba(31, 139, 79, 0.10);
   --status-warn-bg: rgba(184, 112, 22, 0.10);

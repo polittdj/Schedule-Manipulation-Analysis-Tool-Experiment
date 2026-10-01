@@ -241,7 +241,9 @@ in the PowerPoint (`spare_row_footnote`), and the page names the links in full.
 **LODESTAR 2.0 has a design system of its own (ADR-0543 — the operator's "Console" design
 handoff, adopted 2026-10-01).** LODESTAR no longer loads Polaris²'s sheets or scripts
 (`sf-themes.css`, `base.css`, `hud.css`, `theme.js`, `gantt.js`, `chartframe.js`, `launch.*`). Its
-tokens are the handoff's A1 "Command Deck" set, verbatim, in `static/lodestar_tokens.css` — four
+tokens are the handoff's A1 "Command Deck" set in `static/lodestar_tokens.css` — verbatim except
+where WCAG 2.1 AA overrode it (Bright's text-bearing tokens darkened to reach 4.5:1 on its darkest
+ground, `--bg-void`; `--text-faint` kept for decoration, never for text that carries meaning) — four
 views (`dark` default · `bright` · `contrast` · `console`) on `html[data-theme]`, saved by
 `static/lodestar_view.js` under its own key (`lodestar-view`; Polaris²'s `sf-theme` values are
 mapped once) — and **§0's law holds there unchanged in spirit: a hex lives once, as a token on

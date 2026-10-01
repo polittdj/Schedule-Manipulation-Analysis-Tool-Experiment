@@ -91,6 +91,7 @@ Polaris²'s One-Pager pages).
 | A stopped page in the new design | unchanged: system colours, inline styles | it must render after the server is gone (ADR-0539 LS-05) |
 | Tabs as A1 "Tabs" (ARIA tabs) | `nav` links with `aria-current=page` | they navigate; ARIA tabs promise an in-page panel and arrow keys they do not have |
 | Display "LODESTAR 2.0" | "LODESTAR 2.0.0" | one version string, `--version` and the README pinned to it |
+| The A1 tokens verbatim in every view | Bright's text-bearing tokens darkened (`--text-muted` #536276, `--text-accent` #096A63, `--accent` cyan-700, `--accent-gold` #835509, `--status-pass` #13703F, `--status-warn` #8E550F, `--focus-ring` cyan-700); `--text-faint` never carries meaningful text | WCAG 2.1 AA (the repo's Section 508 commitment, ADR-0073): 93 text elements measured below 4.5:1 across the four views with the handoff's values, 0 after |
 | PPTX link head "or use the line's tail-end arrow" | the layout's own closed triangle | ADR-0539: LibreOffice drew `tailEnd` heads 3× the page's |
 
 ## The plan was attacked before the first edit (QC-3) — what fell
@@ -128,6 +129,8 @@ Polaris²'s One-Pager pages).
 | Tour step 7 claimed the marking reaches "every export" | reading against ADR-0540 (a) and `reports/xlsx.py`'s fixed `_CUI_HEADER_FOOTER` | the sentence names the pages and every PowerPoint, and says the Excel exports always keep CUI |
 | The README claimed the palette sets a data date, that demos always use the example, and that everything works without scripting | reading the palette's command list, `runDemo`, and a JavaScript-disabled Chromium run of every form (load, upload, title, window, data date, link, undo, redo, marking, both exports, swap) | the README says what is true: the palette goes back to the computer's date; demos run on a copy of the operator's list (the example when none is loaded); the forms work without scripting, the palette / tour / demos / drag / slider need it |
 | "Drag to link fails" | a probe dropped at y = 918 in a 900-px viewport | NOT a defect — re-run in a 1300-px viewport: "Link added: Boots 2 → MET Testing (FS)" |
+| Text contrast below WCAG AA (found by the test stream on the launch page, then swept everywhere) | a Chromium sweep of every visible text node, colour composited over its ancestors' grounds: **93** below 4.5:1 (Bright gold 2.12–2.76, Bright muted on the void 3.99, white on Bright's teal buttons 3.32, Bright pass / warn text 3.82–4.33, `--text-faint` text 2.25–3.85 in Dark / Bright / Console, the selected palette hint 3.79 / 4.21) | the token changes above; **0** on all 16 page states, the palette, the tour, the data drawer, the open drawer, a toast and the slide's 42 texts; mutation twins red by name |
+| The launch page carried the author's credit once | ADR-0539: header AND footer of every page | a second credit above the bottom marking bar |
 | ENGINE_QC1 | | |
 | TESTS_QC1 | | |
 
