@@ -20378,5 +20378,13 @@ commit, not a rebase. The resolution:
   not the product's: the twin now tracks the strip's face 0.4 px wider (deterministic) and asserts the
   checker names the overrun while the painter's squeeze holds every painted line (node-measured here:
   product 0 / 0, mutant 3 natural overruns / 0 painted); pushed as e5df3f87. 679 other browser tests passed.
-- **Closing line:** (filled at push) the full-suite count, the PR link.
+- **Closing line.** Draft pull request #732 (`claude/lodestar-app-updates-q4xos3`, head 43b0238b → e5df3f87 →
+  1c5e5499 → this docs/installer commit). FULL `python -m pytest -q` on 43b0238b: **6,451 passed, 6 failed, 407
+  skipped, 104 xfailed** in 2398 s (0:39:58) — the six, all fixed here and re-run green: the next-session
+  prompt's "Highest ADR / Version" line (0544 / 1.0.299); the four installer lockstep pins (the wheel and the
+  nine installers rebuilt — `python -m build --wheel` + `tools/installer/build_installers.py`, after
+  `git fetch --unshallow` so the MPXJ touch resolves; 75 installer tests green); the Compare page's PowerPoint
+  regex, which expected `name="…"/>` and now admits the shape's alt text. CI round 1: cui-guard green, the
+  browser job red on the one refuted twin (replaced); the remaining checks' outcome on the final head is in
+  HANDOFF's next STATUS line.
 

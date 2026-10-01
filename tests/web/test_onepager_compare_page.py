@@ -228,7 +228,7 @@ def test_the_powerpoint_export_is_the_same_slide_with_native_delta_shapes(
     assert slide.count('<a:tailEnd type="triangle" w="med" len="med"/>') == arrows + 2
     assert slide.count('flipH="1"') == 1 + 1  # CDR's pull-in + the legend's pull-in
     prior = re.search(
-        r'<p:sp><p:nvSpPr><p:cNvPr id="\d+" name="Prior activity: [^"]*"/>.*?</p:sp>', slide
+        r'<p:sp><p:nvSpPr><p:cNvPr id="\d+" name="Prior activity: [^"]*"[^>]*/>.*?</p:sp>', slide
     )
     assert prior and "<a:noFill/>" in prior.group(0) and 'prstDash val="dash"' in prior.group(0)
     assert "Controlled Unclassified Information • CUI" in slide
