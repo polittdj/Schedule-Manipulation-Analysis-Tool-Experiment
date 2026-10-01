@@ -15,7 +15,8 @@ closing line). Highest ADR on disk **0544**. Version **1.0.299**; LODESTAR **2.1
   Mono (0.6 em, measured) and were sized at Calibri's 0.52: `MONO_CHAR_W`, the strip's 3.2-pt step before a cut
   (`SUMMARY_FLOOR` / `SUMMARY_MIN`), `text-rendering: geometricPrecision` on the slide (Chromium rounds advances
   to device pixels at slide scale), an exact box squeeze re-run on `fonts.ready`. Chromium: 0 overflows in both
-  views; both mutants red (`tests/reports/test_onepager_summary_fit.py`, three browser tests).
+  views; the 0.52 mutant red (`tests/reports/test_onepager_summary_fit.py`, three browser tests — the
+  pixel-rounding twin was refuted by CI's runner on the first run and replaced by a tracked-wider-face twin).
 - **Risks (ask 2).** `reports/onepager_risks.py` (header-driven reader, template at `/export/xlsx/risks-template`),
   ONE optional register for both pages (`onepager_risks` on the session, undoable), packed by date as triangles
   in the probability colour, `RISK · name (date) · impact` labels, legend entries, HUD, DATA drawer, Excel table.

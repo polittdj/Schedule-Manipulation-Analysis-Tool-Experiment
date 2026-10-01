@@ -451,6 +451,10 @@ those fixed defects in earlier "closed" fixes:
   SQUEEZED length once `textLength` is set (421.44 → 100.00), so a test that measured the painted lines
   could never go red. The test lifts `textLength` first, measures the face's own width, and asserts no line
   NEEDED the squeeze — and its two mutants (the CSS line removed; the 0.52 model restored) go red by name.
+* **A mutant that depends on the runner's font stack is not a mutant.** The twin that lifted the
+  geometric-precision declaration went red here and green on CI's Chrome 153 runner, which rounds
+  no advances. A mutation must change the PRODUCT by a known amount (a 0.4-px tracking) so the
+  checker's teeth are proven on every machine; what an environment does to glyphs is a note, not a test.
 * **A pin re-derived whole proves nothing; split it.** The window digest covered both slides in one hash.
   Ask 1 moved four Compare fields on purpose; re-pinning the whole hash would have silently accepted any
   other drift. The Timeline's digest is the pristine tree's own, the Compare's with the moved fields stripped

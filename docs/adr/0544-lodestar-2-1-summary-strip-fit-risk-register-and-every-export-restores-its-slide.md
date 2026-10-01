@@ -29,8 +29,12 @@ export — PowerPoint, Excel, PDF — and recreate the One-Pager from it, the lo
    cause: Linux Chromium rounds each glyph advance to a device pixel at slide scale (+2.5% on a 6-pt line, +6%
    on a 10-pt tag, zoom-dependent), so the slide now renders with `text-rendering: geometricPrecision` (0.600
    at every scale) and the painter holds boxed text to its box exactly (`squeeze`, re-run once the web fonts
-   are in). Chromium, both views, after the change: 0 overflows, 0 squeezes; the CSS mutant and the 0.52
-   mutant each go red by name (`tests/reports/test_onepager_summary_fit.py`, the three browser tests).
+   are in). Chromium, both views, after the change: 0 overflows, 0 squeezes; the 0.52 mutant goes red by name
+   (`tests/reports/test_onepager_summary_fit.py`, the browser tests). The pixel rounding is an
+   ENVIRONMENT's: the session's Chromium showed it (+2.5 % / +6 %), CI's Chrome 153 runner did not — the
+   first browser twin lifted the declaration and expected an overflow, and CI refuted it on the first
+   run; the committed twin tracks the face 0.4 px wider instead (deterministic everywhere) and proves
+   the checker's teeth and that the painter's squeeze holds every painted line inside its box.
 2. **Ask 2 — one optional register, both slides, no separate page.** A risk only means something against
    the schedule it threatens, so the register is ONE session attribute (`onepager_risks`, undone and redone
    like the lists, kept by "Clear list") drawn on whichever slide is shown. The reader

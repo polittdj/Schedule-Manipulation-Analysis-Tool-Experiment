@@ -20372,5 +20372,11 @@ commit, not a rebase. The resolution:
   `bandit -q -r src` rc 0; `node --check` both scripts; `tests/reports tests/lodestar tests/web/test_onepager_links_page.py
   tests/web/test_monolith_split_contract.py tests/guards` → green after the re-pins (the last run: 64 passed on
   the changed modules; 311 passed on the affected suites); the FULL `pytest -q` run is recorded in the closing line.
+- **CI round 1 on 43b0238b:** the browser job went red on ONE test — the twin that lifted
+  `text-rendering: geometricPrecision` expected the pixel-rounded overflow measured in the session's
+  container; CI's Chrome 153 runner rounds nothing, so nothing overflowed. The claim was an environment's,
+  not the product's: the twin now tracks the strip's face 0.4 px wider (deterministic) and asserts the
+  checker names the overrun while the painter's squeeze holds every painted line (node-measured here:
+  product 0 / 0, mutant 3 natural overruns / 0 painted); pushed as e5df3f87. 679 other browser tests passed.
 - **Closing line:** (filled at push) the full-suite count, the PR link.
 
