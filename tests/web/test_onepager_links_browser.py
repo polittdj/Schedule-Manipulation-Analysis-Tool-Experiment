@@ -18,6 +18,12 @@ slide into the form's From and To. What only a browser can show, pinned here:
 * **The legend** — the link entry is a line and an arrowhead (``g.op-legend-link``), never the
   lane swatch the painter's fall-through would give it.
 * **Width** — a 120-character item name never makes the document scroll sideways.
+* **The Console z-order** (ADR-0543), on both pages in all four views — every link SHAFT is
+  painted before (under) every item group, every arrowhead and type tag after (over) them and
+  before the data-date line; every label outside its bar, and every type tag, is haloed in the
+  slide's own ground (``paint-order: stroke``, 0.42 x its size) and a label inside its bar is
+  not. Red on the pristine tree (fac5773: the links painted as one layer over the items, no
+  label halo); its mutation twins route the painter with its layers moved or strip the halo.
 
 Red-first (2026-09-29): against the pristine tree (HEAD 0b45eb2) every test here fails — there
 is no link form, no ``/links`` route, no ``onepager_links.js`` and no link to paint. Each
@@ -669,4 +675,145 @@ def test_mutation_a_fixed_scroll_margin_lands_the_notice_under_the_header(
     got = page.evaluate(_LANDED, "op")
     assert "header" in got["points"], got
     assert errors == []
+    page.close()
+
+
+# ── the Console z-order (ADR-0543): shafts under the items, heads and tags over them ─────────
+
+_ZORDER = """(p) => {
+  const svg = document.querySelector('#' + p + 'Host svg');
+  const own = (sel) => Array.from(svg.querySelectorAll(sel))
+    .filter(e => !e.closest('.op-legend-link'));
+  const items = Array.from(svg.querySelectorAll('.op-item, .opc-item'));
+  const shafts = own('.op-link-line'), heads = own('.op-link-head'), tags = own('.op-link-tag');
+  const dd = svg.querySelector('.ch-dd');
+  const before = (a, b) => !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+  const ground = getComputedStyle(svg.querySelector('.op-bg')).fill;
+  const halo = (t) => {
+    const cs = getComputedStyle(t);
+    return {inside: t.classList.contains('op-label-in'), order: cs.paintOrder, stroke: cs.stroke,
+            width: parseFloat(cs.strokeWidth), size: parseFloat(cs.fontSize)};
+  };
+  return {
+    items: items.length, shafts: shafts.length, heads: heads.length, tags: tags.length,
+    dd: !!dd, ground: ground,
+    shafts_under_every_item: shafts.every(s => items.every(i => before(s, i))),
+    heads_over_every_item: heads.concat(tags).every(h => items.every(i => before(i, h))),
+    heads_under_the_dd_line: !!dd && heads.concat(tags).every(h => before(h, dd)),
+    labels: Array.from(svg.querySelectorAll('.op-label')).map(halo),
+    tag_halos: tags.map(halo),
+    retired: svg.querySelectorAll('.op-link-halo, .op-footnote, .op-link-flagged').length,
+  };
+}"""
+
+
+def _two_links(api: TestClient, prefix: str) -> None:
+    """An FS and an SS link on ``prefix``'s page, through its own route."""
+    page = api.get(PATHS[prefix]).text
+    by_label = {t: k for k, t in re.findall(r'<option value="([0-9a-f]+)" title="([^"]*)">', page)}
+    ship = "Beta · Ship (7/15/27)"
+    for pred, succ, kind in ((DR, BUILD, "FS"), (TEST, ship, "SS")):
+        r = api.post(
+            f"{PATHS[prefix]}/links",
+            data={"pred": by_label[pred], "succ": by_label[succ], "kind": kind},
+        )
+        assert r.status_code == 200
+
+
+def _zorder_errors(got: dict[str, Any]) -> list[str]:
+    """What the README's z-order (§9) and the label halo require of a painted slide."""
+    out = []
+    if not (got["items"] >= 4 and got["shafts"] == got["heads"] == 2 and got["tags"] == 1):
+        out.append(f"counts {got['items']} items, {got['shafts']} shafts, {got['heads']} heads")
+    for k in ("shafts_under_every_item", "heads_over_every_item", "heads_under_the_dd_line"):
+        if not got[k]:
+            out.append(k)
+    for t in got["labels"]:
+        if t["inside"]:
+            if t["stroke"] != "none":
+                out.append(f"a label inside its bar is haloed: {t}")
+        elif not (
+            t["order"].startswith("stroke")
+            and t["stroke"] == got["ground"]
+            and abs(t["width"] - 0.42 * t["size"]) < 0.01
+        ):
+            out.append(f"a label without the ground's halo: {t} (ground {got['ground']})")
+    for t in got["tag_halos"]:
+        if not (t["order"].startswith("stroke") and t["stroke"] == got["ground"]):
+            out.append(f"a type tag without the halo: {t}")
+    if got["retired"]:
+        out.append("a retired halo line, footnote or flagged link is painted")
+    return out
+
+
+@PREFIXES
+@pytest.mark.parametrize("theme", THEMES)
+def test_shafts_paint_under_the_items_and_heads_tags_over_them_with_haloed_labels(
+    browser: Any, ready: tuple[str, TestClient], prefix: str, theme: str
+) -> None:
+    """README §9 on both pages, in each saved view: every link SHAFT precedes every item group
+    in document order (painted under it), every arrowhead and type tag follows every item group
+    and precedes the data-date line; every label outside its bar carries a halo in the slide's
+    own ground (``paint-order: stroke``, the ``.op-bg`` fill, 0.42 x its size) and every label
+    inside its bar none; the tags are haloed too; no halo polyline, footnote or flagged link."""
+    base, api = ready
+    _two_links(api, prefix)
+    page, errors = _open(browser, base + PATHS[prefix], init=_themed(theme))
+    got = page.evaluate(_ZORDER, prefix)
+    assert got["dd"], got
+    # a Compare row with a prior side never carries its label inside its bar; the Timeline's
+    # Build does, so the "no halo inside a bar" clause is exercised there
+    assert prefix == "opc" or any(t["inside"] for t in got["labels"]), got
+    assert _zorder_errors(got) == []
+    assert errors == []
+    page.close()
+
+
+_SWAPS = {
+    "the shafts painted last (the pristine order)": (
+        "svg.insertBefore(shafts, items[0]);",
+        "svg.appendChild(shafts);",
+    ),
+    "the heads painted first": (
+        "svg.insertBefore(heads, items[items.length - 1].nextSibling);",
+        "svg.insertBefore(heads, items[0]);",
+    ),
+}
+
+
+@pytest.mark.parametrize(
+    ("mutant", "named"),
+    [
+        ("the shafts painted last (the pristine order)", "shafts_under_every_item"),
+        ("the heads painted first", "heads_over_every_item"),
+        ("no label halo", "a label without the ground's halo"),
+    ],
+)
+def test_mutation_the_zorder_and_halo_checks_name_the_broken_layer(
+    browser: Any, ready: tuple[str, TestClient], mutant: str, named: str
+) -> None:
+    """Teeth, in the browser: the painter routed with its layers moved, or the halo stripped by
+    an injected style — the SAME checker names what broke."""
+    base, api = ready
+    _two_links(api, "op")
+    page = browser.new_page(viewport={"width": 1440, "height": 900})
+    page.add_init_script(_themed("console"))
+
+    def moved(route: Any) -> None:
+        resp = route.fetch()
+        body = resp.text()
+        old, new = _SWAPS[mutant]
+        assert old in body
+        route.fulfill(response=resp, body=body.replace(old, new))
+
+    if mutant in _SWAPS:
+        page.route(re.compile(r"/static/onepager_links\.js(\?|$)"), moved)
+    page.goto(base + "/onepager")
+    page.wait_for_selector("svg.op-svg")
+    if mutant == "no label halo":
+        page.add_style_tag(
+            content=".op-label{paint-order:normal !important;stroke:none !important}"
+        )
+    errors = _zorder_errors(page.evaluate(_ZORDER, "op"))
+    assert any(e.startswith(named) for e in errors), errors
     page.close()

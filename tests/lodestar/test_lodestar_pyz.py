@@ -10,13 +10,13 @@ their own that I can share with others", citing "David Politte" and "david.j.pol
   names the rebuild command and the members that differ; ``build()`` is deterministic, and blind
   to where the sources sit and to their mtime and mode.
 * **Contents** — the member list is exactly ``members()`` (sorted, no directory entries, fixed
-  stored headers) AND exactly the 34 names typed here (an oracle the builder cannot move — no
-  ``docx.py``), and every member is its source file's bytes as committed (a CRLF checkout's
-  text read as LF); a CRLF copy of every member source builds the identical archive (LS-08);
-  every import in every member — a lazy one inside a function included — is std-lib or another
-  member; no member name (and no file shipped beside it) is one the pre-commit hook's
-  ``blocked_re`` refuses; with no python3 on the PATH each POSIX launcher says how it is started
-  again and exits non-zero.
+  stored headers) AND exactly the 48 names typed here (ADR-0543; an oracle the builder cannot
+  move — no ``docx.py``), and every member is its source file's bytes as committed (a CRLF
+  checkout's text read as LF); a CRLF copy of every member source builds the identical
+  archive (LS-08); every import in every member — a lazy one inside a function included — is
+  std-lib or another member; no member name (and no file shipped beside it) is one the
+  pre-commit hook's ``blocked_re`` refuses; with no python3 on the PATH each POSIX launcher says
+  how it is started again and exits non-zero.
 * **Runs on bare Python** — under ``python -I -S`` every module in the archive imports and brings
   in nothing but the std-lib and the archive's own package; started as the launchers start it,
   the archive's import path is itself plus the interpreter's own std-lib directories and nothing
@@ -317,8 +317,9 @@ def _quit(port: int) -> Reply | None:
 
 
 def _keys(page: str) -> dict[str, str]:
-    """Every linkable item's full label -> its key, read off the page's own From select."""
-    select = re.search(r"<select\b[^>]*\bid=opLinkFrom\b[^>]*>(.*?)</select>", page, re.S)
+    """Every linkable item's full label -> its key, read off the page's own From select (the
+    studio rail's ``#lsFrom`` since ADR-0543)."""
+    select = re.search(r"<select\b[^>]*\bid=lsFrom\b[^>]*>(.*?)</select>", page, re.S)
     assert select, "no From select on /onepager"
     return {title: value for value, title in _OPTION.findall(select.group(1))}
 
@@ -458,13 +459,18 @@ def test_members_are_exactly_the_allowlist_and_each_is_its_source_verbatim(
 
 
 #: The archive's members, typed here from ADR-0539 (LS-07: 34 members, no ``docx.py`` — LODESTAR
-#: serves no Word export) and ADR-0541 (42: the launch page — ``lodestar_launch.py``, the boot
-#: screen's ``launch.js`` / ``launch_audio.js`` / ``launch.css`` and LODESTAR's own
-#: ``lodestar_launch.css`` — the first-run Desktop shortcut ``shortcut.py`` with the icon writer
-#: ``desktop_icon.py`` and LODESTAR's own ``lodestar.ico``). An INDEPENDENT oracle: the lockstep
-#: and the test above both judge the archive against the builder's own list, so a module added to
-#: ``MODULES`` and rebuilt would pass them both (SLA-7). Changing what LODESTAR ships means
-#: changing this list, on purpose.
+#: serves no Word export), ADR-0541 (42: the launch page and the first-run Desktop shortcut) and
+#: ADR-0543 (48 — LODESTAR 2.0, its own design system): the studio's four std-lib modules
+#: (``lodestar_icons`` the inline Lucide sprite, ``lodestar_history`` the undo log,
+#: ``lodestar_actions`` the one door for every change, ``lodestar_studio`` the server-rendered
+#: studio), LODESTAR's OWN static files — the view switch, the slide's painter, the studio's
+#: controller, the launch page's script, the A1 tokens and the studio's and launch page's styles,
+#: the icon, eleven vendored fonts and their OFL licence — and NONE of Polaris²'s static files any
+#: more (v1 carried sixteen: ``app.css`` ``base.css`` ``hud.css`` ``sf-themes.css`` ``theme.js``
+#: ``gantt.js`` ``chartframe.js`` ``panelkit.js`` ``onepager*.js`` ``launch*`` ``favicon.ico``
+#: and v1's ``lodestar.css``). An INDEPENDENT oracle: the lockstep and the test above both judge
+#: the archive against the builder's own list, so a module added to ``MODULES`` and rebuilt would
+#: pass them both (SLA-7). Changing what LODESTAR ships means changing this list, on purpose.
 MEMBERS = (
     "__main__.py",
     "schedule_forensics/__init__.py",
@@ -483,32 +489,42 @@ MEMBERS = (
     "schedule_forensics/reports/xlsx_read.py",
     "schedule_forensics/web/__init__.py",
     "schedule_forensics/web/htmlkit.py",
+    "schedule_forensics/web/lodestar_actions.py",
+    "schedule_forensics/web/lodestar_history.py",
+    "schedule_forensics/web/lodestar_icons.py",
     "schedule_forensics/web/lodestar_launch.py",
     "schedule_forensics/web/lodestar_shell.py",
+    "schedule_forensics/web/lodestar_studio.py",
     "schedule_forensics/web/onepager.py",
     "schedule_forensics/web/onepager_actions.py",
     "schedule_forensics/web/onepager_common.py",
     "schedule_forensics/web/onepager_compare.py",
     "schedule_forensics/web/security.py",
-    "schedule_forensics/web/static/app.css",
-    "schedule_forensics/web/static/base.css",
-    "schedule_forensics/web/static/chartframe.js",
-    "schedule_forensics/web/static/favicon.ico",
-    "schedule_forensics/web/static/gantt.js",
-    "schedule_forensics/web/static/hud.css",
-    "schedule_forensics/web/static/launch.css",
-    "schedule_forensics/web/static/launch.js",
-    "schedule_forensics/web/static/launch_audio.js",
-    "schedule_forensics/web/static/lodestar.css",
+    "schedule_forensics/web/static/fonts/LICENSE-fonts.txt",
+    "schedule_forensics/web/static/fonts/ibm-plex-mono-latin-400-normal.woff2",
+    "schedule_forensics/web/static/fonts/ibm-plex-mono-latin-500-normal.woff2",
+    "schedule_forensics/web/static/fonts/ibm-plex-mono-latin-600-normal.woff2",
+    "schedule_forensics/web/static/fonts/ibm-plex-mono-latin-700-normal.woff2",
+    "schedule_forensics/web/static/fonts/ibm-plex-sans-latin-400-normal.woff2",
+    "schedule_forensics/web/static/fonts/ibm-plex-sans-latin-500-normal.woff2",
+    "schedule_forensics/web/static/fonts/ibm-plex-sans-latin-600-normal.woff2",
+    "schedule_forensics/web/static/fonts/ibm-plex-sans-latin-700-normal.woff2",
+    "schedule_forensics/web/static/fonts/space-grotesk-latin-500-normal.woff2",
+    "schedule_forensics/web/static/fonts/space-grotesk-latin-600-normal.woff2",
+    "schedule_forensics/web/static/fonts/space-grotesk-latin-700-normal.woff2",
     "schedule_forensics/web/static/lodestar.ico",
     "schedule_forensics/web/static/lodestar_launch.css",
-    "schedule_forensics/web/static/onepager.js",
-    "schedule_forensics/web/static/onepager_compare.js",
-    "schedule_forensics/web/static/onepager_links.js",
-    "schedule_forensics/web/static/panelkit.js",
-    "schedule_forensics/web/static/sf-themes.css",
-    "schedule_forensics/web/static/theme.js",
+    "schedule_forensics/web/static/lodestar_launch.js",
+    "schedule_forensics/web/static/lodestar_slide.js",
+    "schedule_forensics/web/static/lodestar_studio.css",
+    "schedule_forensics/web/static/lodestar_studio.js",
+    "schedule_forensics/web/static/lodestar_tokens.css",
+    "schedule_forensics/web/static/lodestar_view.js",
 )
+#: The members git treats as BINARY (a NUL in the first 8000 bytes): the icon and the eleven
+#: WOFF2 fonts (ADR-0543). Every other member — the font licence ``.txt`` included — is text, and
+#: a Windows checkout converts it to CRLF.
+BINARY_MEMBERS = 1 + 11
 
 
 def _member_list_problem(names: list[str]) -> str | None:
@@ -520,8 +536,12 @@ def _member_list_problem(names: list[str]) -> str | None:
     return f"archive members: extra {extra}, missing {missing}, a Word writer {docx}"
 
 
-def test_the_archive_holds_exactly_the_42_members_adr_0539_and_0541_name(tool: ModuleType) -> None:
-    assert len(MEMBERS) == 42
+def test_the_archive_holds_exactly_the_48_members_adr_0539_0541_and_0543_name(
+    tool: ModuleType,
+) -> None:
+    assert len(MEMBERS) == 48
+    static = [m for m in MEMBERS if m.startswith("schedule_forensics/web/static/")]
+    assert all("/lodestar" in m or "/fonts/" in m for m in static), static  # LODESTAR's own
     with zipfile.ZipFile(PYZ) as zf:
         problem = _member_list_problem(zf.namelist())
     assert problem is None, problem
@@ -567,7 +587,8 @@ def test_ls08_a_crlf_checkout_builds_the_identical_archive(
     lf = tool.build()
     src = tmp_path / "src"
     converted = _crlf_copy(tool, src)
-    assert converted == len(MEMBERS) - 2, converted  # all but the two icons (binary; ADR-0541)
+    # all but the icon and the eleven fonts (binary; ADR-0543) — the font licence is text
+    assert converted == len(MEMBERS) - BINARY_MEMBERS, converted
     monkeypatch.setattr(tool, "SRC", src)
     problem = _crlf_problem(tool, lf, tool.build())
     assert problem is None, problem
@@ -585,6 +606,23 @@ def test_mutation_a_builder_that_packs_raw_bytes_fails_the_crlf_pin(
     monkeypatch.setattr(tool, "_member_bytes", lambda path: path.read_bytes())
     problem = _crlf_problem(tool, lf, tool.build())
     assert problem is not None and "schedule_forensics/lodestar/server.py" in problem, problem
+
+
+def test_mutation_a_builder_blind_to_the_font_licence_fails_the_crlf_pin(
+    tool: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """MUTATION (ADR-0543): the builder's text suffixes without ``.txt`` (as they were before the
+    fonts' licence shipped) — a CRLF checkout packs a different licence, and the same checker
+    names exactly that member."""
+    lf = tool.build()
+    src = tmp_path / "src"
+    _crlf_copy(tool, src)
+    monkeypatch.setattr(tool, "SRC", src)
+    monkeypatch.setattr(tool, "_TEXT", (".py", ".js", ".css"))
+    problem = _crlf_problem(tool, lf, tool.build())
+    assert problem is not None, "the licence packed the same either way"
+    assert "schedule_forensics/web/static/fonts/LICENSE-fonts.txt" in problem, problem
+    assert ".woff2" not in problem  # binary members are never converted
 
 
 def test_static_members_are_exactly_what_the_server_serves(tool: ModuleType) -> None:
@@ -1015,10 +1053,11 @@ def test_end_to_end_the_shipped_file_serves_links_exports_and_quits(tmp_path: Pa
             "/onepager/links",
             {"action": "add", "pred": keys[DR], "succ": keys[BUILD], "kind": "FS"},
         )
-        assert (added.status, added.headers.get("location")) == (303, "/onepager#opLinks")
+        assert (added.status, added.headers.get("location")) == (303, "/onepager#lsLinks")
 
         deck = request(port, "GET", "/export/pptx/onepager")
         assert deck.status == 200, deck.text[:200]
+        # the EXACT prefix: each link's arrowhead is its own "Logic link arrowhead: …" group
         links = [n for n in deck_shapes(deck.body) if n.startswith("Logic link:")]
         assert links == [f"Logic link: {DR} → {BUILD} (FS)"]
         parts = deck_members(deck.body)

@@ -164,19 +164,62 @@ def test_shipped_static_assets_are_not_mislabelled() -> None:
     (``loader.js``, the load/draw seam — a HEAD-emitted shared helper beside ``gantt.js`` /
     ``chartframe.js`` / ``drilldown.js``); 70 -> 72 in ADR-0539 (``onepager_links.js``, the
     logic-link painter + click-to-pick shared by both One-Pager pages, and ``lodestar.css``, the
-    frame of LODESTAR — the standalone One-Pager program). The count is pinned deliberately: this
-    guard's subject is a bulk-upload rotation that mislabelled 99 intake files, so a NEW shipped
-    asset must be an
-    explicit decision rather than something that slips in under a glob.
+    frame of LODESTAR — the standalone One-Pager program); 72 -> 74 in ADR-0541 (``lodestar.ico``,
+    ``lodestar_launch.css``); 74 -> 79 in ADR-0543, LODESTAR 2.0 (+6: ``lodestar_view.js``,
+    ``lodestar_slide.js``, ``lodestar_studio.js``, ``lodestar_launch.js``,
+    ``lodestar_tokens.css``, ``lodestar_studio.css``; -1: v1's ``lodestar.css``, deleted). The
+    count is pinned deliberately: this guard's subject is a bulk-upload rotation that mislabelled
+    99 intake files, so a NEW shipped asset must be an explicit decision rather than something
+    that slips in under a glob. Top-level files only — the one sub-folder is pinned by its own
+    test below.
     """
     assets = sorted(p for p in STATIC.iterdir() if p.is_file())
-    assert len(assets) == 74  # ADR-0541: + lodestar.ico, lodestar_launch.css
+    assert len(assets) == 79  # ADR-0543: LODESTAR 2.0's own files (+6 -1)
     wrong = {
         p.name: tool.detect_family(p.read_bytes())
         for p in assets
         if tool.is_mismatch(p.suffix.lower(), tool.detect_family(p.read_bytes()))
     }
     assert wrong == {}
+
+
+#: The one sub-folder of ``static/`` (ADR-0543): LODESTAR's eleven vendored WOFF2 faces and
+#: their licence. The top-level census above cannot see it (``iterdir``), so it is counted here.
+FONTS = STATIC / "fonts"
+
+
+def _font_problems(files: dict[str, bytes]) -> list[str]:
+    """Each file under ``static/fonts`` that is not what its name says: a ``.woff2`` must open
+    with WOFF2's own signature (``wOF2`` — the intake classifier holds no expectation for the
+    suffix, so it is checked here, independently), and every file must pass the classifier."""
+    problems = []
+    for name, data in sorted(files.items()):
+        family = tool.detect_family(data)
+        if name.endswith(".woff2") and not data.startswith(b"wOF2"):
+            problems.append(f"{name}: not WOFF2 (starts {data[:4]!r}, reads as {family})")
+        elif tool.is_mismatch(Path(name).suffix.lower(), family):
+            problems.append(f"{name}: reads as {family}")
+    return problems
+
+
+def test_shipped_font_assets_are_not_mislabelled() -> None:
+    """ADR-0543: the sub-folder is exactly eleven WOFF2 faces and one plain-text licence, each
+    what its name says, and nothing else rides in it (no further sub-folder)."""
+    entries = sorted(FONTS.rglob("*"))
+    assert [p for p in entries if not p.is_file()] == []
+    files = {p.name: p.read_bytes() for p in entries}
+    assert sorted(n.rsplit(".", 1)[-1] for n in files) == ["txt"] + ["woff2"] * 11
+    assert _font_problems(files) == []
+
+
+def test_mutation_a_zip_named_woff2_and_a_binary_licence_are_named() -> None:
+    """MUTATION: a ZIP under a font's name and a binary blob under the licence's — both named."""
+    files = {p.name: p.read_bytes() for p in FONTS.iterdir()}
+    font = next(n for n in sorted(files) if n.endswith(".woff2"))
+    files[font] = b"PK\x03\x04" + files[font][4:]
+    files["LICENSE-fonts.txt"] = b"%PDF-1.7\n" + files["LICENSE-fonts.txt"]
+    named = [p.split(":")[0] for p in _font_problems(files)]
+    assert named == ["LICENSE-fonts.txt", font], named
 
 
 def test_golden_parity_inputs_are_well_formed() -> None:

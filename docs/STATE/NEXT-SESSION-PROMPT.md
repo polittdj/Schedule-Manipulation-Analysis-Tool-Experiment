@@ -12,7 +12,7 @@ happen again. **Run these before the first edit:**
 
 ```bash
 git fetch --unshallow origin; git fetch --prune origin && git remote set-head origin -a
-git log --oneline -1 origin/main && git rev-list --count origin/main   # expect 78e20308 (#728) or later, 827+
+git log --oneline -1 origin/main && git rev-list --count origin/main   # expect fac57735 (#729) or later, 828+
 ls -d src app 2>&1; ls .github/workflows; grep -n '^version' pyproject.toml
 ls docs/adr | sort | tail -1                                          # expect 0542 or higher
 ```
@@ -26,7 +26,14 @@ tree agreed on every point — that is what a passing §0 looks like. AUDIT-2026
 its numbers. Session 7's pull request #726 merged as `5c6622fd` (2026-09-30): `main` carries ADR-0538 — continue from `main`,
 as the resume line says.
 
-## Three feature pull requests landed beside the campaign (2026-09-29 / 30, ADR-0539, ADR-0540 and ADR-0541)
+## Four feature pull requests beside the campaign (2026-09-29 – 10-01, ADR-0539, ADR-0540, ADR-0541 and ADR-0543)
+
+ADR-0543 (LODESTAR 2.0 — the operator's "Console" design handoff: a studio with live redraw, server-side undo/redo, a
+command palette, a guided tour and Show-me demos, a data-date slider, drag-to-link and print; its own tokens, vendored
+fonts and icons and launch page; and, shared with Polaris², logic links routed shortest-path and drawn BEHIND the items,
+ADR-0540's escalation retired — v1.0.298, LODESTAR 2.0.0) is the draft pull request #730 of
+`claude/wonderful-ptolemy-tl0xru`, based on `fac57735` (#729); `HANDOFF.md`'s top section says where it stands. Until it
+merges, `main` still expects ADR **0542** / version **1.0.297**; once it merges, ADR **0543** / **1.0.298**.
 
 ADR-0540 (the full-page fill, every requested link fitted, the installers' own Desktop icon — v1.0.296) **merged as
 `40cca07c` (#727, 2026-09-30)**. ADR-0541 (the operator-picked DATA DATE on both One-Pager pages, LODESTAR's launch page
@@ -429,5 +436,5 @@ gate) before every push.
 
 QC-1 / QC-2 (ADR-0393) and QC-3 (ADR-0509) bind every session; they are pinned by `tests/test_standing_rules.py`.
 Run the session-token-guardian's `scripts/token_audit.py` as the FIRST action (copy it to the scratchpad) and before
-each operator prompt. `git fetch origin` before you branch, number an ADR, or commit. Highest ADR 0542. Version
-1.0.297. Schema 2.17.0.
+each operator prompt. `git fetch origin` before you branch, number an ADR, or commit. Highest ADR 0543. Version
+1.0.298. Schema 2.17.0.

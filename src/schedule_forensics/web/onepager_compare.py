@@ -26,7 +26,13 @@ from __future__ import annotations
 import datetime as dt
 import json
 
-from schedule_forensics.reports.onepager import DATE_STATUS, OnePagerDoc, item_ident, window_text
+from schedule_forensics.reports.onepager import (
+    DATE_STATUS,
+    OnePagerDoc,
+    Window,
+    item_ident,
+    window_text,
+)
 from schedule_forensics.reports.onepager_compare import (
     CompareDoc,
     CompareLayout,
@@ -323,6 +329,70 @@ def _reading_block() -> str:
     )
 
 
+#: What Compare says while it cannot draw (its line under the takeaway) — ONE copy, read by this
+#: page and by LODESTAR's studio (ADR-0543).
+EMPTY_SUB = (
+    "The same sheet the One-Pager takes, twice — with an optional status column. The "
+    "slide draws the current position solid (an unchanged item once), the prior as a ghost "
+    "where it moved, and every finish that moved as an arrow with its move in calendar "
+    "days; NEW and REMOVED items are tagged by name, and a check marks what is complete."
+)
+
+
+def empty_head(have: int) -> str:
+    """The takeaway while Compare cannot draw, by how many of its two lists are loaded."""
+    if have == 0:
+        return "Drop two One-Pager lists — a PRIOR and a CURRENT — to see what moved."
+    if have == 1:
+        return "One list loaded — drop the other slot to compare."
+    return "Both lists are empty of usable rows — nothing to compare."
+
+
+def window_empty_sentences(full: CompareDoc, win: Window) -> tuple[str, str]:
+    """``(takeaway, its line — HTML)`` when the date window holds no compared item."""
+    return (
+        f"No compared item of {len(full.rows)} falls inside the date window "
+        f"{window_text(win)} — neither its prior nor its current position.",
+        f"{_e(full.prior_source)} → {_e(full.current_source)}. Widen the window, or show "
+        "all dates.",
+    )
+
+
+def slide_sentences(
+    cdoc: CompareDoc, win: Window | None, today: dt.date, chosen: bool
+) -> tuple[str, str, str]:
+    """``(takeaway — plain text, its line — HTML, provenance — plain text)`` of a drawn compare
+    slide: ONE copy of the sentences, read by this page and by LODESTAR's studio (ADR-0543)."""
+    t = cdoc.totals
+    worst = (
+        f" Worst slip: {t.worst_slip_name} {delta_text(t.worst_slip_days)}."
+        if t.worst_slip_name and t.worst_slip_days
+        else ""
+    )
+    done = (
+        f" {t.complete} marked complete in {cdoc.status_label or 'the status column'}."
+        if cdoc.completion
+        else ""
+    )
+    head = (
+        f"{t.slipped} slipped, {t.pulled_in} pulled in, {t.unchanged} unchanged, {t.new} new, "
+        f"{t.removed} removed — {cdoc.prior_source} → {cdoc.current_source}.{worst}{done}"
+    )
+    sub = (
+        "Every move is in <b>calendar days</b> — a One-Pager list carries no calendar. Solid is "
+        "the current list and an unchanged item is drawn once; a ghost is where a moved item was, "
+        "an arrow is the finish's move; NEW and REMOVED are tagged, and a check marks what the "
+        "status column says is complete. A rename or a swimlane move reads as one removed and one "
+        f"new: the sheet has no id to follow. On this slide {today_words(today, chosen)}."
+    )
+    wtag = f" · WINDOW {win[0].isoformat()} to {win[1].isoformat()}" if win is not None else ""
+    prov = (
+        f"PRIOR: {cdoc.prior_source} · CURRENT: {cdoc.current_source} · DATA DATE "
+        f"{today.isoformat()}{wtag}"
+    )
+    return head, sub, prov
+
+
 def _onepager_compare_body(
     st: SessionState, today: dt.date, prepared: dt.date | None = None
 ) -> str:
@@ -350,62 +420,21 @@ def _onepager_compare_body(
     win = st.onepager_compare_window
     if full is not None and full.rows and cdoc is not None and not cdoc.rows and win is not None:
         # the window holds nothing: say so, and keep the control that clears it on the page
-        take = _utility_takeaway(
-            f"No compared item of {len(full.rows)} falls inside the date window "
-            f"{window_text(win)} — neither its prior nor its current position.",
-            f"{_e(full.prior_source)} → {_e(full.current_source)}. Widen the window, or show "
-            "all dates.",
-        )
+        take = _utility_takeaway(*window_empty_sentences(full, win))
         return (
             f'{take}{banner}{skipped}<div class="viz-controls" data-noprint=1>'
             f"{window_form('/onepager-compare/window', win)}</div>"
             f"{window_notice(win, 0, len(full.rows), omitted)}{_slots(st)}{_RULES}{_SCRIPT}"
         )
     if cdoc is None or lay is None:
-        have = sum(d is not None for d in (prior, current))
-        head = (
-            "Drop two One-Pager lists — a PRIOR and a CURRENT — to see what moved."
-            if have == 0
-            else (
-                "One list loaded — drop the other slot to compare."
-                if have == 1
-                else "Both lists are empty of usable rows — nothing to compare."
-            )
-        )
         take = _utility_takeaway(
-            head,
-            "The same sheet the One-Pager takes, twice — with an optional status column. The "
-            "slide draws the current position solid (an unchanged item once), the prior as a ghost "
-            "where it moved, and every finish that moved as an arrow with its move in calendar "
-            "days; NEW and REMOVED items are tagged by name, and a check marks what is complete.",
+            empty_head(sum(d is not None for d in (prior, current))), EMPTY_SUB
         )
         return f"{take}{banner}{skipped}{_slots(st)}{_RULES}{_SCRIPT}"
-    t = cdoc.totals
-    worst = (
-        f" Worst slip: {_e(t.worst_slip_name)} {delta_text(t.worst_slip_days)}."
-        if t.worst_slip_name and t.worst_slip_days
-        else ""
-    )
-    done = (
-        f" {t.complete} marked complete in {cdoc.status_label or 'the status column'}."
-        if cdoc.completion
-        else ""
-    )
-    take = _utility_takeaway(
-        f"{t.slipped} slipped, {t.pulled_in} pulled in, {t.unchanged} unchanged, {t.new} new, "
-        f"{t.removed} removed — {_e(cdoc.prior_source)} → {_e(cdoc.current_source)}.{worst}{done}",
-        f"Every move is in <b>calendar days</b> — a One-Pager list carries no calendar. Solid is the "
-        f"current list and an unchanged item is drawn once; a ghost is where a moved item was, an "
-        f"arrow is the finish's move; NEW and REMOVED are tagged, and a check marks what the status "
-        f"column says is complete. A rename or a swimlane move reads as one removed and one new: the sheet "
-        f"has no id to follow. On this slide {today_words(today, chosen)}.",
-    )
+    head, sub, prov_text = slide_sentences(cdoc, win, today, chosen)
+    take = _utility_takeaway(_e(head), sub)
     blob = json.dumps(compare_layout_json(lay)).replace("<", "\\u003c")
-    wtag = f" · WINDOW {win[0].isoformat()} to {win[1].isoformat()}" if win is not None else ""
-    prov = (
-        f"<span class=prov-chip data-no-i18n>PRIOR: {_e(cdoc.prior_source)} · CURRENT: "
-        f"{_e(cdoc.current_source)} · DATA DATE {today.isoformat()}{wtag}</span>"
-    )
+    prov = f"<span class=prov-chip data-no-i18n>{_e(prov_text)}</span>"
     tools = _shell_tools(
         export_title="Export the compared rows (prior · current · delta in calendar days) to Excel"
     )
@@ -455,7 +484,7 @@ them.</p>
 {links_form("/onepager-compare/links", "opc", linkable_rows(st), link_msg, link_error)}
 <div id=opcHost class="op-host chart-host" role=img aria-label="{_e(lay.title)}"></div>
 <script id=opcData type="application/json">{blob}</script>
-{links_list("/onepager-compare/links", "opc", st.onepager_compare_links, lay.links, lay.link_notes, lay.fit_notes)}
+{links_list("/onepager-compare/links", "opc", st.onepager_compare_links, lay.links, lay.link_notes)}
 {_data_table(cdoc)}
 </div>
 <div class="cd-grid cd-grid-12">

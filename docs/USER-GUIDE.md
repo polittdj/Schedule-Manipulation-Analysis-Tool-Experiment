@@ -291,22 +291,17 @@ dashboard. Stop it with `Ctrl-C`.
     item is not on the slide is listed as not drawn, with the reason. A link that would close a logic
     loop is refused. **Compare** draws the links between the items' current positions.
     **The slide fills the page** (ADR-0540): fewer items, larger bars and text; more items, smaller.
-    **Every link you ask for is fitted:** when the rows leave no clean route, the slide first makes
-    more room between the rows, then adds a gutter lane at the right edge for the crowded links,
-    then reorders items within their swimlane (never across); each step is said under "How the
-    logic links were fitted", and the Excel list keeps the sheet's own order. A link that still
-    cannot be drawn clear of every other link is drawn anyway — **dashed** — with what it covers
-    named under "Logic links drawn dashed over other ink" and in the slide's footnote (up to four
-    lines; past them it counts the rest, which the page names), which the PowerPoint carries too.
-    Never a second slide.
+    Never a second slide. **Every link you ask for is drawn** (ADR-0543): the shortest
+    square-cornered route from the predecessor's end to the successor's — out of the item's edge,
+    one vertical where the rows differ (placed to pass behind the fewest bars and names), round the
+    successor's row when it must run backward — drawn **behind** the bars, diamonds and names it
+    passes, so every item stays readable, with its arrowhead and its SS / FF / SF tag on top. Adding
+    a link never moves an item, and the PowerPoint draws the same shapes in the same order.
     **The data date** (ADR-0541): the red line on both slides, its caption (`DATA DATE m/d/yy`) and
     its legend entry are drawn at the computer's date unless you set one with the **Data date**
     control above the slide — one setting for both One-Pager pages and every PowerPoint they export
     (the Excel exports carry no date). The subtitle says "Prepared" on the day the slide is made and
-    names the data date beside it when the two differ. A list that fills the slide to its last row
-    has no band for the footnote that names the links drawn dashed: when the legend needs one row,
-    its spare row carries a one-line count on the slide and in the PowerPoint; the page names them
-    in full either way.
+    names the data date beside it when the two differ.
     The same two pages ship on their own as **LODESTAR** (`lodestar/` in the repository) — see below.
 13. **Wipe Session** — clears all loaded schedules and derivatives from memory (including the
     Target UID).
@@ -320,11 +315,19 @@ needs nothing but **Python 3.10 or newer** — no install, no internet, no AI. S
 run `sh lodestar.sh` (Linux) and read `lodestar/README.md`. It is built from the very modules
 Polaris² runs, so both programs draw the same slide from the same list; after changing any of
 them, rebuild it with `python tools/lodestar/build_lodestar.py` (a test fails until you do).
-LODESTAR opens on its own **launch page** (ADR-0541) — Polaris²'s boot screen made LODESTAR's:
-the ✦ lodestar mark and name, its own copy and stage words, the lodestar's gold accent in every
-view, the lists and items aboard and the data date as its tiles — and on its first run writes a
-Desktop shortcut with its own icon (once; `--shortcut` again, `--no-shortcut` never), as
-`lodestar/README.md` explains.
+Since **LODESTAR 2.0** (ADR-0543) it is a studio of its own rather than a copy of the Polaris²
+pages: a side panel with the list, the shape, the links and the exports; the slide redrawn in place
+on every change (no reload); **Undo / Redo** of the last 60 changes with a session log naming each;
+a **Ctrl+K** command palette; a seven-step **Tour** and **Show me** demonstrations that run on a
+copy and change nothing; a data-date **slider** whose red line moves as you drag; drag one item
+onto another to link them; a DATA drawer, full-screen and **Print** (the slide alone, with its
+marking — *Save as PDF* for a PDF); and four views — Dark, Bright, High contrast, Console. Its fonts
+and icons are carried inside the archive. With scripting off it still works as plain forms.
+It opens on its own **launch page** — the ✦ mark, a three-story hero, **Take a star fix** (six
+stages ending on a welcome panel that opens either page), **Skip to the studio** and the "go
+straight to the studio next time" opt-out, with the lists aboard and the data date as real facts —
+and on its first run writes a Desktop shortcut with its own icon (once; `--shortcut` again,
+`--no-shortcut` never), as `lodestar/README.md` explains.
 
 ## 4. Verifying a number (forensic use)
 

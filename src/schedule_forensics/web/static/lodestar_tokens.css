@@ -1,0 +1,646 @@
+/* LODESTAR — the A1 "Command Deck" design tokens (ADR-0543), copied VERBATIM from the design
+   handoff's tokens/ (colors, themes, typography, spacing, radii, elevation, motion) — the ONE
+   place a colour value is written; every other LODESTAR rule reads these names. Four views on
+   <html data-theme>: dark (default) · bright · contrast · console (opt-in; never in exports or
+   print). The handoff's fonts.css loaded Google Fonts — forbidden here (Law 1, the air-gap): the
+   three faces are vendored woff2 under /static/fonts/ (SIL OFL 1.1, fonts/LICENSE-fonts.txt).
+   Polaris² does not load this file; LODESTAR loads nothing of Polaris²'s styles. */
+
+/* ── fonts: self-hosted, Latin subset (Fontsource 5.3.0) ── */
+@font-face{font-family:'Space Grotesk';font-style:normal;font-weight:500;font-display:swap;src:url(/static/fonts/space-grotesk-latin-500-normal.woff2) format('woff2')}
+@font-face{font-family:'Space Grotesk';font-style:normal;font-weight:600;font-display:swap;src:url(/static/fonts/space-grotesk-latin-600-normal.woff2) format('woff2')}
+@font-face{font-family:'Space Grotesk';font-style:normal;font-weight:700;font-display:swap;src:url(/static/fonts/space-grotesk-latin-700-normal.woff2) format('woff2')}
+@font-face{font-family:'IBM Plex Sans';font-style:normal;font-weight:400;font-display:swap;src:url(/static/fonts/ibm-plex-sans-latin-400-normal.woff2) format('woff2')}
+@font-face{font-family:'IBM Plex Sans';font-style:normal;font-weight:500;font-display:swap;src:url(/static/fonts/ibm-plex-sans-latin-500-normal.woff2) format('woff2')}
+@font-face{font-family:'IBM Plex Sans';font-style:normal;font-weight:600;font-display:swap;src:url(/static/fonts/ibm-plex-sans-latin-600-normal.woff2) format('woff2')}
+@font-face{font-family:'IBM Plex Sans';font-style:normal;font-weight:700;font-display:swap;src:url(/static/fonts/ibm-plex-sans-latin-700-normal.woff2) format('woff2')}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:400;font-display:swap;src:url(/static/fonts/ibm-plex-mono-latin-400-normal.woff2) format('woff2')}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:500;font-display:swap;src:url(/static/fonts/ibm-plex-mono-latin-500-normal.woff2) format('woff2')}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:600;font-display:swap;src:url(/static/fonts/ibm-plex-mono-latin-600-normal.woff2) format('woff2')}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:700;font-display:swap;src:url(/static/fonts/ibm-plex-mono-latin-700-normal.woff2) format('woff2')}
+
+:root {
+  /* ---- Base ramp: Deck neutrals (cool, blue-tinted near-blacks → whites) ---- */
+  --deck-950: #070B11;
+  --deck-900: #0A0F17;
+  --deck-850: #0E1520;
+  --deck-800: #131B28;
+  --deck-750: #18222F;
+  --deck-700: #1E293A;
+  --deck-650: #243349;
+  --deck-600: #2C3B52;
+  --deck-500: #3A4A62;
+  --deck-400: #546983;
+  --deck-300: #7C90AC;
+  --deck-200: #A6B7CE;
+  --deck-100: #D3DEEC;
+  --deck-050: #EEF3FA;
+
+  /* ---- Base ramp: Signal Cyan (primary / instrumentation / HUD) ---- */
+  --cyan-200: #9BF5EC;
+  --cyan-300: #63EDDE;
+  --cyan-400: #33DECD;
+  --cyan-500: #16C6B7;
+  --cyan-600: #0E9E93;
+  --cyan-700: #0B7A72;
+
+  /* ---- Base ramp: Command Gold (secondary accent / driving path) ---- */
+  --gold-300: #FFDE8A;
+  --gold-400: #FFCB5C;
+  --gold-500: #F2B03A;
+  --gold-600: #D18E1E;
+
+  /* ---- Base ramp: Status Green (pass / on-track) ---- */
+  --green-300: #7DEBA9;
+  --green-400: #43D585;
+  --green-500: #28B76A;
+  --green-600: #1B8B4F;
+
+  /* ---- Base ramp: Status Amber (warning / near-critical) ---- */
+  --amber-300: #FFD27A;
+  --amber-400: #FDB43E;
+  --amber-500: #E5921F;
+  --amber-600: #B87016;
+
+  /* ---- Base ramp: Status Red (fail / at-risk / breach) ---- */
+  --red-300: #FF9A9A;
+  --red-400: #FF6B6B;
+  --red-500: #EE4343;
+  --red-600: #C62C2C;
+
+  /* ---- Base ramp: Info Blue ---- */
+  --blue-300: #9CC2FF;
+  --blue-400: #6BA1FF;
+  --blue-500: #4784F5;
+  --blue-600: #2E63D6;
+
+  /* ---- Base ramp: Risk Violet (SRA / categorical) ---- */
+  --violet-300: #C9B6FF;
+  --violet-400: #A98BFF;
+  --violet-500: #8A66F0;
+
+  /* ================= SEMANTIC ALIASES — DARK (default) ================= */
+  /* Backgrounds & surfaces */
+  --bg-void: var(--deck-950);
+  --bg-app: var(--deck-900);
+  --bg-panel: var(--deck-850);
+  --surface: var(--deck-800);
+  --surface-raised: var(--deck-750);
+  --surface-hover: var(--deck-700);
+  --surface-sunken: var(--deck-900);
+
+  /* Borders / hairlines */
+  --border-subtle: var(--deck-700);
+  --border: var(--deck-600);
+  --border-strong: var(--deck-500);
+
+  /* Text */
+  --text-primary: var(--deck-050);
+  --text-secondary: var(--deck-200);
+  --text-muted: var(--deck-300);
+  --text-faint: var(--deck-400);
+  --text-inverse: var(--deck-950);
+  --text-accent: var(--cyan-400);
+
+  /* Accent (interactive / brand) */
+  --accent: var(--cyan-500);
+  --accent-hover: var(--cyan-400);
+  --accent-active: var(--cyan-600);
+  --accent-contrast: var(--deck-950);
+  --accent-muted: rgba(22, 198, 183, 0.14);
+  --accent-border: rgba(51, 222, 205, 0.42);
+  --accent-gold: var(--gold-500);
+
+  /* Focus */
+  --focus-ring: var(--cyan-400);
+
+  /* Status (RAG + info + driving/critical path) */
+  --status-pass: var(--green-400);
+  --status-warn: var(--amber-400);
+  --status-fail: var(--red-400);
+  --status-info: var(--blue-400);
+  --status-driving: var(--gold-400);
+  --status-neutral: var(--deck-300);
+
+  /* Status tinted surfaces */
+  --status-pass-bg: rgba(67, 213, 133, 0.12);
+  --status-warn-bg: rgba(253, 180, 62, 0.12);
+  --status-fail-bg: rgba(255, 107, 107, 0.12);
+  --status-info-bg: rgba(107, 161, 255, 0.12);
+  --status-driving-bg: rgba(255, 203, 92, 0.12);
+
+  /* Status tinted borders */
+  --status-pass-border: rgba(67, 213, 133, 0.4);
+  --status-warn-border: rgba(253, 180, 62, 0.4);
+  --status-fail-border: rgba(255, 107, 107, 0.4);
+  --status-info-border: rgba(107, 161, 255, 0.4);
+  --status-driving-border: rgba(255, 203, 92, 0.4);
+
+  /* Data-viz categorical sequence (charts, series, legends) */
+  --viz-1: var(--cyan-400);
+  --viz-2: var(--gold-400);
+  --viz-3: var(--blue-400);
+  --viz-4: var(--violet-400);
+  --viz-5: var(--green-400);
+  --viz-6: var(--red-400);
+
+  /* Chart chrome */
+  --grid-line: rgba(124, 144, 172, 0.14);
+  --axis-line: var(--deck-500);
+  --baseline-line: var(--deck-400);
+
+  /* Textures (mission-control graticule; console scanline set per-theme) */
+  --texture-grid:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px); /* @kind other */
+  --texture-grid-size: 40px 40px; /* @kind other */
+  --texture-scanline: none; /* @kind other */
+
+  /* Scrim / overlay for dialogs */
+  --scrim: rgba(4, 8, 14, 0.72);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+/* ============================ BRIGHT ============================
+   Daylight-readable. High default for conference-room screen-sharing. */
+/* Bright's text-bearing tokens are darkened from the handoff's values so every text use
+   reaches WCAG 2.1 AA (4.5:1) on the darkest ground it is drawn on, --bg-void (ADR-0543;
+   the repo's Section 508 commitment, ADR-0073). The print block below repeats them. */
+[data-theme="bright"] {
+  color-scheme: light;
+
+  --bg-void: #DBE2EC;
+  --bg-app: #EDF1F7;
+  --bg-panel: #FFFFFF;
+  --surface: #FFFFFF;
+  --surface-raised: #F5F8FC;
+  --surface-hover: #EAF0F7;
+  --surface-sunken: #EEF2F8;
+
+  --border-subtle: #E6EBF2;
+  --border: #D2DBE7;
+  --border-strong: #B4C0D0;
+
+  --text-primary: #0C1420;
+  --text-secondary: #384658;
+  --text-muted: #536276;
+  --text-faint: #8A98AC;
+  --text-inverse: #FFFFFF;
+  --text-accent: #096A63;
+
+  --accent: var(--cyan-700);
+  --accent-hover: #096A63;
+  --accent-active: #096A63;
+  --accent-contrast: #FFFFFF;
+  --accent-muted: rgba(14, 158, 147, 0.10);
+  --accent-border: rgba(14, 158, 147, 0.38);
+  --accent-gold: #835509;
+
+  --focus-ring: var(--cyan-700);
+
+  --status-pass: #13703F;
+  --status-warn: #8E550F;
+  --status-fail: var(--red-600);
+  --status-info: var(--blue-600);
+  --status-driving: var(--gold-600);
+  --status-neutral: #536276;
+
+  --status-pass-bg: rgba(31, 139, 79, 0.10);
+  --status-warn-bg: rgba(184, 112, 22, 0.10);
+  --status-fail-bg: rgba(198, 44, 44, 0.09);
+  --status-info-bg: rgba(46, 99, 214, 0.09);
+  --status-driving-bg: rgba(209, 142, 30, 0.11);
+
+  --status-pass-border: rgba(31, 139, 79, 0.34);
+  --status-warn-border: rgba(184, 112, 22, 0.34);
+  --status-fail-border: rgba(198, 44, 44, 0.32);
+  --status-info-border: rgba(46, 99, 214, 0.30);
+  --status-driving-border: rgba(209, 142, 30, 0.34);
+
+  --viz-1: var(--cyan-600);
+  --viz-2: var(--gold-600);
+  --viz-3: var(--blue-500);
+  --viz-4: var(--violet-500);
+  --viz-5: var(--green-600);
+  --viz-6: var(--red-500);
+
+  --grid-line: rgba(20, 40, 70, 0.08);
+  --axis-line: #B4C0D0;
+  --baseline-line: #8A98AC;
+
+  --scrim: rgba(24, 34, 47, 0.42);
+}
+
+/* ========================= HIGH-CONTRAST =========================
+   Accessibility-first, WCAG-AA-or-better. Pure black, pure white text,
+   max-chroma status, thick visible borders, no low-alpha tints. */
+[data-theme="contrast"] {
+  color-scheme: dark;
+
+  --bg-void: #000000;
+  --bg-app: #000000;
+  --bg-panel: #080808;
+  --surface: #0C0C0C;
+  --surface-raised: #141414;
+  --surface-hover: #1E1E1E;
+  --surface-sunken: #000000;
+
+  --border-subtle: #616161;
+  --border: #8C8C8C;
+  --border-strong: #FFFFFF;
+
+  --text-primary: #FFFFFF;
+  --text-secondary: #F0F0F0;
+  --text-muted: #CFCFCF;
+  --text-faint: #A8A8A8;
+  --text-inverse: #000000;
+  --text-accent: #5CF2E4;
+
+  --accent: #4FEDE0;
+  --accent-hover: #7CF6EC;
+  --accent-active: #2FD9CB;
+  --accent-contrast: #000000;
+  --accent-muted: rgba(79, 237, 224, 0.22);
+  --accent-border: rgba(79, 237, 224, 0.75);
+  --accent-gold: #FFD24D;
+
+  --focus-ring: #FFFFFF;
+
+  --status-pass: #5BFF9E;
+  --status-warn: #FFCB4D;
+  --status-fail: #FF7B7B;
+  --status-info: #86B9FF;
+  --status-driving: #FFD24D;
+  --status-neutral: #CFCFCF;
+
+  --status-pass-bg: rgba(91, 255, 158, 0.20);
+  --status-warn-bg: rgba(255, 203, 77, 0.20);
+  --status-fail-bg: rgba(255, 123, 123, 0.22);
+  --status-info-bg: rgba(134, 185, 255, 0.20);
+  --status-driving-bg: rgba(255, 210, 77, 0.20);
+
+  --status-pass-border: rgba(91, 255, 158, 0.85);
+  --status-warn-border: rgba(255, 203, 77, 0.85);
+  --status-fail-border: rgba(255, 123, 123, 0.85);
+  --status-info-border: rgba(134, 185, 255, 0.85);
+  --status-driving-border: rgba(255, 210, 77, 0.85);
+
+  --viz-1: #4FEDE0;
+  --viz-2: #FFD24D;
+  --viz-3: #86B9FF;
+  --viz-4: #C9B6FF;
+  --viz-5: #5BFF9E;
+  --viz-6: #FF7B7B;
+
+  --grid-line: rgba(255, 255, 255, 0.22);
+  --axis-line: #FFFFFF;
+  --baseline-line: #CFCFCF;
+
+  --scrim: rgba(0, 0, 0, 0.86);
+}
+
+/* ======================= CONSOLE / OPS DECK =======================
+   HUD phosphor chrome. Teal-black surfaces, cyan glow, mono-forward.
+   The scanline texture ships here as a token; components opt in. This is
+   the opt-in "fun" theme — never a default, never carried into exports. */
+[data-theme="console"] {
+  color-scheme: dark;
+
+  --bg-void: #020608;
+  --bg-app: #04090C;
+  --bg-panel: #061114;
+  --surface: #08181C;
+  --surface-raised: #0B2227;
+  --surface-hover: #0F2C32;
+  --surface-sunken: #030A0C;
+
+  --border-subtle: rgba(51, 222, 205, 0.12);
+  --border: rgba(51, 222, 205, 0.24);
+  --border-strong: rgba(51, 222, 205, 0.46);
+
+  --text-primary: #CFF7F1;
+  --text-secondary: #8FD8CF;
+  --text-muted: #5EA79E;
+  --text-faint: #3E756E;
+  --text-inverse: #02110F;
+  --text-accent: #63EDDE;
+
+  --accent: #3EE8D6;
+  --accent-hover: #6FF3E6;
+  --accent-active: #16C6B7;
+  --accent-contrast: #02110F;
+  --accent-muted: rgba(62, 232, 214, 0.14);
+  --accent-border: rgba(62, 232, 214, 0.5);
+  --accent-gold: #FFCB5C;
+
+  --focus-ring: #6FF3E6;
+
+  --status-pass: #4DE89A;
+  --status-warn: #FFC24B;
+  --status-fail: #FF6E6E;
+  --status-info: #6FB0FF;
+  --status-driving: #FFD24D;
+  --status-neutral: #5EA79E;
+
+  --status-pass-bg: rgba(77, 232, 154, 0.14);
+  --status-warn-bg: rgba(255, 194, 75, 0.14);
+  --status-fail-bg: rgba(255, 110, 110, 0.14);
+  --status-info-bg: rgba(111, 176, 255, 0.14);
+  --status-driving-bg: rgba(255, 210, 77, 0.14);
+
+  --status-pass-border: rgba(77, 232, 154, 0.5);
+  --status-warn-border: rgba(255, 194, 75, 0.5);
+  --status-fail-border: rgba(255, 110, 110, 0.5);
+  --status-info-border: rgba(111, 176, 255, 0.5);
+  --status-driving-border: rgba(255, 210, 77, 0.5);
+
+  --viz-1: #3EE8D6;
+  --viz-2: #FFCB5C;
+  --viz-3: #6FB0FF;
+  --viz-4: #C9B6FF;
+  --viz-5: #4DE89A;
+  --viz-6: #FF6E6E;
+
+  --grid-line: rgba(62, 232, 214, 0.10);
+  --axis-line: rgba(62, 232, 214, 0.28);
+  --baseline-line: rgba(62, 232, 214, 0.4);
+
+  --texture-scanline:
+    repeating-linear-gradient(
+      to bottom,
+      rgba(62, 232, 214, 0.05) 0px,
+      rgba(62, 232, 214, 0.05) 1px,
+      transparent 1px,
+      transparent 3px
+    ); /* @kind other */
+
+  --scrim: rgba(2, 8, 10, 0.8);
+}
+
+:root {
+  /* Families */
+  --font-display: 'Space Grotesk', system-ui, -apple-system, sans-serif;
+  --font-sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --font-data: var(--font-mono);
+
+  /* Size ramp (px; dense analytical tool → 14px UI base) */
+  --fs-2xs: 11px;
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-base: 14px;
+  --fs-md: 15px;
+  --fs-lg: 16px;
+  --fs-xl: 18px;
+  --fs-2xl: 22px;
+  --fs-3xl: 28px;
+  --fs-4xl: 36px;
+  --fs-5xl: 48px;
+  --fs-6xl: 64px;
+
+  /* Weights */
+  --fw-regular: 400; /* @kind font */
+  --fw-medium: 500; /* @kind font */
+  --fw-semibold: 600; /* @kind font */
+  --fw-bold: 700; /* @kind font */
+
+  /* Line heights */
+  --lh-tight: 1.1; /* @kind font */
+  --lh-snug: 1.25; /* @kind font */
+  --lh-data: 1.3; /* @kind font */
+  --lh-normal: 1.5; /* @kind font */
+  --lh-relaxed: 1.62; /* @kind font */
+
+  /* Letter spacing */
+  --ls-tighter: -0.03em; /* @kind font */
+  --ls-tight: -0.015em; /* @kind font */
+  --ls-normal: 0em; /* @kind font */
+  --ls-wide: 0.02em; /* @kind font */
+  --ls-wider: 0.06em; /* @kind font */
+  --ls-label: 0.12em; /* @kind font */
+  --ls-mono: 0.01em; /* @kind font */
+
+  /* Numeric feature set for data readouts */
+  --num-feature: tabular-nums; /* @kind font */
+
+  /* ---- Semantic type roles (family + tracking hints; size set per element) ---- */
+  --type-display-family: var(--font-display);
+  --type-heading-family: var(--font-display);
+  --type-body-family: var(--font-sans);
+  --type-label-family: var(--font-sans);
+  --type-data-family: var(--font-mono);
+}
+
+:root {
+  --space-px: 1px;
+  --space-0: 0;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-14: 56px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+  --space-32: 128px;
+
+  /* Semantic roles */
+  --page-pad: 32px;
+  --panel-pad: 20px;
+  --card-pad: 16px;
+  --gutter: 24px;
+  --stack-gap: 16px;
+  --inline-gap: 8px;
+  --control-gap: 8px;
+  --section-gap: 48px;
+
+  /* Fixed chrome dimensions */
+  --topbar-h: 56px;
+  --rolestrip-h: 44px;
+  --sidebar-w: 248px;
+  --statusbar-h: 32px;
+}
+
+:root {
+  --radius-0: 0px;
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --radius-2xl: 20px;
+  --radius-full: 999px;
+
+  --border-width: 1px;
+  --border-width-2: 2px;
+  --border-width-focus: 2px;
+
+  /* Semantic roles */
+  --radius-control: 6px;   /* buttons, inputs, selects */
+  --radius-chip: 4px;      /* status chips, tags, badges */
+  --radius-card: 10px;     /* panels, cards, instruments */
+  --radius-pill: 999px;    /* toggles, avatars, dots */
+  --radius-inset: 4px;     /* nested wells, code, readouts */
+}
+
+:root {
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.45);
+  --shadow-md: 0 8px 24px rgba(2, 6, 12, 0.5);
+  --shadow-lg: 0 20px 48px rgba(2, 6, 12, 0.6);
+  --shadow-xl: 0 32px 72px rgba(2, 6, 12, 0.66);
+
+  /* Panel: faint top inner highlight + drop for instrument depth */
+  --shadow-panel: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 12px 32px rgba(2, 6, 12, 0.42);
+
+  /* Glows (signal only) */
+  --glow-cyan: 0 0 0 1px rgba(51, 222, 205, 0.35), 0 0 18px rgba(51, 222, 205, 0.22);
+  --glow-gold: 0 0 0 1px rgba(255, 203, 92, 0.35), 0 0 18px rgba(255, 203, 92, 0.20);
+  --glow-pass: 0 0 16px rgba(67, 213, 133, 0.28);
+  --glow-warn: 0 0 16px rgba(253, 180, 62, 0.28);
+  --glow-fail: 0 0 16px rgba(255, 107, 107, 0.32);
+
+  /* Focus ring (2px ring; offset variant adds a bg gap first) */
+  --ring: 0 0 0 var(--border-width-focus) var(--focus-ring);
+  --ring-offset: 0 0 0 2px var(--bg-app), 0 0 0 4px var(--focus-ring);
+  --ring-glow: 0 0 0 1px var(--focus-ring), 0 0 14px rgba(51, 222, 205, 0.35);
+}
+
+:root {
+  --dur-instant: 80ms; /* @kind other */
+  --dur-fast: 140ms; /* @kind other */
+  --dur-base: 220ms; /* @kind other */
+  --dur-slow: 400ms; /* @kind other */
+  --dur-slower: 640ms; /* @kind other */
+  --dur-reveal: 900ms; /* @kind other */
+  --dur-pulse: 2600ms; /* @kind other */
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1); /* @kind other */
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0); /* @kind other */
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1); /* @kind other */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1); /* @kind other */
+  --ease-emphasized: cubic-bezier(0.2, 0, 0, 1); /* @kind other */
+}
+
+/* Status-change pulse — motion is a signal, applied only when status changed. */
+@keyframes aismat-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(51, 222, 205, 0.0); }
+  50% { box-shadow: 0 0 0 6px rgba(51, 222, 205, 0.0), 0 0 22px rgba(51, 222, 205, 0.28); }
+}
+
+/* Trend reveal — sweep a time-series in on load. */
+@keyframes aismat-trend-draw {
+  from { stroke-dashoffset: var(--trend-length, 1000); }
+  to { stroke-dashoffset: 0; }
+}
+
+/* Driving-path travelling highlight (dash march along critical logic). */
+@keyframes aismat-path-march {
+  to { stroke-dashoffset: -32; }
+}
+
+/* Console scanline drift. */
+@keyframes aismat-scanline {
+  from { background-position-y: 0; }
+  to { background-position-y: 6px; }
+}
+
+/* Live-data cursor blink (mono readouts / air-gap chip). */
+@keyframes aismat-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0.25; }
+}
+
+/* Entrance for altitude transitions between Acts. */
+@keyframes aismat-fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── print: every view prints in the Bright values — a white ground and dark ink, whatever view
+   is on screen (the design: "the slide fills the page landscape on a white ground"); Console is
+   never carried into a print ── */
+@media print {
+  :root, :root[data-theme] {
+  color-scheme: light;
+
+  --bg-void: #DBE2EC;
+  --bg-app: #EDF1F7;
+  --bg-panel: #FFFFFF;
+  --surface: #FFFFFF;
+  --surface-raised: #F5F8FC;
+  --surface-hover: #EAF0F7;
+  --surface-sunken: #EEF2F8;
+
+  --border-subtle: #E6EBF2;
+  --border: #D2DBE7;
+  --border-strong: #B4C0D0;
+
+  --text-primary: #0C1420;
+  --text-secondary: #384658;
+  --text-muted: #536276;
+  --text-faint: #8A98AC;
+  --text-inverse: #FFFFFF;
+  --text-accent: #096A63;
+
+  --accent: var(--cyan-700);
+  --accent-hover: #096A63;
+  --accent-active: #096A63;
+  --accent-contrast: #FFFFFF;
+  --accent-muted: rgba(14, 158, 147, 0.10);
+  --accent-border: rgba(14, 158, 147, 0.38);
+  --accent-gold: #835509;
+
+  --focus-ring: var(--cyan-700);
+
+  --status-pass: #13703F;
+  --status-warn: #8E550F;
+  --status-fail: var(--red-600);
+  --status-info: var(--blue-600);
+  --status-driving: var(--gold-600);
+  --status-neutral: #536276;
+
+  --status-pass-bg: rgba(31, 139, 79, 0.10);
+  --status-warn-bg: rgba(184, 112, 22, 0.10);
+  --status-fail-bg: rgba(198, 44, 44, 0.09);
+  --status-info-bg: rgba(46, 99, 214, 0.09);
+  --status-driving-bg: rgba(209, 142, 30, 0.11);
+
+  --status-pass-border: rgba(31, 139, 79, 0.34);
+  --status-warn-border: rgba(184, 112, 22, 0.34);
+  --status-fail-border: rgba(198, 44, 44, 0.32);
+  --status-info-border: rgba(46, 99, 214, 0.30);
+  --status-driving-border: rgba(209, 142, 30, 0.34);
+
+  --viz-1: var(--cyan-600);
+  --viz-2: var(--gold-600);
+  --viz-3: var(--blue-500);
+  --viz-4: var(--violet-500);
+  --viz-5: var(--green-600);
+  --viz-6: var(--red-500);
+
+  --grid-line: rgba(20, 40, 70, 0.08);
+  --axis-line: #B4C0D0;
+  --baseline-line: #8A98AC;
+
+  --scrim: rgba(24, 34, 47, 0.42);
+}
+}

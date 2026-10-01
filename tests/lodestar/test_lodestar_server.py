@@ -32,6 +32,15 @@ over-long header) carried none of the security headers.
 
 Red-first (2026-09-29): on the pristine tree (HEAD 0b45eb2) ``schedule_forensics.lodestar`` does
 not exist — the module fails at import and every test here is red.
+
+Re-aimed by ADR-0543 (LODESTAR 2.0, 2026-10-01; every re-aimed test was red on HEAD 897bd19 for
+the v1 markup it read): the credit is the frame's credit strip and its status bar, the marking
+bars are ``ls-mark-bar cui-banner`` in fixed inline colours, first and last in the frame; the
+pages load LODESTAR's own files only (and the fonts its tokens sheet asks for, by exact sub-path);
+``/onepager`` is built by ``studio_page``; the Host and cross-site gates are pinned on the
+studio's ``/api`` routes as well as the forms; an over-cap upload posted by the studio's script
+(``Accept: application/json``) is answered as JSON; the From select is ``#lsFrom`` and a link
+change lands on ``#lsLinks``. The studio API itself is pinned in ``test_lodestar_studio_api.py``.
 """
 
 from __future__ import annotations
@@ -39,6 +48,7 @@ from __future__ import annotations
 import datetime as dt
 import http.client
 import http.server
+import json
 import re
 import socketserver
 import sys
@@ -125,13 +135,21 @@ def _load_both(live: Live) -> None:
     assert live.state.onepager is not None and live.state.onepager_current is not None
 
 
+#: The classes every marking bar carries whatever its marking — LODESTAR 2.0's frame adds its own
+#: ``ls-mark-bar`` beside Polaris²'s ``cui-banner`` (ADR-0543); what is left is the marking and
+#: the side (``cui top``).
+_BAR_CLASSES = frozenset({"cui-banner", "ls-mark-bar"})
+
+
 class _Tags(HTMLParser):
-    """Every start tag with its attributes, and the text of every CUI banner."""
+    """Every start tag with its attributes, the text of every CUI banner, and each banner's
+    inline style (LODESTAR 2.0 paints its bars' fixed colours inline — ADR-0543)."""
 
     def __init__(self, page: str) -> None:
         super().__init__()
         self.tags: list[tuple[str, dict[str, str | None]]] = []
         self.banners: list[tuple[str, str]] = []
+        self.styles: list[str] = []
         self._banner: list[str] | None = None
         self.feed(page)
 
@@ -140,7 +158,8 @@ class _Tags(HTMLParser):
         self.tags.append((tag, d))
         classes = (d.get("class") or "").split()
         if "cui-banner" in classes:
-            self._banner = [" ".join(c for c in classes if c != "cui-banner"), ""]
+            self._banner = [" ".join(c for c in classes if c not in _BAR_CLASSES), ""]
+            self.styles.append((d.get("style") or "").replace(" ", "").lower())
 
     handle_startendtag = handle_starttag
 
@@ -164,27 +183,75 @@ def _between(page: str, start: str, end: str) -> str:
 
 
 _STATIC = files("schedule_forensics.web").joinpath("static")
-_TYPES = {".js": "text/javascript", ".css": "text/css", ".ico": "image/x-icon"}
+#: The type each kind of asset must be served as — typed here (never read off the server).
+_TYPES = {
+    ".js": "text/javascript",
+    ".css": "text/css",
+    ".ico": "image/x-icon",
+    ".woff2": "font/woff2",
+    ".txt": "text/plain",
+}
+#: The marking bars' FIXED colours (the operator's design handoff, ADR-0543 — DESIGN-SYSTEM §0's
+#: one hex exception), typed here: ``marking class -> the bar's inline style``.
+_BAR_STYLE = {
+    "cui": "background:#502b85;color:#fff",
+    "unclassified": "background:#007a33;color:#fff",
+}
+
+
+def _static_file(url: str) -> bytes:
+    """The package file a ``/static/…`` URL names — its path walked one segment at a time (the
+    fonts live in ``static/fonts/``, ADR-0543), never its base name alone."""
+    node = _STATIC
+    for part in urlsplit(url).path.removeprefix("/static/").split("/"):
+        node = node.joinpath(part)
+    return node.read_bytes()
+
+
+def _served_problem(port: int, url: str) -> str | None:
+    """``None`` when ``url`` is served 200, typed for its kind, with the file's own bytes."""
+    got = request(port, "GET", url)
+    name = urlsplit(url).path.rsplit("/", 1)[-1]
+    kind = _TYPES.get(name[name.rfind(".") :], "?")
+    if got.status != 200:
+        return f"{url}: {got.status}"
+    if not got.headers.get("content-type", "").startswith(kind):
+        return f"{url}: served as {got.headers.get('content-type')}"
+    if got.body != _static_file(url):
+        return f"{url}: not the file on disk"
+    return None
 
 
 def _asset_problems(port: int, page: str) -> list[str]:
-    """Every ``<script src>`` / ``<link href>`` the page loads that is not served 200, with the
-    right type for its kind and the bytes of the file on disk."""
+    """Every ``<script src>`` / ``<link href>`` the page loads — and every ``url(…)`` the
+    stylesheets it loads ask for (the fonts) — that is not served 200, with the right type for
+    its kind and the bytes of the file on disk."""
     problems: list[str] = []
     for tag, attrs in _Tags(page).tags:
         url = attrs.get("src") if tag == "script" else attrs.get("href") if tag == "link" else None
         if not url:
             continue
-        got = request(port, "GET", url)
-        name = urlsplit(url).path.rsplit("/", 1)[-1]
-        kind = _TYPES.get(name[name.rfind(".") :], "?")
-        if got.status != 200:
-            problems.append(f"{url}: {got.status}")
-        elif not got.headers.get("content-type", "").startswith(kind):
-            problems.append(f"{url}: served as {got.headers.get('content-type')}")
-        elif got.body != _STATIC.joinpath(name).read_bytes():
-            problems.append(f"{url}: not the file on disk")
+        problem = _served_problem(port, url)
+        if problem:
+            problems.append(problem)
+            continue
+        if url.endswith(".css"):
+            css = request(port, "GET", url).text
+            for ref in re.findall(r"url\(\s*['\"]?([^'\")]+)", css):
+                problem = _served_problem(port, ref)
+                if problem:
+                    problems.append(f"{url} → {problem}")
     return problems
+
+
+def _css_refs(port: int, page: str) -> set[str]:
+    """Every ``url(…)`` in every stylesheet ``page`` links."""
+    refs: set[str] = set()
+    for tag, attrs in _Tags(page).tags:
+        if tag == "link" and attrs.get("rel") == "stylesheet" and attrs.get("href"):
+            css = request(port, "GET", str(attrs["href"])).text
+            refs |= set(re.findall(r"url\(\s*['\"]?([^'\")]+)", css))
+    return refs
 
 
 def _security_problems(reply: Reply) -> list[str]:
@@ -213,6 +280,30 @@ def _security_problems(reply: Reply) -> list[str]:
     return problems
 
 
+def _api_raw(
+    port: int, action: str, body: bytes, *, headers: list[tuple[str, str]] | None = None
+) -> Reply:
+    """``POST /api/<action>`` with exactly ``body`` as ``application/json`` (the studio's call)."""
+    return request(
+        port,
+        "POST",
+        f"/api/{action}",
+        body=body,
+        headers=[("Content-Type", "application/json"), *(headers or [])],
+    )
+
+
+def _api(
+    port: int,
+    action: str,
+    fields: dict[str, object],
+    *,
+    headers: list[tuple[str, str]] | None = None,
+) -> Reply:
+    """``POST /api/<action>`` with ``fields`` as a JSON object."""
+    return _api_raw(port, action, json.dumps(fields).encode(), headers=headers)
+
+
 def _raise_on(path: str, exc: Exception) -> Callable[..., object]:
     """A ``_Handler._get`` that raises ``exc`` for ``path`` and is the real one otherwise."""
     real = _H._get
@@ -228,26 +319,119 @@ def _raise_on(path: str, exc: Exception) -> Callable[..., object]:
 # ── the pages ─────────────────────────────────────────────────────────────────────────────────
 
 
+#: Where LODESTAR 2.0's frame shows the credit (ADR-0543): the credit strip under the header,
+#: and the status bar at the foot — each ``(opening, closing)`` as the frame writes it.
+_CREDIT_TOP = ("<span class=ls-credit-who>", "</span>")
+_CREDIT_FOOT = ("<footer class=ls-status role=contentinfo>", "</footer>")
+#: The overlay shells the studio's script fills — hidden until used, never printed. They are the
+#: ONLY things the frame may hold after its bottom marking bar.
+_OVERLAYS = ("lsPalette", "lsFull", "lsTour", "lsToasts")
+_VOID = frozenset(
+    {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "wbr"}
+)
+
+
+class _RootKids(HTMLParser):
+    """The direct children of the frame's root (``#lsRoot``), in order, each as
+    ``(tag, class, id)`` — where the marking bars must be the first and the last of the page."""
+
+    def __init__(self, page: str) -> None:
+        super().__init__()
+        self.kids: list[tuple[str, str, str]] = []
+        self._depth: int | None = None
+        self.feed(page)
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        d = {k: v or "" for k, v in attrs}
+        if self._depth is None:
+            if d.get("id") == "lsRoot":
+                self._depth = 0
+            return
+        if self._depth == 0:
+            self.kids.append((tag, d.get("class", ""), d.get("id", "")))
+        if tag not in _VOID:
+            self._depth += 1
+
+    def handle_endtag(self, tag: str) -> None:
+        if self._depth is None or tag in _VOID:
+            return
+        if self._depth == 0:  # the root itself closed
+            self._depth = None
+            self.handle_starttag = lambda *_a: None  # type: ignore[method-assign]
+            return
+        self._depth -= 1
+
+
+def _kid_name(tag: str, cls: str, ident: str) -> str:
+    """What one child of the frame's root is, in words."""
+    classes = cls.split()
+    if "cui-banner" in classes:
+        return "top bar" if "top" in classes else "bottom bar" if "bottom" in classes else cls
+    named = {"header": "header", "footer": "status"}.get(tag)
+    if named:
+        return named
+    if cls in ("ls-credit", "ls-work"):
+        return cls.removeprefix("ls-")
+    return f"overlay {ident}" if ident in _OVERLAYS else f"{tag}.{cls}#{ident}"
+
+
+def _frame_order_problems(text: str, marking: str) -> list[str]:
+    """What is out of place in the frame: the top marking bar must be the root's FIRST child,
+    then the header, the credit strip, the work area, the status bar and the bottom marking bar —
+    after which only the overlay shells may follow; each bar carries its marking's fixed
+    colours inline."""
+    shape = [_kid_name(*kid) for kid in _RootKids(text).kids]
+    problems: list[str] = []
+    want = ["top bar", "header", "credit", "work", "status", "bottom bar"]
+    if shape[: len(want)] != want:
+        problems.append(f"order: {shape[: len(want)]} is not {want}")
+    if [s for s in shape[len(want) :] if not s.startswith("overlay ")]:
+        problems.append(f"after the bottom bar: {shape[len(want) :]}")
+    styles = _Tags(text).styles
+    if styles != [_BAR_STYLE[marking]] * 2:
+        problems.append(f"colours: the bars' styles {styles} are not {_BAR_STYLE[marking]!r}")
+    return problems
+
+
 @pytest.mark.parametrize("path", PAGES)
 def test_both_pages_credit_the_author_top_and_bottom_with_marking_and_drawer(
     live: Live, path: str
 ) -> None:
     """The operator's request: every user sees who created LODESTAR and how to reach him — at
-    the top of the page (before the slide) AND in the footer — as a bare ``mailto:`` (no ``?``
-    pre-fill); the CUI banner top and bottom; the handling & export-control drawer."""
+    the top of the page (the credit strip, before the slide) AND at the foot (the status bar) —
+    as a bare ``mailto:`` (no ``?`` pre-fill); the CUI banner top and bottom, the first and the
+    last thing the frame shows, in its fixed colours; the handling & export-control drawer.
+    Re-aimed at LODESTAR 2.0's frame (ADR-0543): the strip and the status bar replace v1's
+    ``<p class=ls-credit>`` and ``<footer class=ls-footer>``."""
     page = request(live.port, "GET", path)
     assert page.status == 200
     text = page.text
-    top = _between(text, "<p class=ls-credit>", "</p>")
-    foot = _between(text, "<footer class=ls-footer>", "</footer>")
+    top = _between(text, *_CREDIT_TOP)
+    foot = _between(text, *_CREDIT_FOOT)
     for where, block in (("top", top), ("footer", foot)):
         assert AUTHOR in block and f'href="{MAILTO}"' in block and CONTACT in block, where
-    assert text.index("<p class=ls-credit>") < text.index("<main") < text.index("<footer")
+    assert text.index("<div class=ls-credit>") < text.index("<main") < text.index("<footer")
     assert set(re.findall(r'href="(mailto:[^"]*)"', text)) == {MAILTO}
     assert "id=complianceDrawer" in text
     for cite in ("32 CFR Part 2002", "22 CFR 120", "15 CFR 730"):
         assert cite in text, cite
     assert _Tags(text).banners == [("cui top", CUI_MARKING), ("cui bottom", CUI_MARKING)]
+    assert _frame_order_problems(text, "cui") == []
+
+
+def test_mutation_a_bar_moved_or_recoloured_is_named(live: Live) -> None:
+    """MUTATION: the bottom bar moved above the status bar, and a bar painted a non-marking
+    colour — the same checker names each."""
+    text = request(live.port, "GET", "/onepager").text
+    bottom = re.search(r'<div class="ls-mark-bar cui-banner cui bottom"[^>]*>[^<]*</div>', text)
+    assert bottom
+    moved = text.replace(bottom[0], "").replace(
+        "<footer class=ls-status", bottom[0] + "<footer class=ls-status", 1
+    )
+    assert any(p.startswith("order:") for p in _frame_order_problems(moved, "cui"))
+    recoloured = text.replace("background:#502b85", "background:#123456", 1)
+    assert any(p.startswith("colours:") for p in _frame_order_problems(recoloured, "cui"))
+    assert any(p.startswith("colours:") for p in _frame_order_problems(text, "unclassified"))
 
 
 @pytest.mark.parametrize("loaded", [False, True], ids=["empty", "loaded"])
@@ -265,13 +449,68 @@ def test_every_asset_the_pages_load_is_served_and_there_is_no_ai(
     assert _asset_problems(live.port, page) == []
     tags = _Tags(page).tags
     srcs = [str(a["src"]) for t, a in tags if t == "script" and a.get("src")]
-    for needed in ("/static/gantt.js", "/static/chartframe.js", "/static/theme.js"):
-        assert needed in srcs, needed
+    hrefs = [str(a["href"]) for t, a in tags if t == "link" and a.get("href")]
+    # LODESTAR 2.0 loads its OWN files and none of Polaris²'s (ADR-0543): re-aimed from v1's
+    # gantt.js / chartframe.js / theme.js, which the studio no longer needs
+    assert srcs == _STUDIO_SCRIPTS, srcs
+    assert sorted(hrefs) == sorted(_STUDIO_LINKS), hrefs
+    assert _css_refs(live.port, page) == _FONTS, "the fonts the stylesheets ask for"
     assert not [s for s in srcs if s.endswith(("/ask.js", "/ai_polish.js"))]
     assert "ask the ai" not in page.lower()
     inline = [a.get("type") for t, a in tags if t == "script" and not a.get("src")]
     assert all(kind == "application/json" for kind in inline), inline
     assert [(t, k) for t, a in tags for k in a if k.startswith("on")] == []
+
+
+#: What a studio page loads, in order — the view switch in the head (pre-paint), the painter and
+#: the controller at the end of the body — and its icon and two style sheets (typed here).
+_STUDIO_SCRIPTS = [
+    "/static/lodestar_view.js",
+    "/static/lodestar_slide.js",
+    "/static/lodestar_studio.js",
+]
+_STUDIO_LINKS = [
+    "/static/lodestar.ico",
+    "/static/lodestar_tokens.css",
+    "/static/lodestar_studio.css",
+]
+#: The eleven vendored faces (Space Grotesk 500-700, IBM Plex Sans and Mono 400-700).
+_FONTS = {
+    f"/static/fonts/{family}-latin-{weight}-normal.woff2"
+    for family, weights in (
+        ("space-grotesk", (500, 600, 700)),
+        ("ibm-plex-sans", (400, 500, 600, 700)),
+        ("ibm-plex-mono", (400, 500, 600, 700)),
+    )
+    for weight in weights
+}
+
+
+def test_mutation_a_mistyped_font_and_a_polaris_script_are_named(
+    live: Live, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """MUTATION: one font served as ``application/octet-stream`` (the server's allowlist edited
+    in memory) and a Polaris² script added to the page — the asset check names the font through
+    the style sheet that asks for it, and the page's script list is no longer the studio's."""
+    font = "fonts/ibm-plex-sans-latin-400-normal.woff2"
+    data, _ct = live.server.assets[font]
+    monkeypatch.setitem(live.server.assets, font, (data, "application/octet-stream"))
+    page = request(live.port, "GET", "/onepager").text
+    problems = _asset_problems(live.port, page)
+    assert problems == [
+        f"/static/lodestar_tokens.css → /static/{font}: served as application/octet-stream"
+    ], problems
+    real = server_mod.studio_page
+
+    def with_theme(*args: object, **kwargs: object) -> str:
+        return real(*args, **kwargs).replace(  # type: ignore[arg-type]
+            "</head>", '<script src="/static/theme.js"></script></head>'
+        )
+
+    monkeypatch.setattr(server_mod, "studio_page", with_theme)
+    tags = _Tags(request(live.port, "GET", "/onepager").text).tags
+    srcs = [str(a["src"]) for t, a in tags if t == "script" and a.get("src")]
+    assert srcs != _STUDIO_SCRIPTS and "/static/theme.js" in srcs
 
 
 @pytest.mark.parametrize("path", PAGES)
@@ -302,15 +541,25 @@ def test_pages_reference_nothing_off_the_machine(live: Live, path: str, loaded: 
 def test_mutation_airgap_scanner_sees_a_remote_script_on_a_lodestar_page(
     live: Live, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """MUTATION: a CDN script injected into the LODESTAR frame is found by the same scanner."""
-    real = server_mod.lodestar_page
+    """MUTATION: a CDN script injected into the LODESTAR frame is found by the same scanner —
+    on the studio page (re-aimed: ``/onepager`` is built by ``studio_page`` since ADR-0543) and on
+    the plain framed page the upload cap answers with (``lodestar_page``)."""
+    real_studio, real_page = server_mod.studio_page, server_mod.lodestar_page
 
-    def with_cdn(*args: object, **kwargs: object) -> str:
-        page = real(*args, **kwargs)  # type: ignore[arg-type]
-        return page.replace("</head>", '<script src="https://cdn.example/x.js"></script></head>')
+    def cdn(real: Callable[..., str]) -> Callable[..., str]:
+        def with_cdn(*args: object, **kwargs: object) -> str:
+            page = real(*args, **kwargs)
+            return page.replace(
+                "</head>", '<script src="https://cdn.example/x.js"></script></head>'
+            )
 
-    monkeypatch.setattr(server_mod, "lodestar_page", with_cdn)
+        return with_cdn
+
+    monkeypatch.setattr(server_mod, "studio_page", cdn(real_studio))
+    monkeypatch.setattr(server_mod, "lodestar_page", cdn(real_page))
     assert _external_refs(request(live.port, "GET", "/onepager").text) != []
+    _head, framed = _too_large_page(live, "/onepager/upload")
+    assert _external_refs(framed) != []
 
 
 # ── every response is hardened ────────────────────────────────────────────────────────────────
@@ -324,8 +573,16 @@ def _hardening_matrix(live: Live) -> dict[str, tuple[int, Reply]]:
         "page": (200, request(port, "GET", "/onepager")),
         "launch": (200, request(port, "GET", "/launch")),
         "head": (200, request(port, "HEAD", "/onepager-compare")),
-        "static": (200, request(port, "GET", "/static/app.css")),
+        "static": (200, request(port, "GET", "/static/lodestar_studio.css")),
+        "font": (200, request(port, "GET", "/static/fonts/space-grotesk-latin-700-normal.woff2")),
         "redirect": (303, request(port, "GET", "/")),
+        "api state": (200, request(port, "GET", "/api/state?page=compare")),
+        "api action": (200, _api(port, "title", {"page": "timeline", "title": "x"})),
+        "api preview": (200, _api(port, "preview", {"page": "timeline", "today": "2027-01-01"})),
+        "api undo": (200, _api(port, "undo", {"page": "timeline"})),
+        "api not json": (415, form(port, "/api/title", {"title": "x"})),
+        "api not an object": (400, _api_raw(port, "title", b"[1]")),
+        "api no action": (404, _api(port, "no-such-action", {})),
         "bad host": (400, request(port, "GET", "/onepager", headers=[("Host", "evil.example")])),
         "chunked": (
             400,
@@ -371,7 +628,7 @@ def test_every_response_carries_the_security_headers(
         assert reply.status == status, (label, reply.status, reply.body[:120])
         assert _security_problems(reply) == [], label
         assert reply.version == 10, label
-        cache = "no-cache" if label == "static" else "no-store"
+        cache = "no-cache" if label in ("static", "font") else "no-store"
         assert reply.headers.get("cache-control") == cache, label
         if status >= 400:
             assert reply.headers.get("connection") == "close", label
@@ -527,9 +784,15 @@ def test_mutation_without_patch_and_options_handlers_they_are_the_stdlib_501(
 )
 def test_host_must_be_exactly_this_server(live: Live, host: str | None, status: int) -> None:
     """DNS rebinding: only ``127.0.0.1:<port>`` / ``localhost:<port>`` is served — a page, a
-    static file and a POST alike (the gate runs before any route)."""
+    static file, a font, the studio's state and a POST alike, the form route and the studio's JSON
+    route (the gate runs before any route; ADR-0543 added the ``/api`` routes and the fonts)."""
     headers = [] if host is None else [("Host", host.format(port=live.port))]
-    for path in ("/onepager", "/static/theme.js"):
+    for path in (
+        "/onepager",
+        "/static/lodestar_studio.js",
+        "/static/fonts/ibm-plex-mono-latin-400-normal.woff2",
+        "/api/state?page=timeline",
+    ):
         got = request(live.port, "GET", path, headers=headers, no_host=host is None)
         assert got.status == status, (path, got.status)
     posted = form(
@@ -537,6 +800,16 @@ def test_host_must_be_exactly_this_server(live: Live, host: str | None, status: 
     )
     assert posted.status == (303 if status == 200 else 400)
     assert live.state.onepager_title == ("T" if status == 200 else "")
+    called = request(
+        live.port,
+        "POST",
+        "/api/title",
+        body=json.dumps({"page": "timeline", "title": "U"}).encode(),
+        headers=[("Content-Type", "application/json"), *headers],
+        no_host=host is None,
+    )
+    assert called.status == status
+    assert live.state.onepager_title == ("U" if status == 200 else "")
 
 
 def test_mutation_host_check_goes_red_when_the_allowlist_admits_a_foreign_name(
@@ -565,37 +838,46 @@ _CSRF_CASES = [
 ]
 
 
-def _csrf_outcomes(live: Live) -> list[tuple[str | None, str | None, bool]]:
-    """For each case, POST a fresh title and report whether it LANDED (303 and the title set)."""
+def _csrf_outcomes(live: Live, via: str = "form") -> list[tuple[str | None, str | None, bool]]:
+    """For each case, POST a fresh title — through the form route, or (``via="api"``) the
+    studio's JSON route — and report whether it LANDED (303 / 200 and the title set)."""
     out = []
     for n, (sfs, origin, _allowed) in enumerate(_CSRF_CASES):
         live.state.onepager_title = ""
         headers = [] if sfs is None else [("Sec-Fetch-Site", sfs)]
         if origin is not None:
             headers.append(("Origin", origin.format(port=live.port)))
-        got = form(live.port, "/onepager/title", {"title": f"T{n}"}, headers=headers)
-        landed = got.status == 303 and live.state.onepager_title == f"T{n}"
+        if via == "api":
+            got = _api(live.port, "title", {"page": "timeline", "title": f"T{n}"}, headers=headers)
+            ok = 200
+        else:
+            got = form(live.port, "/onepager/title", {"title": f"T{n}"}, headers=headers)
+            ok = 303
+        landed = got.status == ok and live.state.onepager_title == f"T{n}"
         assert landed or (got.status == 403 and live.state.onepager_title == ""), (sfs, origin)
         out.append((sfs, origin, landed))
     return out
 
 
-def test_cross_site_posts_are_refused_and_never_reach_the_route(live: Live) -> None:
+@pytest.mark.parametrize("via", ["form", "api"])
+def test_cross_site_posts_are_refused_and_never_reach_the_route(live: Live, via: str) -> None:
     """SEC-2's matrix on a real POST: ``Sec-Fetch-Site`` decides when present (same-origin /
     none pass — even beside ``Origin: null``, which a no-referrer form sends); without it a
     foreign or ``null`` Origin is refused and an absent one (a local non-browser client) passes.
-    A refused POST changes nothing."""
-    assert _csrf_outcomes(live) == [(s, o, a) for s, o, a in _CSRF_CASES]
+    A refused POST changes nothing — on the form route and on the studio's ``/api`` route alike
+    (ADR-0543)."""
+    assert _csrf_outcomes(live, via) == [(s, o, a) for s, o, a in _CSRF_CASES]
 
 
+@pytest.mark.parametrize("via", ["form", "api"])
 def test_mutation_csrf_matrix_goes_red_without_the_gate(
-    live: Live, monkeypatch: pytest.MonkeyPatch
+    live: Live, monkeypatch: pytest.MonkeyPatch, via: str
 ) -> None:
     """MUTATION: with the gate always passing, every cross-site case LANDS — the matrix names
     each one."""
     monkeypatch.setattr(server_mod, "_csrf_safe", lambda _sfs, _origin: True)
     monkeypatch.setattr(server_mod, "_same_origin", lambda _sfs, _origin, _hosts: True)
-    outcomes = _csrf_outcomes(live)
+    outcomes = _csrf_outcomes(live, via)
     expected = [allowed for _s, _o, allowed in _CSRF_CASES]
     wrong = [
         (s, o) for (s, o, landed), want in zip(outcomes, expected, strict=True) if landed != want
@@ -662,13 +944,17 @@ def test_a_post_without_a_plain_content_length_is_411(live: Live, length: str | 
     assert live.state.onepager_title == ""
 
 
-def _declare_too_big(port: int, path: str, size: int, *, timeout: float) -> bytes | None:
+def _declare_too_big(
+    port: int, path: str, size: int, *, timeout: float, accept: str = ""
+) -> bytes | None:
     """Declare a ``size``-byte body and send NONE of it; what came back (``None``: nothing, the
-    server is waiting for the body)."""
+    server is waiting for the body). ``accept`` is the request's Accept header (the studio's
+    script asks for JSON)."""
     head = (
         f"POST {path} HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\n"
         "Content-Type: multipart/form-data; boundary=x\r\n"
-        f"Content-Length: {size}\r\n\r\n"
+        + (f"Accept: {accept}\r\n" if accept else "")
+        + f"Content-Length: {size}\r\n\r\n"
     )
     return raw_exchange(port, head.encode(), timeout=timeout)
 
@@ -747,11 +1033,13 @@ def test_an_upload_past_the_body_cap_answers_its_page_in_the_frame(
     head, text = _too_large_page(live, route)
     assert head.startswith("http/1.0 413") and "content-type: text/html" in head, head[:200]
     assert _security_problems_in(head) == []
-    top = _between(text, "<p class=ls-credit>", "</p>")
-    foot = _between(text, "<footer class=ls-footer>", "</footer>")
+    top = _between(text, *_CREDIT_TOP)
+    foot = _between(text, *_CREDIT_FOOT)
     for where, block in (("top", top), ("footer", foot)):
         assert AUTHOR in block and f'href="{MAILTO}"' in block, where
     assert _Tags(text).banners == [("cui top", CUI_MARKING), ("cui bottom", CUI_MARKING)]
+    assert _frame_order_problems(text, "cui") == []
+    assert _external_refs(text) == []
     main = _between(text, "<main", "</main>")
     assert "20 MB" in main and f'href="{page}"' in main, main
 
@@ -764,6 +1052,40 @@ def test_an_upload_past_the_body_cap_answers_its_page_in_the_frame(
     ]
     form_cap = _declare_too_big(live.port, "/onepager/title", MAX_FORM_BYTES + 1, timeout=3)
     assert form_cap is not None and b"content-type: application/json" in form_cap.lower()
+
+
+@_UPLOAD_ROUTES
+def test_an_upload_past_the_body_cap_answers_the_studios_script_in_json(
+    live: Live, route: str, page: str, fields: dict[str, str]
+) -> None:
+    """ADR-0543: the studio's script posts a file with ``Accept: application/json`` and shows the
+    answer as a toast — so the same refusal (413, still unread) comes back as ONE JSON sentence
+    naming the cap, never a page it would have to parse; nothing is loaded."""
+    got = _declare_too_big(
+        live.port, route, _UPLOAD_BODY_CAP + 1, timeout=3, accept="application/json"
+    )
+    assert got is not None, "the server waited for a body it should have refused unread"
+    head, _sep, body = got.partition(b"\r\n\r\n")
+    lowered = head.decode("latin-1").lower()
+    assert lowered.startswith("http/1.0 413") and "content-type: application/json" in lowered
+    assert _security_problems_in(lowered) == []
+    assert json.loads(body) == {"error": "List not loaded — the upload is over the 20 MB cap."}
+    assert live.state.onepager is None and live.state.onepager_current is None
+    assert page in ("/onepager", "/onepager-compare")
+
+
+def test_mutation_an_upload_cap_deaf_to_accept_answers_the_script_a_page(
+    live: Live, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """MUTATION: a server that never hears the script's ``Accept: application/json`` — the same
+    probe gets the framed HTML page, which the JSON check above refuses."""
+    monkeypatch.setattr(_H, "_wants_json", lambda self: False)
+    got = _declare_too_big(
+        live.port, "/onepager/upload", _UPLOAD_BODY_CAP + 1, timeout=3, accept="application/json"
+    )
+    assert got is not None
+    head = got.partition(b"\r\n\r\n")[0].decode("latin-1").lower()
+    assert "content-type: text/html" in head and "application/json" not in head
 
 
 def _security_problems_in(head: str) -> list[str]:
@@ -793,11 +1115,34 @@ def test_mutation_a_read_first_body_makes_the_server_wait(
 # ── static files: the allowlist only ──────────────────────────────────────────────────────────
 
 _STATIC_PROBES = {
-    "/static/onepager.js": 200,
+    # LODESTAR 2.0's own files (ADR-0543) — the fonts and their licence one folder down
+    "/static/lodestar_view.js": 200,
+    "/static/lodestar_slide.js": 200,
+    "/static/lodestar_studio.js": 200,
+    "/static/lodestar_launch.js": 200,
+    "/static/lodestar_tokens.css": 200,
+    "/static/lodestar_studio.css": 200,
+    "/static/lodestar_launch.css": 200,
+    "/static/fonts/space-grotesk-latin-500-normal.woff2": 200,
+    "/static/fonts/ibm-plex-mono-latin-700-normal.woff2": 200,
+    "/static/fonts/LICENSE-fonts.txt": 200,
     "/favicon.ico": 200,
     "/static/lodestar.ico": 200,
-    "/static/launch.js": 200,
-    "/static/lodestar_launch.css": 200,
+    # none of Polaris²'s, though they sit in the same directory (v1 served these four)
+    "/static/onepager.js": 404,
+    "/static/launch.js": 404,
+    "/static/theme.js": 404,
+    "/static/app.css": 404,
+    "/static/lodestar.css": 404,  # v1's frame sheet, deleted by ADR-0543
+    # a font only by its exact name, never a second spelling of it
+    "/static/space-grotesk-latin-500-normal.woff2": 404,
+    "/static/fonts%2fspace-grotesk-latin-500-normal.woff2": 404,
+    "/static/fonts//space-grotesk-latin-500-normal.woff2": 404,
+    "/static/fonts/../lodestar.ico": 404,
+    "/static/fonts/./LICENSE-fonts.txt": 404,
+    "/static/FONTS/LICENSE-fonts.txt": 404,
+    "/static/fonts/": 404,
+    "/static/fonts": 404,
     "/static/../server.py": 404,
     "/static/../onepager.py": 404,
     "/static/%2e%2e/x": 404,
@@ -817,10 +1162,14 @@ def _static_outcomes(port: int) -> dict[str, int]:
 
 def test_static_files_come_from_the_allowlist_only(live: Live) -> None:
     """No traversal, no second spelling of an allowlisted name, and no Polaris² asset that sits
-    in the same directory (``ask.js``, ``chrome.js``) — only the allowlisted files."""
+    in the same directory (``ask.js``, ``chrome.js``, and since ADR-0543 every Polaris² script
+    and sheet the v1 frame borrowed) — only the allowlisted files, the fonts by their exact
+    sub-path. Each allowlisted file is served with its own bytes and type."""
     assert _static_outcomes(live.port) == _STATIC_PROBES
-    served = request(live.port, "GET", "/static/onepager.js")
-    assert served.body == _STATIC.joinpath("onepager.js").read_bytes()
+    for path, status in _STATIC_PROBES.items():
+        if status == 200 and path.startswith("/static/"):
+            assert _served_problem(live.port, path) is None, path
+    assert request(live.port, "GET", "/favicon.ico").body == _static_file("/static/lodestar.ico")
 
 
 def test_mutation_a_joined_path_static_route_serves_source(
@@ -1141,22 +1490,31 @@ def test_every_export_lodestar_serves_is_lodestars_never_polaris(
 
 
 def test_links_are_drawn_on_the_deck_through_the_lodestar_routes(live: Live) -> None:
-    """The operator's pair, added through LODESTAR's own route, is the deck's one link group."""
+    """The operator's pair, added through LODESTAR's own route, is the deck's one link group.
+    Re-aimed at LODESTAR 2.0's rail (ADR-0543): the From select is ``#lsFrom`` and a link change
+    lands on the rail's links block (``#lsLinks``). A deck group is matched by the EXACT prefix
+    ``Logic link:`` — each link's arrowhead is a group of its own ("Logic link arrowhead: …")."""
     _load_both(live)
     page = request(live.port, "GET", "/onepager").text
-    select = re.search(r"<select\b[^>]*\bid=opLinkFrom\b[^>]*>(.*?)</select>", page, re.S)
-    assert select
-    keys = {t: v for v, t in re.findall(r'<option value="([^"]*)" title="([^"]*)">', select[1])}
+    keys = _link_keys(page)
     dr, test = "Alpha · Design Review (1/15/27)", "Beta · Test (5/1/27 to 6/30/27)"
     added = form(
         live.port,
         "/onepager/links",
         {"action": "add", "pred": keys[dr], "succ": keys[test], "kind": "SS"},
     )
-    assert (added.status, added.headers.get("location")) == (303, "/onepager#opLinks")
+    assert (added.status, added.headers.get("location")) == (303, "/onepager#lsLinks")
+    assert "id=lsLinks" in request(live.port, "GET", "/onepager").text  # the landing exists
     deck = request(live.port, "GET", "/export/pptx/onepager")
     links = [n for n in deck_shapes(deck.body) if n.startswith("Logic link:")]
     assert links == [f"Logic link: {dr} → {test} (SS)"]
+
+
+def _link_keys(page: str) -> dict[str, str]:
+    """Every linkable item's full label -> its key, read off the rail's own From select."""
+    select = re.search(r"<select\b[^>]*\bid=lsFrom\b[^>]*>(.*?)</select>", page, re.S)
+    assert select, "no From select (#lsFrom) on the page"
+    return {t: v for v, t in re.findall(r'<option value="([^"]*)" title="([^"]*)">', select[1])}
 
 
 def _requests_made_by(page: str) -> list[str]:

@@ -452,10 +452,7 @@ def onepager_workbook(
     if doc is None:
         return "load a one-pager list first — there is nothing to export"
     lay = onepager_layout(st, today, prepared)
-    fitted = list(lay.fit_notes) if lay else []
-    ts = onepager_tableset(
-        doc, st.onepager_window, omitted, extra_notes=[*layout_notes(doc), *fitted]
-    )
+    ts = onepager_tableset(doc, st.onepager_window, omitted, extra_notes=layout_notes(doc))
     # no slide at all: the window hid every item — or the list has none to show (review SKL-5)
     why = _NO_SLIDE if st.onepager is not None and st.onepager.items else _NO_ITEMS
     return _with_links(
@@ -471,9 +468,7 @@ def compare_workbook(
     if doc is None:
         return "load a PRIOR and a CURRENT one-pager list first — nothing to export"
     lay = onepager_compare_layout(st, today, prepared)
-    ts = compare_tableset(
-        doc, st.onepager_compare_window, omitted, extra_notes=list(lay.fit_notes) if lay else []
-    )
+    ts = compare_tableset(doc, st.onepager_compare_window, omitted)
     full = onepager_compare_doc(st)
     why = _NO_SLIDE if full is not None and full.rows else _NO_ROWS
     return _with_links(

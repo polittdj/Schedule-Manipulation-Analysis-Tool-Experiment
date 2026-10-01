@@ -10,6 +10,7 @@ reading of the same sheet (the upload form's layout choice), never by the detect
 
 from __future__ import annotations
 
+import dataclasses
 import datetime as dt
 import io
 import random
@@ -21,7 +22,6 @@ import pytest
 import schedule_forensics.reports.onepager as op
 from schedule_forensics.reports.onepager import OnePagerItem, build_layout, keyed
 from schedule_forensics.reports.onepager_links import (
-    HALO_W,
     Link,
     PlacedLink,
     check_link,
@@ -264,26 +264,37 @@ def _layout(rows: Sequence[tuple[str, str, dt.date, dt.date]], links: Sequence[_
     )
 
 
-def _seg_distance(px: float, py: float, a: tuple[float, float], b: tuple[float, float]) -> float:
-    (x1, y1), (x2, y2) = a, b
-    dx, dy = x2 - x1, y2 - y1
-    span = dx * dx + dy * dy
-    t = 0.0 if span == 0 else max(0.0, min(1.0, ((px - x1) * dx + (py - y1) * dy) / span))
-    return float(((px - x1 - t * dx) ** 2 + (py - y1 - t * dy) ** 2) ** 0.5)
+def _in_tri(px: float, py: float, tri: Sequence[Sequence[float]]) -> bool:
+    (x1, y1), (x2, y2), (x3, y3) = tri
+    d = [
+        (px - bx) * (ay - by) - (ax - bx) * (py - by)
+        for (ax, ay), (bx, by) in (((x1, y1), (x2, y2)), ((x2, y2), (x3, y3)), ((x3, y3), (x1, y1)))
+    ]
+    return not (any(v < 0 for v in d) and any(v > 0 for v in d))
 
 
-def _erased(target: list[tuple[float, float]], later: Sequence[PlacedLink]) -> float:
-    """The share of ``target``'s sample points under a LATER link's halo (painted after, it
-    erases what it covers)."""
-    hit = sum(
-        any(
-            _seg_distance(x, y, a, b) < HALO_W / 2
-            for m in later
-            for a, b in zip(m.shaft, m.shaft[1:], strict=False)
-        )
-        for x, y in target
-    )
-    return hit / len(target)
+def _tag_box(ln: PlacedLink) -> tuple[float, float, float, float]:
+    """A type tag's ink as the painters write it: capitals 0.62 em wide, 0.7 em tall above the
+    baseline at ``tag_y``, from ``tag_x`` (anchored at its start)."""
+    w = len(ln.tag) * ln.tag_pt * 0.62
+    return ln.tag_x, ln.tag_x + w, ln.tag_y - ln.tag_pt * 0.7, ln.tag_y
+
+
+def _covered(target: list[tuple[float, float]], later: Sequence[PlacedLink]) -> float:
+    """The share of ``target``'s sample points that something painted AFTER it covers. Under
+    ADR-0543's z-order every shaft is painted BEFORE every head and tag (shafts under the items,
+    heads and tags over them), so only a LATER link's head or type tag can cover a head or a tag
+    — a shaft never can (the z-order itself is pinned in the browser and in the .pptx)."""
+
+    def over(x: float, y: float, m: PlacedLink) -> bool:
+        if _in_tri(x, y, m.head):
+            return True
+        if not m.tag:
+            return False
+        x0, x1, y0, y1 = _tag_box(m)
+        return x0 <= x <= x1 and y0 <= y <= y1
+
+    return sum(any(over(x, y, m) for m in later) for x, y in target) / len(target)
 
 
 def _head_points(head: list[tuple[float, float]]) -> list[tuple[float, float]]:
@@ -297,6 +308,10 @@ def _head_points(head: list[tuple[float, float]]) -> list[tuple[float, float]]:
         for u in range(n + 1)
         for v in range(n + 1 - u)
     ]
+
+
+def _edges(p: op.Placed) -> tuple[float, float]:
+    return (p.x0 - p.ms / 2, p.x0 + p.ms / 2) if p.milestone else (p.x0, p.x1)
 
 
 @pytest.mark.parametrize(
@@ -315,13 +330,11 @@ def test_links_1_a_chain_through_a_milestone_keeps_the_head_into_the_milestone(
 ) -> None:
     """The review's repro: Alpha → Gate → Bravo, all FS in one lane. The link out of Gate used
     to start exactly where the head INTO Gate sat, and its halo erased the head — the slide read
-    as one line from Alpha to Bravo. Each end of an item now takes its own attachment point.
-
-    Review SKL-2: the fix gave a milestone's start and finish ONE point list but a bar's two
-    ends two — and on an 18-month slide (a far item in another lane) a 1-3 day bar's two ends
-    sit closer than a slot, so the link out of its finish erased 46 % of the head into its start
-    on a slide that said nothing. The points on one side of an item are now one list, whichever
-    end takes them; a bar too short for two takes the second link on its other side."""
+    as one line from Alpha to Bravo (and review SKL-2: on an 18-month slide a 1-3 day bar's two
+    ends sat closer than a slot). Under ADR-0543 the head into Gate tips on Gate's LEFT edge and
+    the link out of it leaves its RIGHT edge — a diamond's two side vertices, a bar's two ends,
+    never one point — and nothing painted after the head (a later head or tag; every shaft is
+    painted before the heads) covers it."""
     rows = [
         ("Eng", "Alpha", D(2026, 1, 5), D(2026, 1, 31)),
         ("Eng", "Gate", D(2026, 3, 1), gate_finish),
@@ -331,18 +344,20 @@ def test_links_1_a_chain_through_a_milestone_keeps_the_head_into_the_milestone(
         rows.append(("Ops", "Far end", D(2027, 6, 1), D(2027, 6, 1)))
     lay = _layout(rows, [("Alpha", "Gate", "FS"), ("Gate", "Bravo", "FS")])
     into_gate, out_of_gate = lay.links
-    assert _erased(_head_points(into_gate.head), [out_of_gate]) == 0.0
-    gate_y = next(p.y for p in lay.items if p.name == "Gate")
-    (tip_x, tip_y), (out_x, out_y) = into_gate.head[0], out_of_gate.shaft[0]
-    same_side = (tip_y > gate_y) == (out_y > gate_y)
-    assert not same_side or abs(tip_x - out_x) >= 2.0  # two points, not one
-    assert not lay.link_notes  # nothing undrawn, nothing crowded
+    gate = next(p for p in lay.items if p.name == "Gate")
+    left, right = _edges(gate)
+    assert into_gate.head[0] == pytest.approx((left, gate.y))
+    assert out_of_gate.shaft[0] == pytest.approx((right, gate.y))
+    assert right - left >= 3.0  # two points, at least a 3-pt bar (or a 6-pt diamond) apart
+    assert _covered(_head_points(into_gate.head), [out_of_gate]) == 0.0
+    assert not lay.link_notes  # nothing undrawn
 
 
 def test_links_1_a_three_item_chain_never_loses_the_head_into_its_middle_item() -> None:
-    """Review DOC-LS-02: A, B, C in one lane, C → B (SF) then B → A (FS). The FS link left B's
-    finish right where the SF head entered it — 100 % of that head under its halo, on a 3-item
-    slide whose only disclosure was "At this density … Split the list"."""
+    """Review DOC-LS-02: A, B, C in one lane, C → B (SF) then B → A (FS). SF enters B's FINISH
+    and FS leaves it — the same edge, at B's centre line — so the FS shaft starts where the SF
+    head tips. The head is painted over every shaft (ADR-0543), so it stays whole: nothing
+    painted after it covers it, and it is the README's 4.2-pt triangle on B's right edge."""
     lay = _layout(
         [
             ("Eng", "A", D(2026, 8, 4), D(2026, 9, 19)),
@@ -352,11 +367,15 @@ def test_links_1_a_three_item_chain_never_loses_the_head_into_its_middle_item() 
         [("C", "B", "SF"), ("B", "A", "FS")],
     )
     first, second = lay.links
-    assert _erased(_head_points(first.head), [second]) == 0.0
+    b = next(p for p in lay.items if p.name == "B")
+    assert first.head[0] == pytest.approx((b.x1, b.y)) == second.shaft[0]
+    assert first.head[1][0] == pytest.approx(b.x1 + 4.2)  # its base outside B, on the right
+    assert _covered(_head_points(first.head), [second]) == 0.0
     assert lay.link_notes == []
 
 
 def test_links_1_a_bar_taking_fs_in_and_sending_ss_out_of_its_start_keeps_both() -> None:
+    """FS into Build's start and SS out of it: the same edge — the head over the shaft."""
     lay = _layout(
         [
             ("Eng", "Design", D(2026, 1, 5), D(2026, 2, 1)),
@@ -365,12 +384,21 @@ def test_links_1_a_bar_taking_fs_in_and_sending_ss_out_of_its_start_keeps_both()
         ],
         [("Design", "Build", "FS"), ("Build", "TRR", "SS")],
     )
-    assert _erased(_head_points(lay.links[0].head), lay.links[1:]) == 0.0
+    build = next(p for p in lay.items if p.name == "Build")
+    assert lay.links[0].head[0] == pytest.approx((build.x0, build.y)) == lay.links[1].shaft[0]
+    assert _covered(_head_points(lay.links[0].head), lay.links[1:]) == 0.0
 
 
-def test_links_2_a_type_tag_is_never_erased_by_a_later_link_in_its_channel() -> None:
-    """The review's repro: SS then FF on one pair put half the SS tag under the FF link's
-    halo. A tag's ink is now reserved in its channel."""
+def _tag_points(ln: PlacedLink) -> list[tuple[float, float]]:
+    x0, x1, y0, y1 = _tag_box(ln)
+    return [(x0 + (x1 - x0) * i / 8, y0 + (y1 - y0) * j / 8) for i in range(9) for j in range(9)]
+
+
+def test_links_2_a_type_tag_is_never_covered_by_a_later_link_on_the_same_pair() -> None:
+    """The review's repro: SS then FF on one pair put half the SS tag under the FF link's halo.
+    Each tag now stands beside its OWN first vertical (README step 8: 1.5 pt right of it, at its
+    middle + 1.5) — the SS one left of both starts, the FF one right of both finishes — and the
+    later link's head and tag never cover it."""
     lay = _layout(
         [
             ("Eng", "Prime", D(2026, 1, 4), D(2026, 6, 30)),
@@ -379,20 +407,18 @@ def test_links_2_a_type_tag_is_never_erased_by_a_later_link_in_its_channel() -> 
         [("Prime", "Succ", "SS"), ("Prime", "Succ", "FF")],
     )
     ss, ff = lay.links
-    width = len(ss.tag) * ss.tag_pt * 0.62
-    x0 = ss.tag_x if ss.tag_anchor == "start" else ss.tag_x - width
-    ink = [
-        (x0 + width * i / 8, ss.tag_y - ss.tag_pt * 0.7 * j / 8) for i in range(9) for j in range(9)
-    ]
-    assert ss.tag == "SS" and _erased(ink, [ff]) == 0.0
+    for ln in (ss, ff):
+        mid = (ln.shaft[1][1] + ln.shaft[2][1]) / 2
+        assert (ln.tag_x, ln.tag_y) == pytest.approx((ln.shaft[1][0] + 1.5, mid + 1.5))
+    assert ss.tag == "SS" and ss.tag_x < ff.tag_x
+    assert _covered(_tag_points(ss), [ff]) == 0.0
 
 
 def test_links_2_a_later_links_vertical_leg_never_erases_a_type_tag() -> None:
-    """Review SKL-1: the LINKS-2 fix reserved a tag against later HORIZONTAL legs only. Through
-    the page's own actions — Item 28 → Item 37 (SS), then Item 30 (a milestone one day before
-    Item 37) → Item 9 (FS): the FS link's first leg rose straight through the SS tag and its
-    halo erased 22 % of it, on a roomy slide (row 13 pt then; page-filling since ADR-0540)
-    that said nothing."""
+    """Review SKL-1: through the page's own actions — Item 28 → Item 37 (SS), then Item 30 (a
+    milestone one day before Item 37) → Item 9 (FS): the FS link's first leg rose straight
+    through the SS tag and its halo erased 22 % of it. Under ADR-0543 a leg is a SHAFT, painted
+    under the heads and tags, so it cannot; and no later head or tag covers the SS tag or head."""
     from schedule_forensics.web import onepager_actions as act
     from schedule_forensics.web.onepager import linkable_items, onepager_layout
     from schedule_forensics.web.state import SessionState
@@ -413,14 +439,29 @@ def test_links_2_a_later_links_vertical_leg_never_erases_a_type_tag() -> None:
     lay = onepager_layout(st, D(2026, 6, 1))
     assert lay is not None and lay.row_h > 13.0  # a roomy slide (ADR-0540: page-filling rows)
     ss, fs = lay.links
-    width = len(ss.tag) * ss.tag_pt * 0.62
-    x0 = ss.tag_x if ss.tag_anchor == "start" else ss.tag_x - width
-    ink = [
-        (x0 + width * i / 8, ss.tag_y - ss.tag_pt * 0.7 * j / 8) for i in range(9) for j in range(9)
-    ]
-    assert ss.tag == "SS" and _erased(ink, [fs]) == 0.0
-    assert _erased(_head_points(ss.head), [fs]) == 0.0
+    mid = (ss.shaft[1][1] + ss.shaft[2][1]) / 2
+    assert ss.tag == "SS" and (ss.tag_x, ss.tag_y) == pytest.approx(
+        (ss.shaft[1][0] + 1.5, mid + 1.5)
+    )
+    assert _covered(_tag_points(ss), [fs]) == 0.0
+    assert _covered(_head_points(ss.head), [fs]) == 0.0
     assert lay.link_notes == []
+
+
+def test_mutation_the_cover_check_sees_a_later_head_on_an_earlier_one() -> None:
+    """Teeth: the later link's head moved onto the earlier one's, in memory — the SAME check
+    reports it covered."""
+    lay = _layout(
+        [
+            ("Eng", "Design", D(2026, 1, 5), D(2026, 2, 1)),
+            ("Eng", "Build", D(2026, 2, 5), D(2026, 4, 1)),
+            ("Eng", "TRR", D(2026, 5, 1), D(2026, 5, 1)),
+        ],
+        [("Design", "Build", "FS"), ("Build", "TRR", "SS")],
+    )
+    first, second = lay.links
+    on_it = dataclasses.replace(second, head=list(first.head))
+    assert _covered(_head_points(first.head), [on_it]) > 0.5  # its rim may round either way
 
 
 def _idents(items: Sequence[OnePagerItem]) -> dict[str, tuple[str, ...]]:

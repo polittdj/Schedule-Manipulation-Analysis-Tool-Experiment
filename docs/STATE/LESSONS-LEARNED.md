@@ -435,6 +435,41 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-10-01 — A design handoff is a claim like any other: its tokens failed AA, its copy over-promised, and its rule removed a whole subsystem only once the premise was measured (ADR-0543)
+
+- **What happened.** The operator's "Console" design handoff for LODESTAR was built whole: a server-rendered,
+  script-accelerated studio (JSON API, server-side undo/redo, palette, tour, demos, slider, drag-to-link, print), its
+  own design system (A1 tokens, vendored fonts and icons), a new launch page, and — shared with Polaris² — a new
+  logic-link rule (shortest route, drawn behind the items) that retired ADR-0540's whole escalation.
+- **Measure the design's own numbers before shipping them.** The handoff's tokens, copied verbatim, put 93 text
+  elements below WCAG AA across four views (Bright's gold 2.12:1; white on its teal buttons 3.32:1; the "faint" token
+  used for real text everywhere). A sweep that composites each text's colour over the composited stack of its
+  ancestors' grounds found them all in one pass; a probe of three selectors had found four. Sweep the population,
+  then fix the token, not the call site.
+- **A gate that admits extra types for one route must refuse them for every other.** The JSON gate let the preview's
+  flag and date pair through for every action; the route then dropped non-strings, so `{"title": true}` read as a
+  missing title and WIPED it, logged as a real change. "Missing" is never a safe default for a field the caller sent.
+- **A range input fires `change` on every arrow key.** Twelve presses committed twelve times; the busy guard dropped
+  most of them and the region swap reset the slider — +2 days for +12. Coalesce keyboard nudges into one commit and
+  keep the LATEST pending commit instead of dropping it; prove it against the OLD script served by route interception.
+- **`visibility:hidden` keeps its layout.** A `position:fixed` print zone repeated on every page the hidden frame still
+  spanned — two identical PDF pages. Count the pages of a real PDF; a screenshot of page one cannot see page two.
+- **A golden that never ran the branch proves nothing.** The first byte-identical result for the shared-sentence
+  refactor was vacuous: `tuple(("a", "b", …),)` made five loose strings, so the slip never existed. Assert the branch
+  ran (the worst-slip text is IN the render), then compare bytes, then mutate one word and watch both programs move.
+- **User-facing copy is code.** The tour said the marking reaches "every export" (the Excel exports are always CUI by
+  ruling); the README said the palette sets a data date and that everything works without scripting. Each sentence
+  was checked against the code and a scripting-off browser run, and three were rewritten.
+- **Retire a subsystem only on a measured premise.** "Links drawn behind the items never collide, so the escalation is
+  dead code" was measured three ways (the engine stream's 232 layouts; the lead's 60 lists / 1,238 links; the old
+  router moving items on 4 of 60 as the check's teeth) before the gutter, the reorder, the dashed fallback and the
+  footnote were deleted rather than left dormant.
+- **Two old lessons bit again, and were caught before they cost a verdict.** A worktree `checkout` refused to switch
+  (the build's installer files were still modified in it), so the first full-suite run measured the PREVIOUS commit —
+  read the HEAD a battery is about to measure, never the one you meant to put there. And a `pkill -f <pattern>` matched
+  its own shell's command line and killed it (exit 144) — the 2026-09-29 lesson about `pgrep -f`, verbatim; stop a
+  background task by its id, and check with `ps` and a bracketed pattern.
+
 ### 2026-09-30 (b) — A rule you set before the wave is the only rule you may close a lane on, a tier set before the second verifier is a draft, and a sniff that reads the first bytes is a guess (ADR-0542)
 
 - **What happened.** Session 8 ran WP-CPM's fourth round: three new families, one lead-settling family, five classes

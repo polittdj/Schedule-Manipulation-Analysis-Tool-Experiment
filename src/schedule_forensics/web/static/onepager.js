@@ -71,7 +71,7 @@
         g.appendChild(el("rect", { x: p.x0, y: p.y - barH / 2, width: p.x1 - p.x0, height: barH, rx: 1.2, fill: fill, class: "op-bar" }));
       }
       if (p.done && p.done_x !== null) doneBadge(g, p.done_x, p.y, p.done_r);
-      g.appendChild(el("text", { x: p.label_x, y: p.y + L.label_pt * 0.35, "text-anchor": p.label_anchor, class: "op-label" + (p.inside ? " op-label-in" : ""), style: "font-size:" + L.label_pt + "px" }, p.label));
+      g.appendChild(el("text", { x: p.label_x, y: p.y + L.label_pt * 0.35, "text-anchor": p.label_anchor, class: "op-label" + (p.inside ? " op-label-in" : ""), style: "font-size:" + L.label_pt + "px" + (p.inside ? "" : ";stroke-width:" + 0.42 * L.label_pt + "px") }, p.label)); // haloed in the slide's ground (ADR-0543)
       svg.appendChild(g);
     });
     // ── today: the tool-wide DD marker, plus the one-pager's own dated caption ──
@@ -112,7 +112,7 @@
     try { L = JSON.parse(data.textContent || "null"); } catch (e) { L = null; }
     if (!L) return;
     var svg = paint(host, L);
-    // the operator's logic links (ADR-0539): painted over the items, and click-to-pick wired
+    // the operator's logic links (ADR-0539): shafts under the items, heads over them (ADR-0543)
     if (window.SFOnePagerLinks) { SFOnePagerLinks.paint(svg, L); SFOnePagerLinks.wire(host, "op"); }
   }
   // ── intake: the file picker and window-wide drag-and-drop, the home.js idiom ──

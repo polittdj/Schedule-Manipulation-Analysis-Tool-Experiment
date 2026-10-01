@@ -190,11 +190,18 @@ byte** rather than that both "look right": one schedule must never yield two ans
 **An annotation the operator draws is a statement, not a verdict.** The One-Pager's logic links
 (both One-Pager pages) are drawn in `--ink` (the slide's print ink in the .pptx), never a status hue:
 `--bad`/`--ok`/`--warn` already mean slip / pull-in / caution on the same slide, and `--accent` and
-`--focus` each equal `--warn` in one view. A link is carried by SHAPE — an orthogonal route whose
-horizontal leg runs in the measured gap between two rows, a filled head that enters the successor's
-edge, a text tag for SS / FF / SF — over a halo in the canvas colour (`--panel`), so a leg that must
-cross a bar or a label reads as crossing it. The head is a polygon of the LAYOUT's points in both
-painters (a DrawingML line-end head is sized by the renderer, three times the page's). Picking an
+`--focus` each equal `--warn` in one view. A link is carried by SHAPE — the shortest orthogonal
+route from the predecessor's end to the successor's (out of the item's edge at its centre line, one
+vertical where the rows differ, its column chosen to pass behind the fewest bars, then the fewest
+names; round the successor's row boundary when it must run backward), a filled head that enters the
+successor's edge, a text tag for SS / FF / SF — and it is painted in TWO layers (ADR-0543, the
+operator's design handoff, superseding ADR-0539's "over a halo"): its SHAFT under the items, so
+every bar, diamond and name it passes stays readable (the names on a halo of the slide's ground),
+and its HEAD and TAG over them. The head is a polygon of the LAYOUT's points in both painters (a
+DrawingML line-end head is sized by the renderer, three times the page's); the .pptx paints each
+link as two named groups, "Logic link: …" (the shaft, before the first item) and "Logic link
+arrowhead: …" (head and tag, after the items, before the data-date line), and gives the labels
+outside their bar the same halo as a 1.5-pt glow. Picking an
 item is shown by a ring AND a text tag (FROM dashed, TO solid), hidden in print. The pick is a
 pointer accelerator: the From/To selects are the form, the no-JS path and the keyboard path, and
 they carry `data-sf-nopersist` (persist.js would otherwise restore the pair just added). An
@@ -202,27 +209,21 @@ action's result renders where the browser lands after it (the links block), not 
 scrolled off above the slide — and lands clear of a sticky page header (daylight's top bar is
 224-458 px tall; a fixed scroll margin left the result under it).
 
-**The slide fills the page, and every requested link is fitted (ADR-0540; operator rulings
-2026-09-29).** The rows always fill the lane area — fewer items, larger bars and text; more items,
-smaller — the row pitch never capped, the text capped at `LABEL_MAX` (14 pt; a label larger than
-the 16-pt title would invert the slide's hierarchy — PROVISIONAL, the operator's ruling on the
-3 / 10 / 40 / 144-item renders pending). A link no route clears is never refused: the layout
-escalates in the operator's order — more room between the rows (bars, diamonds and labels at 80 %
-then 65 %), a 12-pt gutter lane at the chart's right edge, a reorder WITHIN a swimlane (never
-across) — and, as the last resort, draws the link along the route that covers the least, DASHED
-(the halo solid, so it still reads as crossing) and named with what it covers. Every step is
-disclosed: on the page ("How the logic links were fitted"; "Logic links drawn dashed over other
-ink"), in the Excel Notes (the list keeps the sheet's own order), and in the slide's FOOTNOTE — up
-to four 5.5-pt lines above the legend in `--warn` when a link is flagged, `--muted` otherwise,
-naming every flagged link compactly and counting any the four lines cannot hold — which both
-painters paint, so the .pptx carries it (the deck has no notes to hide it in). Bars and diamonds
-are sized from the row up to `GLYPH_MAX` (a 27-pt bar, a 25-pt diamond; PROVISIONAL with
-`LABEL_MAX`), and a diamond is clamped to the chart's edges. Never a second slide. Three rulings live here: the marking switch feeds the page and every PowerPoint, never the
+**The slide fills the page (ADR-0540; operator rulings 2026-09-29), and every requested link is
+drawn (ADR-0543).** The rows always fill the lane area — fewer items, larger bars and text; more
+items, smaller — the row pitch never capped, the text capped at `LABEL_MAX` (14 pt; a label larger
+than the 16-pt title would invert the slide's hierarchy — PROVISIONAL, the operator's ruling on the
+3 / 10 / 40 / 144-item renders pending). Bars and diamonds are sized from the row up to `GLYPH_MAX`
+(a 27-pt bar, a 25-pt diamond; PROVISIONAL with `LABEL_MAX`), and a diamond is clamped to the
+chart's edges. The slide is laid out ONCE: a link never moves an item, and there is no collision to
+resolve — ADR-0540's escalation (more room between the rows, the gutter lane, the reorder within a
+swimlane, the dashed last resort and the slide's footnote) is retired, because a shaft drawn under
+the items cannot hide one. Never a second slide. Three rulings live here: the marking switch feeds the page and every PowerPoint, never the
 Excel exports (their fixed CUI header over-marks, never under); **slide content drawn at the
 slide's own point size — the SS / FF / SF tag, 3.8–13.8 px at 1440 depending on the slide's density
 and the view's scale — is exempt from §1's 8 px floor; page-only chrome (the FROM / TO pick tag,
-8.15–10 px) is not**; a collision is drawn and disclosed, not
-refused. The page-only axis caption ("TIMELINE BY MONTH AND YEAR", `SFChartFrame.axisTitles`)
+8.15–10 px) is not**; ruling (c) — a collision drawn and disclosed —
+is moot under ADR-0543 (no route collides). The page-only axis caption ("TIMELINE BY MONTH AND YEAR", `SFChartFrame.axisTitles`)
 sits in the SVG's empty strip under the legend: the lanes reach the legend on every slide now.
 
 **The red line is the DATA DATE, and says so (ADR-0541).** Both One-Pager slides draw their red
@@ -232,32 +233,56 @@ pages) and at the computer's date otherwise; the caption reads `DATA DATE m/d/yy
 would make false. The subtitle's "Prepared" stays the day the slide is made and names the data
 date beside it when the two differ (the deck's "generated" line likewise). The caption's baseline
 sits `TODAY_CAPTION_DY` (5.5 pt) below the last lane band: at 4.5 its box lay 0.66 pt into the
-band (measured in Chromium; the ink was 0.09 pt clear). A head of a logic link is judged
-against EVERY leg of an earlier link, not its vertical legs only (a leg through a head's base
-mis-joins the same way). A list that fills the slide to its last row has no band for its
-footnote; when the legend needs one row, its spare row carries a one-line count on the slide and
-in the PowerPoint (`spare_row_footnote`), and the page names the links in full.
+band (measured in Chromium; the ink was 0.09 pt clear).
 
-**LODESTAR's launch page (ADR-0541)** is Polaris²'s boot screen (§7a) served by LODESTAR outside
-its frame — the same `launch.js` / `launch.css` / hum, §7a's four rules unchanged — made
-LODESTAR's by what the PAGE supplies through the boot JSON block (`heroes`, `stages`, `home`):
-its ✦ mark, name and line, its own hero copy and stage words, quick actions naming its two
-pages, and real facts in the tiles (lists aboard, items, the data date; an em dash when empty).
-`lodestar_launch.css` re-points `--boot-accent` to the lodestar's gold in every view (the
-§7a-sanctioned boot palette, one more declaration on `:root`); `--boot-warm` keeps following each
-view. LODESTAR's favicon and its Desktop shortcut carry the same ✦ (`desktop_icon.lodestar_ico_bytes`),
-so the two programs are told apart on a Desktop and in a tab strip.
+**LODESTAR 2.0 has a design system of its own (ADR-0543 — the operator's "Console" design
+handoff, adopted 2026-10-01).** LODESTAR no longer loads Polaris²'s sheets or scripts
+(`sf-themes.css`, `base.css`, `hud.css`, `theme.js`, `gantt.js`, `chartframe.js`, `launch.*`). Its
+tokens are the handoff's A1 "Command Deck" set in `static/lodestar_tokens.css` — verbatim except
+where WCAG 2.1 AA overrode it (Bright's text-bearing tokens darkened to reach 4.5:1 on its darkest
+ground, `--bg-void`; `--text-faint` kept for decoration, never for text that carries meaning) — four
+views (`dark` default · `bright` · `contrast` · `console`) on `html[data-theme]`, saved by
+`static/lodestar_view.js` under its own key (`lodestar-view`; Polaris²'s `sf-theme` values are
+mapped once) — and **§0's law holds there unchanged in spirit: a hex lives once, as a token on
+`:root`, never at a call site** (the marking bars' fixed `#502b85` / `#007a33` stay the one
+exception, in `lodestar_shell._MARKING_COLOURS`). This sanctions ONE more token file for ONE
+program; it is not a precedent for a Polaris² page. Its fonts (IBM Plex Sans / Mono, Space
+Grotesk, OFL) are vendored as `static/fonts/*.woff2` with their licence beside them — the repo's
+first vendored type, so `pyproject.toml`'s package-data names `web/static/fonts/*`. Its icons are
+an inline Lucide sprite (`lodestar_icons.py`, ISC) — no icon font, no request. LODESTAR's slide
+has its own painter (`static/lodestar_slide.js`) over the SAME layout JSON both programs compute
+(`reports/onepager*.py`), so §4's data-date line is drawn there as the layout places it — the
+layout, not the painter, owns its position, size and caption (`DATA DATE m/d/yy`), which is §4's
+point; Polaris²'s pages still draw it through `SFGantt.dataDateLine`. The panel toolbar is the
+handoff's (help · DATA · Excel · full screen), and LODESTAR's full-screen is its own overlay —
+Polaris²'s `panelkit.js` is not loaded there. Motion follows the handoff (120/200/320 ms, the
+list→slide animation, the slide's reveal) and **`prefers-reduced-motion` stills every one of
+them** — the hero holds, the transit steps without pauses, the reveal and the pulses are off.
 
-**The LODESTAR frame** — the two One-Pager pages served as their own program — keeps the
+**LODESTAR's launch page (ADR-0541, rebuilt by ADR-0543)** is its own page now, not Polaris²'s
+boot screen: two columns on the graticule — the ✦ mark, a hero that cycles LODESTAR's three
+stories (6.5 s; still under reduced motion), **Take a star fix** (six stages, 650 ms apart, ending
+on a welcome panel that opens either page), **Skip to the studio**, the "go straight to the studio
+next time" opt-out (v1's `sf-boot-skip` key, read before paint), three real tiles (lists aboard,
+the data date, the stage; an em dash when empty) — and, on the right, the list→slide animation that
+shows what the program does. It has **no sound and no canvas** (§8 binds Polaris²'s hum; LODESTAR
+plays none). §7a's four rules hold: both marking bars and the drawer from the same functions, real
+facts or `—`, theme-following (the A1 views), reduced motion STILL not blank. LODESTAR's favicon and
+its Desktop shortcut carry the same ✦ (`desktop_icon.lodestar_ico_bytes`).
+
+**The LODESTAR frame** — a 56-px header (the mark, the two pages as `nav` links with
+`aria-current=page` — not ARIA tabs, they navigate — the command palette, Undo / Redo, the view
+menu, the marking switch, the Tour, Quit), a 320-px side panel, a status bar — keeps the
 compliance chrome whole: the CUI bars top and bottom, the handling & export-control drawer from the
 ONE copy of the prose (`htmlkit._DRAWER_HTML`, its `{where}` slot naming the frame's own marking
 switch), and the marking defaulting to CUI and feeding the page and every PowerPoint (the Excel
-exports keep the shared writer's fixed CUI print header — over-marking, never under). The frame is a banner `div`,
-never a `<header>` (base.css makes every `<header>` the dark views' fixed left rail). N/A in the
-frame, by design: the chapter kicker, the Continue segue and the nav rail/story spine — LODESTAR has
-two pages and no story; its tabs are `cd-chip` links with `aria-current=page`. Its author's credit
-(name and a bare `mailto:` — never a web link, never pre-filled) is in the frame's header and footer
-on every page, and never on the exported slide or in the deck's author field.
+exports keep the shared writer's fixed CUI print header — over-marking, never under; the switch's
+title says "page and PowerPoint", never "export"). The frame's banner is a `<header>` again:
+`base.css`, which made every `<header>` the dark views' left rail, is no longer loaded. Its
+author's credit (name and a bare `mailto:` — never a web link, never pre-filled) is in the header
+strip and the status bar on every page, and never on the exported slide, the printed slide or in
+the deck's author field. Every control is a plain form underneath (scripting off → the v1 routes →
+303), and the script only accelerates it: the same server renders the regions the script swaps in.
 
 ## 8. Audio (the Boot Audio Hum rule — ADR-0328)
 Sound in this tool is SYNTHESIZED WebAudio, never a shipped asset (the air-gap and the lean

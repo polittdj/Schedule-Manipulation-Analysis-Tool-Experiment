@@ -119,7 +119,7 @@
       }
       if (p.done && p.done_x !== null) doneBadge(g, p.done_x, p.y, p.done_r);
       var tx = (p.label_anchor === "end" && p.badge) ? p.label_x - p.badge_w - 2 : p.label_x;
-      var t = el("text", { x: tx, y: p.y + L.label_pt * 0.35, "text-anchor": p.label_anchor, class: "op-label" + (p.inside ? " op-label-in" : ""), style: "font-size:" + L.label_pt + "px" }, p.label);
+      var t = el("text", { x: tx, y: p.y + L.label_pt * 0.35, "text-anchor": p.label_anchor, class: "op-label" + (p.inside ? " op-label-in" : ""), style: "font-size:" + L.label_pt + "px" + (p.inside ? "" : ";stroke-width:" + 0.42 * L.label_pt + "px") }, p.label); // haloed (ADR-0543)
       if (p.delta) t.appendChild(el("tspan", { class: "opc-delta opc-delta-" + st }, " " + p.delta));
       g.appendChild(t);
       if (p.badge) {
@@ -170,7 +170,7 @@
     if (!L) return;
     tip.label = L.status_label; // the status column the lists used (ADR-0539), for the tooltip
     var svg = paint(host, L);
-    // the operator's logic links (ADR-0539): painted over the items, and click-to-pick wired
+    // the operator's logic links (ADR-0539): shafts under the items, heads over them (ADR-0543)
     if (window.SFOnePagerLinks) { SFOnePagerLinks.paint(svg, L); SFOnePagerLinks.wire(host, "opc"); }
   }
   // ── intake: two slots, each the home.js idiom (a dropped workbook is handed to the SAME form the

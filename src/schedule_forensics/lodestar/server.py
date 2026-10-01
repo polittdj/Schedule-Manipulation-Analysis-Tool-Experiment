@@ -49,25 +49,30 @@ import datetime as dt
 import email.parser
 import email.policy
 import http.server
+import json
 import re
 import socketserver
 import threading
 import time
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from importlib.resources import files
 from typing import Any
 from urllib.parse import parse_qs, urlsplit
 
-from schedule_forensics.reports.onepager import OnePagerDoc
+from schedule_forensics.reports.onepager import OnePagerDoc, layout_json, parse_date
+from schedule_forensics.reports.onepager_compare import compare_layout_json
 from schedule_forensics.reports.onepager_links import Link
 from schedule_forensics.reports.tableset import TableSet
 from schedule_forensics.reports.xlsx import render_xlsx
+from schedule_forensics.web import lodestar_actions as studio_actions
 from schedule_forensics.web import onepager_actions as actions
+from schedule_forensics.web.lodestar_history import History
 from schedule_forensics.web.lodestar_launch import lodestar_launch_html
 from schedule_forensics.web.lodestar_shell import NAME, lodestar_page, marking, stopped_page
-from schedule_forensics.web.onepager import _onepager_body, onepager_template
-from schedule_forensics.web.onepager_compare import _onepager_compare_body
+from schedule_forensics.web.lodestar_studio import PAGES, studio_page, studio_state
+from schedule_forensics.web.onepager import onepager_layout, onepager_template
+from schedule_forensics.web.onepager_compare import onepager_compare_layout
 from schedule_forensics.web.security import _SECURITY_HEADERS, _csrf_safe
 
 #: An upload is a One-Pager list — a small workbook. Twenty megabytes is far past any list; the
@@ -108,30 +113,32 @@ _UPLOAD_PAGES: dict[str, tuple[str, str]] = {
     "/onepager-compare/upload": ("/onepager-compare", "Compare"),
 }
 
-#: The ONLY static files LODESTAR serves — the two pages' painters, the panel toolkit, the theme
-#: switch, the data-date line and axis-caption helpers, the styles and the icon. Loaded once, at
-#: start, from the package (inside the .pyz or on disk alike); any other /static/ name is a 404.
+#: The ONLY static files LODESTAR serves (ADR-0543, LODESTAR 2.0 — none of Polaris²'s): the view
+#: switch (pre-paint), the A1 design tokens and the studio's styles, the slide's painter, the
+#: studio's controller, the launch page's script and styles, the vendored fonts and their licence,
+#: and the icon. Loaded once, at start, from the package (inside the .pyz or on disk alike); a name
+#: is looked up EXACTLY — never joined onto a path — and anything else under /static/ is a 404.
 STATIC_ASSETS: dict[str, str] = {
-    "onepager.js": "text/javascript; charset=utf-8",
-    "onepager_compare.js": "text/javascript; charset=utf-8",
-    "onepager_links.js": "text/javascript; charset=utf-8",
-    "panelkit.js": "text/javascript; charset=utf-8",
-    "theme.js": "text/javascript; charset=utf-8",
-    "gantt.js": "text/javascript; charset=utf-8",
-    "chartframe.js": "text/javascript; charset=utf-8",
-    "base.css": "text/css; charset=utf-8",
-    "app.css": "text/css; charset=utf-8",
-    "hud.css": "text/css; charset=utf-8",
-    "sf-themes.css": "text/css; charset=utf-8",
-    "lodestar.css": "text/css; charset=utf-8",
-    "favicon.ico": "image/x-icon",
-    # the launch page (ADR-0541): Polaris²'s boot screen's painter, hum and styles, LODESTAR's
-    # own identity sheet, and LODESTAR's own icon (the ✦ lodestar — its favicon too)
-    "launch.js": "text/javascript; charset=utf-8",
-    "launch_audio.js": "text/javascript; charset=utf-8",
-    "launch.css": "text/css; charset=utf-8",
+    "lodestar_view.js": "text/javascript; charset=utf-8",
+    "lodestar_slide.js": "text/javascript; charset=utf-8",
+    "lodestar_studio.js": "text/javascript; charset=utf-8",
+    "lodestar_launch.js": "text/javascript; charset=utf-8",
+    "lodestar_tokens.css": "text/css; charset=utf-8",
+    "lodestar_studio.css": "text/css; charset=utf-8",
     "lodestar_launch.css": "text/css; charset=utf-8",
     "lodestar.ico": "image/x-icon",
+    "fonts/LICENSE-fonts.txt": "text/plain; charset=utf-8",
+    "fonts/space-grotesk-latin-500-normal.woff2": "font/woff2",
+    "fonts/space-grotesk-latin-600-normal.woff2": "font/woff2",
+    "fonts/space-grotesk-latin-700-normal.woff2": "font/woff2",
+    "fonts/ibm-plex-sans-latin-400-normal.woff2": "font/woff2",
+    "fonts/ibm-plex-sans-latin-500-normal.woff2": "font/woff2",
+    "fonts/ibm-plex-sans-latin-600-normal.woff2": "font/woff2",
+    "fonts/ibm-plex-sans-latin-700-normal.woff2": "font/woff2",
+    "fonts/ibm-plex-mono-latin-400-normal.woff2": "font/woff2",
+    "fonts/ibm-plex-mono-latin-500-normal.woff2": "font/woff2",
+    "fonts/ibm-plex-mono-latin-600-normal.woff2": "font/woff2",
+    "fonts/ibm-plex-mono-latin-700-normal.woff2": "font/woff2",
 }
 #: The ⤓ EXCEL exports (the list, the comparison, the template). No Word export: no LODESTAR page
 #: offers one, and a document titled by Polaris²'s table sets would say POLARIS² (ADR-0539).
@@ -139,19 +146,45 @@ _EXPORT_MEDIA: dict[str, tuple[str, Callable[[TableSet], bytes]]] = {
     "xlsx": ("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", render_xlsx),
 }
 _HTML = "text/html; charset=utf-8"
+_JSON = "application/json; charset=utf-8"
+#: The v1 form routes and the studio action each one is: ``path -> (action, page)``.
+_FORM_ROUTES: dict[str, tuple[str, str]] = {
+    "/onepager/title": ("title", "timeline"),
+    "/onepager/window": ("window", "timeline"),
+    "/onepager/today": ("today", "timeline"),
+    "/onepager/clear": ("clear", "timeline"),
+    "/onepager/links": ("links", "timeline"),
+    "/onepager/example": ("example", "timeline"),
+    "/onepager-compare/title": ("title", "compare"),
+    "/onepager-compare/window": ("window", "compare"),
+    "/onepager-compare/today": ("today", "compare"),
+    "/onepager-compare/clear": ("clear", "compare"),
+    "/onepager-compare/links": ("links", "compare"),
+    "/onepager-compare/swap": ("swap", "compare"),
+    "/onepager-compare/example": ("example", "compare"),
+}
+#: Where a form route lands after its redirect (the links block, as v1 did, for a link change).
+_LANDING = {"links": "#lsLinks"}
 
 
 def load_assets() -> dict[str, tuple[bytes, str]]:
     """Every allowlisted static file's bytes and type — read once, from the package."""
     static = files("schedule_forensics.web").joinpath("static")
-    return {name: (static.joinpath(name).read_bytes(), ct) for name, ct in STATIC_ASSETS.items()}
+    out: dict[str, tuple[bytes, str]] = {}
+    for name, ct in STATIC_ASSETS.items():
+        node = static
+        for part in name.split("/"):  # a sub-path one segment at a time: any Traversable takes it
+            node = node.joinpath(part)
+        out[name] = (node.read_bytes(), ct)
+    return out
 
 
 @dataclass
 class LodestarState:
     """Everything LODESTAR holds, in memory only: the two pages' lists, titles, windows, links and
     one-shot messages (the :class:`~schedule_forensics.web.onepager_common.OnePagerSession`
-    protocol — the same attributes Polaris²'s session carries), plus the marking choice."""
+    protocol — the same attributes Polaris²'s session carries), the marking choice, and the
+    session log every committed change is undone and redone from (ADR-0543)."""
 
     onepager: OnePagerDoc | None = None
     onepager_title: str = ""
@@ -173,6 +206,8 @@ class LodestarState:
     onepager_compare_links_is_error: bool = False
     onepager_cache: dict[str, tuple[Any, Any]] = field(default_factory=dict)
     unclassified: bool = False
+    #: the session log — undo and redo for every committed change (ADR-0543)
+    history: History = field(default_factory=History, repr=False)
     lock: threading.RLock = field(default_factory=threading.RLock, repr=False)
 
 
@@ -328,6 +363,10 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         page's FRAME (the credit, the CURRENT marking top and bottom) with the cap named and a
         way back, still 413 and still unread (review UILD-4)."""
         page = _UPLOAD_PAGES.get(urlsplit(self.path).path)
+        if refused.status == 413 and page is not None and self._wants_json():
+            # the studio posted the file with fetch: it shows the page's own sentence
+            cap = MAX_UPLOAD_BYTES // (1024 * 1024)
+            return _json_error(f"List not loaded — the upload is over the {cap} MB cap.", 413)
         if refused.status != 413 or page is None:
             return _json_error(refused.reason, refused.status)
         back, name = page
@@ -426,39 +465,167 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         if method == "POST":
             # the body is read and parsed BEFORE the lock: a slow client holds up only itself
             upload = self._upload() if path.endswith("/upload") else None
-            form = None if upload is not None else self._form()
+            body: dict[str, str] = {}
+            preview: dict[str, Any] = {}
+            if upload is None and path.startswith("/api/"):
+                preview = self._json_body(preview=path == "/api/preview")
+                body = {k: v for k, v in preview.items() if isinstance(v, str)}
+            elif upload is None:
+                body = self._form()
             with st.lock:
-                return self._post(path, upload, form or {})
+                if path.startswith("/api/"):
+                    return self._api(path, body, preview)
+                return self._post(path, upload, body)
         if method in ("GET", "HEAD"):
             if path == "/" or path == "":
                 return _redirect("/onepager")
             if path.startswith("/static/") or path == "/favicon.ico":
-                # /favicon.ico is LODESTAR's own icon (ADR-0541), not Polaris²'s
-                name = "lodestar.ico" if path == "/favicon.ico" else path.rsplit("/", 1)[-1]
+                # /favicon.ico is LODESTAR's own icon (ADR-0541), not Polaris²'s; a static name is
+                # looked up EXACTLY in the allowlist — never joined onto a filesystem path
+                name = "lodestar.ico" if path == "/favicon.ico" else path[len("/static/") :]
                 asset = self.server.assets.get(name)
-                if asset is None or path not in (f"/static/{name}", "/favicon.ico"):
+                if asset is None:
                     return _Reply(404, b"not found", "text/plain; charset=utf-8")
                 return _Reply(200, asset[0], asset[1], (("Cache-Control", "no-cache"),))
             with st.lock:
                 return self._get(path)
         raise _Refused(405, "method not allowed")
 
+    def _json_body(self, *, preview: bool) -> dict[str, Any]:
+        """A studio API call's body: one small JSON object (``Content-Type: application/json``,
+        the form cap) whose values are strings, passed whole as the form path passes them (each
+        action caps its own field). A PREVIEW may also carry a flag (``example``) and a list of
+        two short dates (``window``). Anything else is refused by name before the lock is taken
+        — never read as a missing field (a ``"title": true`` once cleared the title)."""
+        ctype = self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+        if ctype != "application/json":
+            raise _Refused(415, "a studio call must be application/json")
+        raw = self._body(MAX_FORM_BYTES)
+        try:
+            data = json.loads(raw.decode("utf-8") or "{}")
+        except (UnicodeDecodeError, ValueError) as exc:
+            raise _Refused(400, "the request body is not JSON") from exc
+        if not isinstance(data, dict):
+            raise _Refused(400, "the request body must be a JSON object")
+        out: dict[str, Any] = {}
+        for key, value in data.items():
+            if not isinstance(key, str) or len(key) > 32:
+                raise _Refused(400, "a request field name is not valid")
+            flag = isinstance(value, bool) or value is None
+            pair = (
+                isinstance(value, list)
+                and len(value) <= 2
+                and all(isinstance(v, str) and len(v) <= 40 for v in value)
+            )
+            if not (isinstance(value, str) or (preview and (flag or pair))):
+                raise _Refused(400, "a request field is not a string")
+            out[key] = list(value) if isinstance(value, list) else value
+        return out
+
+    def _studio(self, page: str, *, reveal: bool = False, outcome: Any = None) -> _Reply:
+        """The page's state as JSON (the regions included) — what every studio call answers."""
+        st = self.server.state
+        today, made = self._dates()
+        state = studio_state(st, st.history, page, today, made, reveal=reveal)
+        if outcome is not None:
+            state["label"] = outcome.label
+            state["toast"] = (
+                {"text": outcome.toast, "status": outcome.status} if outcome.toast else None
+            )
+        return _Reply(200, json.dumps(state, ensure_ascii=False).encode("utf-8"), _JSON)
+
+    def _api(self, path: str, body: dict[str, str], raw: dict[str, Any]) -> _Reply:
+        """``POST /api/<action>`` — the studio's live path (ADR-0543): every change is the SAME
+        action the form routes take (:func:`~schedule_forensics.web.lodestar_actions.perform`),
+        answered with the page's whole state instead of a redirect."""
+        st = self.server.state
+        name = path[len("/api/") :]
+        page = studio_actions.page_of(body.get("page"))
+        if name in ("undo", "redo"):
+            label = st.history.undo(st) if name == "undo" else st.history.redo(st)
+            outcome = studio_actions.Outcome(
+                label,
+                (f"Undid: {label}" if name == "undo" else f"Redid: {label}")
+                if label
+                else ("Nothing to undo." if name == "undo" else "Nothing to redo."),
+                "info",
+            )
+            return self._studio(page, outcome=outcome)
+        if name == "preview":
+            return self._preview(page, raw)
+        if name not in studio_actions.ACTIONS or name == "upload":
+            return _json_error(f"no studio action named {name[:24]!r}", 404)
+        outcome = studio_actions.perform(st, st.history, name, body, max_bytes=MAX_UPLOAD_BYTES)
+        return self._studio(page, reveal=name == "example", outcome=outcome)
+
+    def _preview(self, page: str, raw: dict[str, Any]) -> _Reply:
+        """``POST /api/preview`` — the slide for a PROPOSED change, never committed: a copy of the
+        session (its own empty layout cache, its own empty log) takes the change and is laid out;
+        the session itself, its cache and its log are untouched. The scrubber asks it while it is
+        dragged; the Show-me demos run on it. Proposals: ``today`` (an ISO date), ``window``
+        (two ISO dates, or null for all dates), ``link`` (``pred`` / ``succ`` / ``kind``) and
+        ``example`` (the example list or pair, when the page has none)."""
+        st = self.server.state
+        today, made = self._dates()
+        copy = replace(st, onepager_cache={}, history=History(), lock=threading.RLock())
+        compare = page == "compare"
+        if raw.get("example") is True:
+            has = st.onepager_prior is not None and st.onepager_current is not None
+            if not (has if compare else st.onepager is not None):
+                studio_actions.example_session(copy, page, max_bytes=MAX_UPLOAD_BYTES)
+        when = raw.get("today")
+        if isinstance(when, str) and when:
+            got = parse_date(when[:40])
+            if got is not None:
+                today = got[0]
+                copy.onepager_today = today
+        if "window" in raw:
+            win = raw.get("window")
+            if win is None:
+                window = None
+            elif isinstance(win, list) and len(win) == 2:
+                parsed = actions.parse_window(win[0], win[1])
+                window = None if isinstance(parsed, str) else parsed
+            else:
+                window = None
+            if compare:
+                copy.onepager_compare_window = window
+            else:
+                copy.onepager_window = window
+        if isinstance(raw.get("pred"), str) and isinstance(raw.get("succ"), str):
+            actions.edit_links(
+                copy,
+                "compare" if compare else "onepager",
+                "add",
+                raw["pred"],
+                raw["succ"],
+                str(raw.get("kind") or "FS"),
+            )
+        if compare:
+            clay = onepager_compare_layout(copy, today, made)
+            blob = compare_layout_json(clay) if clay is not None else None
+        else:
+            lay = onepager_layout(copy, today, made)
+            blob = layout_json(lay) if lay is not None else None
+        out = {"page": page, "layout": blob, "dataDate": today.isoformat()}
+        return _Reply(200, json.dumps(out, ensure_ascii=False).encode("utf-8"), _JSON)
+
     def _get(self, path: str) -> _Reply:
         st = self.server.state
         today, made = self._dates()
         _cls, text = marking(st.unclassified)
         if path == "/launch":
-            # the boot screen the program opens on (ADR-0541) — outside the frame, as Polaris²'s
+            # the boot screen the program opens on (ADR-0541) — outside the frame
             chosen = st.onepager_today is not None
             return _html(
                 lodestar_launch_html(st, unclassified=st.unclassified, today=today, chosen=chosen)
             )
-        if path == "/onepager":
-            body = _onepager_body(st, today, made)
-            return _html(lodestar_page("Timeline", body, path=path, unclassified=st.unclassified))
-        if path == "/onepager-compare":
-            body = _onepager_compare_body(st, today, made)
-            return _html(lodestar_page("Compare", body, path=path, unclassified=st.unclassified))
+        for page, (route, _label, _icon, _eyebrow) in PAGES.items():
+            if path == route:
+                return _html(studio_page(st, st.history, page, today, made))
+        if path == "/api/state":
+            query = parse_qs(urlsplit(self.path).query)
+            return self._studio(studio_actions.page_of((query.get("page") or ["timeline"])[0]))
         if path == "/export/pptx/onepager":
             return self._download(actions.onepager_pptx(st, today, text, NAME, made))
         if path == "/export/pptx/onepager-compare":
@@ -487,6 +654,9 @@ class _Handler(http.server.BaseHTTPRequestHandler):
                 )
         return _Reply(404, b"not found", "text/plain; charset=utf-8")
 
+    def _wants_json(self) -> bool:
+        return "application/json" in self.headers.get("Accept", "")
+
     def _post(
         self,
         path: str,
@@ -494,74 +664,47 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         form: dict[str, str],
     ) -> _Reply:
         st = self.server.state
-        if path == "/onepager/upload" and upload is not None:
+        if path in ("/onepager/upload", "/onepager-compare/upload") and upload is not None:
             fields, name, data = upload
-            actions.load_list(
-                st, name, data, max_bytes=MAX_UPLOAD_BYTES, layout=fields.get("layout", "auto")
+            page = "compare" if path.startswith("/onepager-compare") else "timeline"
+            params = {**fields, "page": page}
+            outcome = studio_actions.perform(
+                st, st.history, "upload", params, max_bytes=MAX_UPLOAD_BYTES, upload=(name, data)
             )
-            return _redirect("/onepager")
-        if path == "/onepager-compare/upload" and upload is not None:
-            fields, name, data = upload
-            actions.load_compare(
-                st,
-                fields.get("slot", "current"),
-                name,
-                data,
-                max_bytes=MAX_UPLOAD_BYTES,
-                layout=fields.get("layout", "auto"),
-            )
-            return _redirect("/onepager-compare")
+            if self._wants_json():
+                # the studio posts the file with fetch and repaints from the answer
+                return self._studio(page, reveal=outcome.label is not None, outcome=outcome)
+            return _redirect(PAGES[page][0])
         get = form.get
         if path == "/quit":
             self._quit = True  # the server stops once this page is written (``_dispatch``)
             return _html(stopped_page(unclassified=st.unclassified))
+        back = get("next", "")
+        back = back if back in ("/onepager", "/onepager-compare") else "/onepager"
         if path == "/marking":
-            st.unclassified = get("marking") == "unclassified"
-            back = get("next", "")
-            return _redirect(back if back in ("/onepager", "/onepager-compare") else "/onepager")
-        if path == "/onepager/title":
-            actions.set_title(st, get("title", ""))
-        elif path == "/onepager/window":
-            actions.set_window(st, get("start", ""), get("end", ""), get("action", "apply"))
-        elif path == "/onepager/today":
-            actions.set_today(st, "onepager", get("today", ""), get("action", "apply"))
-        elif path == "/onepager/clear":
-            actions.clear_list(st)
-        elif path == "/onepager/links":
-            actions.edit_links(
+            studio_actions.perform(
                 st,
-                "onepager",
-                get("action", "add"),
-                get("pred", ""),
-                get("succ", ""),
-                get("kind", "FS"),
+                st.history,
+                "marking",
+                {"marking": get("marking", "")},
+                max_bytes=MAX_UPLOAD_BYTES,
             )
-            return _redirect("/onepager#opLinks")
-        elif path == "/onepager-compare/swap":
-            actions.swap_compare(st)
-        elif path == "/onepager-compare/title":
-            actions.set_compare_title(st, get("title", ""))
-        elif path == "/onepager-compare/window":
-            actions.set_compare_window(st, get("start", ""), get("end", ""), get("action", "apply"))
-        elif path == "/onepager-compare/today":
-            actions.set_today(st, "compare", get("today", ""), get("action", "apply"))
-        elif path == "/onepager-compare/clear":
-            actions.clear_compare(st)
-        elif path == "/onepager-compare/links":
-            actions.edit_links(
-                st,
-                "compare",
-                get("action", "add"),
-                get("pred", ""),
-                get("succ", ""),
-                get("kind", "FS"),
-            )
-            return _redirect("/onepager-compare#opcLinks")
-        else:
+            return _redirect(back)
+        if path in ("/undo", "/redo"):
+            # the header's two buttons with scripting off (the studio posts /api/undo / redo)
+            if path == "/undo":
+                st.history.undo(st)
+            else:
+                st.history.redo(st)
+            return _redirect(back)
+        route = _FORM_ROUTES.get(path)
+        if route is None:
             return _Reply(404, b"not found", "text/plain; charset=utf-8")
-        return _redirect(
-            "/onepager-compare" if path.startswith("/onepager-compare") else "/onepager"
+        action, page = route
+        studio_actions.perform(
+            st, st.history, action, {**form, "page": page}, max_bytes=MAX_UPLOAD_BYTES
         )
+        return _redirect(PAGES[page][0] + _LANDING.get(action, ""))
 
     def _download(self, got: actions.Download | str) -> _Reply:
         if isinstance(got, str):

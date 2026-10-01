@@ -8,24 +8,50 @@ slide, built from native, editable shapes. It has two pages:
 * **Timeline** — one list becomes one slide: a tinted band per swimlane, a bar per activity, a
   diamond per milestone, each labelled with its name and finish date, a check beside what is
   complete, a month/year header and a red line at the **data date** — your computer's date unless
-  you set one with the **Data date** control above the slide (one setting for both pages; the
+  you set one with the **data date** control above the slide (one setting for both pages; the
   slide's caption and legend follow it, and the subtitle says both the data date and the day the
-  slide was prepared when they differ).
+  slide was prepared when they differ). Drag its slider and the red line walks across the slide as
+  you go; let go and the date is set. **Computer's date** puts it back.
 * **Compare** — two lists (a PRIOR and a CURRENT) on one slide: what slipped, what pulled in, what
-  is new and what was removed, every move in calendar days.
+  is new and what was removed, every move in calendar days. **Swap prior and current** trades the
+  two lists over.
 
-On either page you can draw **logic links**: pick two items (or click them on the slide — first the
-predecessor, then the successor), choose the type (Finish-to-Start by default, or Start-to-Start,
-Finish-to-Finish, Start-to-Finish) and add the link. Add as many pairs as you need (up to 200). Only the links
-you add are drawn — on the page and in the PowerPoint export.
+On either page you can draw **logic links**: click an item on the slide and then another (first
+the predecessor, then the successor), drag one item onto another, or pick the two in the **From**
+and **To** lists beside the slide; choose the type (Finish-to-Start by default, or Start-to-Start,
+Finish-to-Finish, Start-to-Finish) and add the link. Add as many pairs as you need (up to 200).
+Only the links you add are drawn — on the page and in the PowerPoint export.
 
-The slide always fills the page: a short list gets large bars and text, a long one smaller. Every
-link you add is fitted — when the rows leave no clean route the slide makes more room between the
-rows, then adds a gutter lane at the right edge, then reorders items within their swimlane (never
-across), and says so under "How the logic links were fitted"; a link that still cannot be drawn
-clear of the others is drawn **dashed**, with what it covers named on the page and in the slide's
-footnote — up to four lines; past them the footnote counts the rest and the page names them (the
-PowerPoint carries the footnote too). It is never split onto a second slide.
+The slide always fills the page: a short list gets large bars and text, a long one smaller, and it
+is never split onto a second slide. Every link takes the shortest square-cornered route from the
+predecessor to the successor and is drawn **behind** the bars, diamonds and names it passes — so
+every item stays readable — with its arrowhead and type tag drawn on top. Adding a link never
+moves an item.
+
+### Working in the studio
+
+Every change redraws the slide at once — no page reload.
+
+* **Undo / Redo** at the top (or Ctrl+Z / Ctrl+Shift+Z — ⌘ on a Mac) step back and forward through
+  your last 60 changes; the **session log** in the side panel names each one.
+* **Ctrl+K** (⌘K) opens the command palette: load a list, load the example, go to a page, export,
+  print, show all dates, go back to the computer's date, switch the marking, change the view —
+  type a few letters and press Enter.
+* **Tour** walks you through the studio in seven steps; **Show me** plays a short demonstration
+  (drawing a link, dragging to link, moving the data date, narrowing the dates, comparing two
+  lists) on a copy of your list — or on the example list when none is loaded — and changes
+  nothing.
+* **Load the example list** (or the example pair on Compare) to try it before you have a list.
+* Above the slide: **DATA** shows the list the slide was drawn from, **Excel** downloads it, and
+  the full-screen button shows the slide on its own.
+* **Print** prints the slide alone, with its marking — choose *Save as PDF* in the print dialog
+  for a PDF.
+* The view menu at the top switches between four views — **Dark**, **Bright**, **High contrast**
+  and **Console**; the browser remembers your choice.
+
+With scripting switched off in the browser the studio still works as plain forms — load, title,
+dates, data date, links, swap, undo/redo, marking and the exports — and the page reloads after
+each one; the palette, the tour, the demonstrations, dragging and the slider need scripting.
 
 ## What you need
 
@@ -43,8 +69,9 @@ Keep all the files of this folder together.
   under System Settings → Privacy & Security.
 * **Linux** — run `sh lodestar.sh` (or `python3 LODESTAR.pyz`).
 
-A small window opens and your browser shows LODESTAR's launch page — take a star fix, or skip
-straight to the studio (tick *Go straight to the studio next time* and it will). **Leave the small
+A small window opens and your browser shows LODESTAR's launch page — take a star fix (it ends on
+a welcome panel that opens either page), or skip straight to the studio (tick *Go straight to the
+studio next time* and it will). **Leave the small
 window open while you work.** To stop, press **Quit** on the page, or close the window.
 
 ### The Desktop shortcut
@@ -84,9 +111,10 @@ LODESTAR runs entirely on your own computer. It serves its pages only to this co
 (address `127.0.0.1`), it never connects to the internet, and it has **no AI** of any kind. The
 lists you load live only in memory while LODESTAR runs; they are gone when it stops. The pages and
 every PowerPoint carry the CUI marking by default — switch it with the button at the top when your
-list is not CUI.
+list is not CUI. The Excel downloads always keep the CUI marking.
 
 ---
 
 LODESTAR is built from the same modules as the One-Pager pages of POLARIS², so both draw the same
-slide from the same list. Version 1.0.2.
+slide from the same list. Its fonts (IBM Plex Sans and Mono, Space Grotesk) and icons (Lucide) are
+carried inside the program under their own open licences — nothing is fetched. Version 2.0.0.

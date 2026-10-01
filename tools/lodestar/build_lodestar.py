@@ -54,7 +54,11 @@ MODULES: tuple[str, ...] = (
     "schedule_forensics/web/onepager.py",
     "schedule_forensics/web/onepager_compare.py",
     "schedule_forensics/web/onepager_actions.py",
+    "schedule_forensics/web/lodestar_icons.py",
+    "schedule_forensics/web/lodestar_history.py",
+    "schedule_forensics/web/lodestar_actions.py",
     "schedule_forensics/web/lodestar_shell.py",
+    "schedule_forensics/web/lodestar_studio.py",
     "schedule_forensics/web/lodestar_launch.py",
     "schedule_forensics/desktop_icon.py",
     "schedule_forensics/lodestar/__init__.py",
@@ -95,7 +99,7 @@ def members() -> dict[str, Path]:
 
 
 #: Members read as text: a CRLF checkout (Git for Windows' autocrlf) must build the SAME archive.
-_TEXT = (".py", ".js", ".css")
+_TEXT = (".py", ".js", ".css", ".txt")
 
 
 def _member_bytes(path: Path) -> bytes:

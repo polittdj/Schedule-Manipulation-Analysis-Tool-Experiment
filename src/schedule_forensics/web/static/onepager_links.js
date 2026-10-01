@@ -1,14 +1,13 @@
 // onepager_links.js — the operator's LOGIC LINKS on both One-Pager slides (ADR-0539).
 //
 // Two jobs, shared by onepager.js and onepager_compare.js:
-//  1. PAINT the links the server routed (reports/onepager_links.py) — each one a halo in the
-//     canvas colour, the shaft, the layout's own arrowhead and, for SS / FF / SF, its type tag —
-//     ABOVE the items (so a leg that must cross a bar or a label reads as crossing it) and BELOW
-//     the red data-date line. Geometry is never computed here, only painted, exactly as the .pptx
-//     export paints the same points (reports/pptx.py _logic_links). A link the layout FLAGGED
-//     (ADR-0540's last resort: no route clears every other link's ink, so it runs along the one
-//     that covers the least) is painted with a DASHED shaft, and the slide's footnote — the same
-//     text the .pptx carries — names what it covers.
+//  1. PAINT the links the server routed (reports/onepager_links.py) in the Console z-order
+//     (ADR-0543): lanes and grid → every link's SHAFT → the items (bars, diamonds, ghosts, tags
+//     and their haloed labels) → every link's ARROWHEAD and type tag → the red data-date line →
+//     the legend → the pick rings. A shaft runs UNDER whatever bar or name it passes, so the
+//     item stays readable and no route is ever "flagged"; the head and its tag sit over the
+//     items. Geometry is never computed here, only painted, exactly as the .pptx export paints
+//     the same points in the same order (reports/pptx.py _link_shafts / _link_heads).
 //  2. PICK two items by clicking them: the first click fills the page's "From" select, the second
 //     its "To" select, and both are ringed and tagged FROM / TO on the slide. The selects ARE the
 //     form — they work with no script at all, and they are the keyboard path — so this only saves
@@ -32,40 +31,33 @@
   // ── 1. paint ──
   function paint(svg, L) {
     var links = L.links || [];
-    var layer = el("g", { class: "op-links-layer" });
+    var shafts = el("g", { class: "op-links-layer" }), heads = el("g", { class: "op-link-heads" });
     links.forEach(function (ln) {
-      var g = el("g", { class: "op-link" + (ln.flagged ? " op-link-flagged" : ""), "data-pred": ln.pred, "data-succ": ln.succ, "data-kind": ln.kind, "data-flagged": ln.flagged ? "1" : null });
-      g.appendChild(el("title", {}, ln.pred_name + " → " + ln.succ_name + " (" + ln.kind + ")" + (ln.flagged ? " — drawn dashed over " + ln.overlap : "")));
-      g.appendChild(el("polyline", { points: points(ln.shaft), class: "op-link-halo" }));
+      var name = ln.pred_name + " → " + ln.succ_name + " (" + ln.kind + ")";
+      var g = el("g", { class: "op-link", "data-pred": ln.pred, "data-succ": ln.succ, "data-kind": ln.kind });
+      g.appendChild(el("title", {}, name));
       g.appendChild(el("polyline", { points: points(ln.shaft), class: "op-link-line" }));
-      g.appendChild(el("polygon", { points: points(ln.head), class: "op-link-head" }));
-      if (ln.tag) {
-        g.appendChild(el("text", {
+      shafts.appendChild(g);
+      var h = el("g", { class: "op-link-arrow", "data-pred": ln.pred, "data-succ": ln.succ, "data-kind": ln.kind });
+      h.appendChild(el("title", {}, name));
+      h.appendChild(el("polygon", { points: points(ln.head), class: "op-link-head" }));
+      if (ln.tag) { // haloed like the labels: a stroke in the slide's ground, 0.42 x its size
+        h.appendChild(el("text", {
           x: ln.tag_x, y: ln.tag_y, "text-anchor": ln.tag_anchor, class: "op-link-tag",
-          style: "font-size:" + ln.tag_pt + "px",
+          style: "font-size:" + ln.tag_pt + "px;stroke-width:" + 0.42 * ln.tag_pt + "px",
         }, ln.tag));
       }
-      layer.appendChild(g);
+      heads.appendChild(h);
     });
-    // beneath the data-date line (SFGantt.dataDateLine's .ch-dd), above everything else
-    var dd = svg.querySelector(".ch-dd");
-    var before = dd;
-    while (before && before.parentNode !== svg) before = before.parentNode;
-    if (before) svg.insertBefore(layer, before);
-    else svg.appendChild(layer);
-    // the slide's footnote (ADR-0540): what the layout did to fit the links, and every link
-    // drawn dashed over other ink — painted where the .pptx paints it, so the page previews it
-    if (L.footnote) {
-      var warn = links.some(function (ln) { return ln.flagged; });
-      var lines = L.footnote.split("\n"), lh = L.footnote_lh || L.footnote_pt * 1.18;
-      var foot = el("text", {
-        x: L.footnote_x, y: L.footnote_y - (lines.length - 1) * lh, class: "op-footnote" + (warn ? " op-footnote-warn" : ""),
-        style: "font-size:" + L.footnote_pt + "px", "data-no-i18n": "1",
-      });
-      lines.forEach(function (line, i) { // one tspan per line, the last on L.footnote_y
-        foot.appendChild(el("tspan", { x: L.footnote_x, dy: i ? lh : 0 }, line));
-      });
-      svg.appendChild(foot);
+    // the shafts go UNDER the first item, the heads OVER the last one (and so under the
+    // data-date line, which the painters draw right after the items)
+    var items = svg.querySelectorAll(".op-item, .opc-item");
+    if (items.length) {
+      svg.insertBefore(shafts, items[0]);
+      svg.insertBefore(heads, items[items.length - 1].nextSibling);
+    } else {
+      svg.appendChild(shafts);
+      svg.appendChild(heads);
     }
     // the legend's "Logic link" symbol: its label is painted by the page's own legend loop
     (L.legend || []).forEach(function (e) {
@@ -78,7 +70,7 @@
       }));
       svg.appendChild(g);
     });
-    return layer;
+    return shafts;
   }
 
   // ── 2. pick two items ──
