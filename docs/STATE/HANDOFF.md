@@ -34,8 +34,9 @@ closing line). Highest ADR on disk **0544**. Version **1.0.299**; LODESTAR **2.1
 ## Open — for the operator
 
 - **Column E (date of occurrence) is an assumption** — say if the register should carry the date elsewhere.
-- **UNVERIFIED here:** PowerPoint keeping the custom XML part on its own re-save (the alt-text fallback covers a
-  deck that drops it; CI's browser job runs the LibreOffice interop test); PDF rendering outside poppler;
+- **UNVERIFIED here:** PowerPoint keeping the custom XML part on its own re-save (CI MEASURED LibreOffice 24.2's export
+  keeping the part and dropping the shapes' alt text, so the part — not the alt text — is the carrier
+  that survives a re-save; the interop test pins both); PDF rendering outside poppler;
   Windows / macOS; the three new browser tests ran only through node Playwright in the session.
 - **Deferred, named in the ADR:** OWNED == CONTENT mutation test; a browser test for the page switch after a
   restore; a Compare round trip with a DUPLICATE NAME pair; bomb-size tests on the three readers; Polaris²'s own

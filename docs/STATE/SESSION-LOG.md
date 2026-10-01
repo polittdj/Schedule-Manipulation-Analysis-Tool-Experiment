@@ -20378,6 +20378,11 @@ commit, not a rebase. The resolution:
   not the product's: the twin now tracks the strip's face 0.4 px wider (deterministic) and asserts the
   checker names the overrun while the painter's squeeze holds every painted line (node-measured here:
   product 0 / 0, mutant 3 natural overruns / 0 painted); pushed as e5df3f87. 679 other browser tests passed.
+- **CI round 2 on 1c5e5499:** the browser job red on the LibreOffice interop twin the PowerPoint agent
+  appended — it asserted the alt-text records survive an Impress re-save; CI measured 0 of 5 back while
+  the reader still found LODESTAR data (the custom XML part). Re-pinned to the measured facts (the part
+  survives, the alt text does not); the README, the studio copy, the ADR and this handoff no longer
+  claim the alt-text fallback survives a re-save by any program (PowerPoint unverified).
 - **Closing line.** Draft pull request #732 (`claude/lodestar-app-updates-q4xos3`, head 43b0238b → e5df3f87 →
   1c5e5499 → this docs/installer commit). FULL `python -m pytest -q` on 43b0238b: **6,451 passed, 6 failed, 407
   skipped, 104 xfailed** in 2398 s (0:39:58) — the six, all fixed here and re-run green: the next-session

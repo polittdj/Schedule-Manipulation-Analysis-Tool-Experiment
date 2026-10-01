@@ -54,8 +54,9 @@ export — PowerPoint, Excel, PDF — and recreate the One-Pager from it, the lo
    — each list's rows AS READ (Excel row numbers kept), the sheet and file names and the forced layout, the
    links by key AND identity, the register's rows, the settings (page, title, window, data date, marking) —
    as the same bytes into every export: the PowerPoint as a custom XML part (`customXml/item1.xml`, related
-   from the presentation) with every item shape's and the Title shape's alt text as a fallback a re-saving
-   app cannot drop; the PDF — a NEW server-side export (`reports/pdf.py`, std-lib, Helvetica / Symbol, the
+   from the presentation) with every item shape's and the Title shape's alt text as a fallback for a re-saving
+   program that keeps alt text (MEASURED in CI: LibreOffice 24.2's export keeps the custom XML part and
+   drops the alt text; PowerPoint is unverified); the PDF — a NEW server-side export (`reports/pdf.py`, std-lib, Helvetica / Symbol, the
    pptx paint order call for call) — as an embedded file `lodestar-session.json`; the Excel workbook as plain
    sheets after the existing ones (a settings sheet, each list at its row numbers — droppable as a list in
    its own right — the links by identity, the register). A restore hands the rows straight to the SAME parser

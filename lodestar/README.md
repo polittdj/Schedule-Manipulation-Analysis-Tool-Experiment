@@ -34,8 +34,10 @@ serves both pages; **Clear risks** removes it.
 **Restore a slide.** Every PowerPoint, Excel and PDF LODESTAR exports carries the slide — its lists,
 title, dates, data date, marking, logic links and risks. Drop any of them on **Restore a slide** (either
 page) and the slide comes back as it was exported, on the page it came from; the logic links are
-recreated, so nothing starts from scratch. A PowerPoint edited and saved again still restores from the
-alt text its shapes carry (its skipped rows and risks are then not carried, and the page says so). A PDF
+recreated, so nothing starts from scratch. A PowerPoint re-saved by another program restores only if that program kept the slide's record
+(the custom XML part) or the alt text on its shapes — LibreOffice's export was measured dropping the
+alt text; PowerPoint itself is unverified. A slide rebuilt from alt text alone carries no skipped rows
+and no risks, and the page says so. A PDF
 saved from the browser's **Print** dialog carries no slide data — use the **PDF** export. Exports from
 LODESTAR 2.0 carry no record.
 

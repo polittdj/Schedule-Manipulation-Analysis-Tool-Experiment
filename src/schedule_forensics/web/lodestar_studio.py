@@ -1402,7 +1402,8 @@ def _restore_section(page: str) -> str:
         + "</div></form>"
         "<div class=ls-fine>The slide comes back as it was exported — its lists, title, dates, "
         "data date, marking, logic links and risks — and lands on the page it came from. A "
-        "PowerPoint edited and saved again still restores from the alt text its shapes carry. "
+        "PowerPoint re-saved by another program restores only if that program kept the record or the "
+        "alt text on its shapes (LibreOffice's export drops the alt text; PowerPoint is unverified). "
         "A PDF saved from the browser's Print dialog carries no slide data.</div>"
     )
     return _sec("Restore a slide", form, tour="restore")

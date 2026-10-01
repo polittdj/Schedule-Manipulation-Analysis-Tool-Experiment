@@ -262,13 +262,18 @@ def test_libreoffice_keeps_column_ds_check_a_check(soffice: str, tmp_path: Path)
         assert sorted(kinds) == ["falling", "rising"], (name, kinds)
 
 
-def test_libreoffice_resave_keeps_the_alt_text_records(soffice: str, tmp_path: Path) -> None:
+def test_libreoffice_resave_keeps_the_record_and_drops_the_alt_text(
+    soffice: str, tmp_path: Path
+) -> None:
     """ADR-0544: a deck that carries the session is re-saved by Impress AS A DECK
-    (``--convert-to pptx``), and the alt-text records — the fallback the operator's restore
-    reads when a re-save drops the custom XML part — come back on the shapes. Whether the custom
-    XML part itself survives an Impress re-save is UNVERIFIED and not asserted: the fallback is
-    the contract. The output lands in a directory of its own so the input is never overwritten,
-    and the artifact is the verdict (``soffice`` exits 0 on a refusal — see the module doc)."""
+    (``--convert-to pptx``) and read back. MEASURED in CI on 2026-10-01 (run 36895548857, the
+    first version of this test): LibreOffice 24.2's PresentationML export DROPS the alt text on
+    every item shape (0 of 5 records came back) while the reader still found LODESTAR data in the
+    deck — the custom XML part is what carries a slide through a LibreOffice re-save, the alt text
+    only through a program that keeps it (PowerPoint: UNVERIFIED). Both facts are pinned here, so a
+    LibreOffice that starts keeping alt text, or stops keeping the part, moves this test on purpose.
+    The output lands in a directory of its own so the input is never overwritten, and the artifact
+    is the verdict (``soffice`` exits 0 on a refusal — see the module doc)."""
     lay = build_layout(list(_items(0)), _TODAY, "Program One-Pager", "Prepared 2026-06-15")
     settings = {"page": "timeline", "title": "Program One-Pager", "links": [], "sources": {}}
     src = tmp_path / "carrier.pptx"
@@ -303,12 +308,14 @@ def test_libreoffice_resave_keeps_the_alt_text_records(soffice: str, tmp_path: P
     said = (done.stderr or done.stdout or b"").decode("utf-8", "replace").strip()
     assert produced.exists(), f"LibreOffice did not re-save the carrier deck as .pptx: {said}"
     deck = read_pptx(produced.read_bytes())
-    assert deck.problem == "", deck
-    assert {(it["lane"], it["name"], it["start"], it["finish"]) for it in deck.items} == {
-        ("Design", "Preliminary design review", "2026-01-05", "2026-03-20"),
-        ("Design", "Critical design review", "2026-04-01", "2026-04-01"),
-        ("Build", "Structure fabrication", "2026-04-06", "2026-08-14"),
-        ("Test", "Environmental test campaign", "2026-08-17", "2026-11-27"),
-        ("Test", "Ready to Ship", "2026-12-04", "2026-12-04"),
-    }, "the re-saved deck lost the item records on its shapes' alt text"
-    assert deck.settings is not None and deck.settings.get("page") == "timeline"
+    found = {
+        "payload": deck.payload is not None,
+        "settings": deck.settings is not None,
+        "items": len(deck.items),
+        "notes": deck.notes,
+    }
+    assert deck.problem == "", (deck.problem, found)
+    # the record survives the re-save: the restore reads THIS, never the alt text
+    assert deck.payload == b'{"lodestar":{"format":1,"page":"timeline"}}', found
+    # the measured loss, pinned: the item shapes come back with no LODESTAR alt text
+    assert deck.items == [], found
