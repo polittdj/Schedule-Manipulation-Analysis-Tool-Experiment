@@ -11,8 +11,8 @@
 
 Session 7's four lines and the earlier ones are carried unchanged in `docs/STATE/AUDIT-2026-09-23.md` (the session-7, -6 and -5 sections) and in the asks file; read them there.
 
-STATUS (current) — **ADR-0543 is draft pull request #730** of `claude/wonderful-ptolemy-tl0xru` (the operator marks it
-ready and squash-merges; a session never does). Highest ADR on disk **0543**. Version **1.0.298**; LODESTAR **2.0.0**
+STATUS (current) — **ADR-0543 MERGED** as `ad2cfa14` (#730, 2026-10-01 13:35Z; squash tree `d5683fec` identical to the
+green PR head `e6d241c2`, all eight checks green). Highest ADR on disk **0543**. Version **1.0.298**; LODESTAR **2.0.0**
 (`lodestar/LODESTAR.pyz` 841,464 bytes, **48 members**); the wheel and the nine installers rebuilt from a clean worktree
 of `1d910711` (75 installer tests green there). The full suite and `-m parity` on the final tree are recorded in the
 SESSION-LOG entry's gate line. QC-1 / QC-2 / QC-3 bind every session.
@@ -47,10 +47,10 @@ SESSION-LOG entry's gate line. QC-1 / QC-2 / QC-3 bind every session.
 
 ## Open — for the operator
 
-- **The head-over-label overlap** — a 4.2-pt head entering an item on its LABEL's side covers ~1.2 pt of the label
-  ("◂CDR"). Proposed: nudge the label by the head length when a head enters on its side (moves item geometry — the
-  operator's ruling). Also recorded, unchanged: SS + FF on one pair share a row boundary; FS links into one start share
-  a last leg.
+- **RULED 2026-10-01 by the operator: the head-over-label overlap stays — NO label nudge.** A 4.2-pt head entering an
+  item on its LABEL's side covers ~1.2 pt of the label ("◂CDR"); the proposed fix (move labels, changing item geometry
+  on every slide) is REJECTED. Do not re-propose it. Also recorded, unchanged: SS + FF on one pair share a row
+  boundary; FS links into one start share a last leg.
 - **Three pre-existing PowerPoint defects** (reproduced 2026-10-01, NOT fixed here): month lines hidden under the opaque
   lane fills; the UNCLASSIFIED marking text painted in CUI purple (`_CUI` 4B2E83); `_rels/.rels` names no docProps part.
 - **Noted, not in scope:** `web/help.py`, `i18n.py`, `offload.py` and `system.py` are in no `LAYER_ORDER` row of

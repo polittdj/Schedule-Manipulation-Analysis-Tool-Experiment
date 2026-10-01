@@ -177,9 +177,8 @@ a physical printer (Chromium's PDF only); the size-cap ruling (`LABEL_MAX` 14, `
   LABEL's side covers about 1.2 pt of that label (the label gap is 3 pt) — "◂CDR",
   "Integrate (11/11/27)▸"; an SS and an FF link on the same pair both go round along the same row
   boundary; FS links into one start share their last leg and their head; a horizontal leg on the
-  links' own rows is not scored, so it can run behind the predecessor's own label. Proposed fix
-  for the first, for the operator's ruling: nudge a label away by the head's length when a head
-  enters on its side.
+  links' own rows is not scored, so it can run behind the predecessor's own label. Operator ruling
+  2026-10-01 on the first: **NO** — the label nudge is rejected; the overlap stays as drawn.
 - Deliberately NOT done: a client-side router (the layout stays the one source); a second
   slide; an icon font; a CDN; the handoff's bundle committed (the operator's to add); the three
   pre-existing PowerPoint defects found on the way (month lines under the opaque lane fills, the
