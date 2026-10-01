@@ -1236,7 +1236,10 @@ tr.row-found td.sf-frozen-col { background: #fff3b0; }
 .op-lane-name{font-weight:700;fill:var(--ink)}
 .op-bar,.op-diamond{stroke:var(--panel);stroke-width:.5}
 .op-item:hover .op-bar,.op-item:hover .op-diamond{stroke:var(--ink);stroke-width:.8}
-.op-label{fill:var(--ink)} .op-label-in{fill:var(--panel);font-weight:600}
+/* a label outside its bar is haloed in the slide's ground (.op-bg's --panel) so a logic link's
+   shaft passing UNDER it never strikes through it (ADR-0543); the painter sets the halo's width
+   inline at 0.42 x the label size, beside the size it sets inline. A label INSIDE its bar has none. */
+.op-label{fill:var(--ink);paint-order:stroke;stroke:var(--panel);stroke-linejoin:round} .op-label-in{fill:var(--panel);font-weight:600;stroke:none}
 .op-today{font-size:6px;font-weight:700;fill:var(--bad)}
 .op-legend-bar,.op-legend-ms{fill:var(--muted)} .op-legend-today{stroke:var(--bad);stroke-width:1.2}
 .op-legend-text{fill:var(--ink)}
@@ -1265,13 +1268,14 @@ tr.row-found td.sf-frozen-col { background: #fff3b0; }
 .opc-hint{margin:.4em 0 0;font-size:12px;color:var(--warn)}
 .opc-swap-form{display:inline-flex;margin-right:1em}
 .opc-scroll{overflow-x:auto} .opc-summary-table{width:100%} .opc-summary-table th,.opc-summary-table td{white-space:nowrap}
-/* ── the operator's LOGIC LINKS on both One-Pager slides (ADR-0539). Ink, never a status hue: a
-   link is a statement the operator made, not a verdict. The halo is the canvas colour (.op-bg),
-   so a leg crossing a bar or a label reads as crossing it. Picking an item outlines it in
-   --focus, From dashed and To solid — the difference is never colour alone. ── */
-.op-link-halo{fill:none;stroke:var(--panel);stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
-.op-link-line{fill:none;stroke:var(--ink);stroke-width:.7;stroke-linecap:round;stroke-linejoin:round}
-.op-link-head{fill:var(--ink)} .op-link-tag{fill:var(--ink);font-weight:700}
+/* ── the operator's LOGIC LINKS on both One-Pager slides (ADR-0539; z-order ADR-0543). Ink, never a
+   status hue: a link is a statement the operator made, not a verdict. The SHAFT is the secondary
+   ink and runs UNDER the items; the arrowhead and the type tag (haloed like the labels, its width
+   set inline) are the primary ink, OVER them. Picking an item outlines it in --focus, From dashed
+   and To solid — the difference is never colour alone. ── */
+.op-link-line{fill:none;stroke:var(--muted);stroke-width:.8;stroke-linecap:round;stroke-linejoin:round}
+.op-link-head{fill:var(--ink)}
+.op-link-tag{fill:var(--ink);font-weight:700;font-family:ui-monospace,"IBM Plex Mono",Consolas,monospace;paint-order:stroke;stroke:var(--panel);stroke-linejoin:round}
 .op-link:hover .op-link-line{stroke-width:1.1}
 .op-pickable [data-key]{cursor:pointer}
 .op-pickable [data-key]:hover .op-bar,.op-pickable [data-key]:hover .op-diamond{stroke:var(--ink);stroke-width:.8}
@@ -1287,11 +1291,6 @@ tr.row-found td.sf-frozen-col { background: #fff3b0; }
 .op-link-list{margin:.4em 0 .2em 1.2em;padding:0} .op-link-list li{margin:.15em 0}
 .op-link-remove,.op-link-clear{display:inline-flex;margin-left:.6em}
 .op-link-off{color:var(--warn)}
-/* ADR-0540: a link the layout could not route clear of every other link's ink is drawn DASHED
-   (the halo stays solid, so it still reads as crossing); the slide's footnote names what it
-   covers — --warn when a link is flagged, --muted for the fitting notes alone */
-.op-link-flagged .op-link-line{stroke-dasharray:1.6 1.1}
-.op-footnote{fill:var(--muted);font-weight:600} .op-footnote-warn{fill:var(--warn)}
 .op-layout-row{margin:.4em 0 0} .op-layout-pick{font-size:12px;color:var(--muted)}
 .op-link-listing{margin:.6em 0}
 @media print{.op-links,.op-layout-row,.op-pick,.op-link-remove,.op-link-clear{display:none}}
