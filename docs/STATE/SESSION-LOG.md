@@ -20406,4 +20406,9 @@ commit, not a rebase. The resolution:
   session unsubscribed. `main`'s CI #2052 and installer-smoke #855 were in progress at the time of writing — the
   next session reads them by their jobs first. The Codex review bot posted a usage-limit notice only (no
   findings). This merge record is a docs-only follow-up PR (its number is in GitHub's squash title).
+- **Rulings 2026-10-02 (the operator, this session's last message).** Column E = date of occurrence: CORRECT. An
+  export re-saved by PowerPoint and dropped on the Restore zone RESTORES (the operator's machine; not reproducible
+  here; which carrier survived was not reported). Recorded in HANDOFF, ADR-0544 and the kickoff prompt as a third
+  docs-only commit on the follow-up PR; the studio copy's and README's "PowerPoint is unverified" wait for a `src/`
+  change in a later PR.
 

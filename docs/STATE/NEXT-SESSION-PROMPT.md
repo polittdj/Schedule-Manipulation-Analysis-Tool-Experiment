@@ -36,10 +36,11 @@ PowerPoint, a NEW std-lib PDF export (`src/schedule_forensics/reports/pdf.py`) a
 and a "Restore a slide" zone that reads it back, logic links included — v1.0.299, LODESTAR 2.1.0, archive
 53 members) was pull request #732 of `claude/lodestar-app-updates-q4xos3`, **squash-merged as `64643f37`**
 (2026-10-01 20:42Z; tree identical to the green PR head). `main` expects ADR **0544** / version **1.0.299**;
-read `main`'s own CI run #2052 and installer-smoke #855 by their jobs first. Two flags for the operator ride
-in its handoff: column E of the register (the date of occurrence) is an assumption, and PowerPoint's own
-re-save keeping the custom XML part is UNVERIFIED (CI measured LibreOffice 24.2 keeping the part and dropping
-the shapes' alt text, so the part is the carrier that survives a re-save).
+read `main`'s own CI run #2052 and installer-smoke #855 by their jobs first. Both flags that rode in its
+handoff were RULED 2026-10-02: column E of the register IS the date of occurrence, and the operator verified on
+their machine that an export re-saved by PowerPoint restores from the Restore zone (not reproducible in a build
+session; CI measured LibreOffice 24.2 keeping the custom XML part and dropping the shapes' alt text). The studio
+copy and `lodestar/README.md` still say "PowerPoint is unverified" — a `src/` change for a later PR.
 
 ## Four feature pull requests beside the campaign (2026-09-29 – 10-01, ADR-0539, ADR-0540, ADR-0541 and ADR-0543)
 
