@@ -20401,4 +20401,9 @@ commit, not a rebase. The resolution:
   regex, which expected `name="…"/>` and now admits the shape's alt text. CI round 1: cui-guard green, the
   browser job red on the one refuted twin (replaced); the remaining checks' outcome on the final head is in
   HANDOFF's next STATUS line.
+- **Merged.** #732 squash-merged by the operator at 20:42Z as `64643f37` (tree `4ff20b8e` == the PR head
+  `68d9e074`'s). Branch restarted with `--prune` on `main` @ `64643f37`; the safety-net check-in deleted; the
+  session unsubscribed. `main`'s CI #2052 and installer-smoke #855 were in progress at the time of writing — the
+  next session reads them by their jobs first. The Codex review bot posted a usage-limit notice only (no
+  findings). This merge record is a docs-only follow-up PR (its number is in GitHub's squash title).
 

@@ -5,9 +5,10 @@
 > 050 / 051, A0923-CPM-040's demo instance, A0923-IMP-005 and A0923-DOC-003 strict-xfail) are carried
 > UNCHANGED in the archived 2026-10-01 handoff and `docs/STATE/AUDIT-2026-09-23.md`; this session touched none.
 
-STATUS (current) — **ADR-0544 built, gated locally, draft PR #732 GREEN and mergeable on 4124cfef** (all eight
-checks on run 36903412944 after three CI rounds, each named in the session log; the operator marks it ready and
-squash-merges). Highest ADR on disk **0544**. Version **1.0.299**; LODESTAR **2.1.0** (`lodestar/LODESTAR.pyz`
+STATUS (current) — **ADR-0544 MERGED** as `64643f37` (#732, 2026-10-01 20:42Z; squash tree `4ff20b8e` identical to
+the green PR head `68d9e074`, all eight checks green after three CI rounds named in the session log). `main`'s own
+CI run #2052 and installer-smoke #855 were IN PROGRESS when this was written — the next session reads them by their
+jobs first. Highest ADR on disk **0544**. Version **1.0.299**; LODESTAR **2.1.0** (`lodestar/LODESTAR.pyz`
 **53 members**). QC-1 / QC-2 / QC-3 bind every session.
 
 ## What ADR-0544 did (operator request 2026-10-01, four asks)
