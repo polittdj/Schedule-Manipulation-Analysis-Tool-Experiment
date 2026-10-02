@@ -49,7 +49,8 @@ export — PowerPoint, Excel, PDF — and recreate the One-Pager from it, the lo
    `RISK · name (m/d/yy)` with the impact after it in that colour; the legend names each probability drawn.
    A risk is never a link's end and never counted in a summary. **ASSUMPTION flagged to the operator:** the
    ask names no date column, yet asks for placement by the date of occurrence; column E carries it, and a
-   header puts it anywhere. A risk dated outside the list's own span is named when it widens the timescale.
+   header puts it anywhere. **RULED 2026-10-02 by the operator: column E is correct.** A risk dated outside the
+   list's own span is named when it widens the timescale.
 3. **Ask 3 — one record, three carriers, one restore.** `reports/session_payload.py` writes the slide's record
    — each list's rows AS READ (Excel row numbers kept), the sheet and file names and the forced layout, the
    links by key AND identity, the register's rows, the settings (page, title, window, data date, marking) —
@@ -97,6 +98,7 @@ attack had already read from the pristine tree; the refuters measured a server s
 - `OnePagerDoc` carries `rows` and `forced_layout`; `OnePagerSession` / `OnePagerSnapshot` / Polaris²'s
   `SessionState` carry `onepager_risks` (never set by Polaris²; a TYPE_CHECKING import keeps the layering).
 - LODESTAR 2.1.0; archive 53 members; version 1.0.299.
-- **UNVERIFIED:** PowerPoint's own re-save keeping the custom XML part (no PowerPoint, no Impress here — CI's
-  browser job runs the interop test); rendering of the PDF in Acrobat / Edge / Preview (poppler only here);
-  Windows / macOS; the three browser tests ran only through the session's node Playwright, not pytest.
+- **OPERATOR-VERIFIED 2026-10-02 on their machine:** an export re-saved by PowerPoint restores the slide from the
+  Restore zone (no PowerPoint here, so not reproduced in a build session; which carrier survived was not reported).
+- **UNVERIFIED:** rendering of the PDF in Acrobat / Edge / Preview (poppler only here); Windows / macOS; the three
+  browser tests ran only through the session's node Playwright, not pytest.

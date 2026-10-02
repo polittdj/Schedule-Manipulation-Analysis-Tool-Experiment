@@ -22,7 +22,7 @@ jobs first. Highest ADR on disk **0544**. Version **1.0.299**; LODESTAR **2.1.0*
 - **Risks (ask 2).** `reports/onepager_risks.py` (header-driven reader, template at `/export/xlsx/risks-template`),
   ONE optional register for both pages (`onepager_risks` on the session, undoable), packed by date as triangles
   in the probability colour, `RISK · name (date) · impact` labels, legend entries, HUD, DATA drawer, Excel table.
-  **ASSUMPTION for the operator:** column E = date of occurrence (the ask named none).
+  **Column E = date of occurrence — RULED correct by the operator 2026-10-02** (the ask had named none).
 - **Restore any export (ask 3).** `reports/session_payload.py` (the record: rows as read, links by identity,
   risks, settings) carried by the PowerPoint (customXml part + alt-text fallback, `pptx_read.py`), the NEW PDF
   export (`reports/pdf.py`, embedded file, `pdf_read.py`) and the Excel export (restore sheets); a Restore zone on
@@ -35,11 +35,15 @@ jobs first. Highest ADR on disk **0544**. Version **1.0.299**; LODESTAR **2.1.0*
 
 ## Open — for the operator
 
-- **Column E (date of occurrence) is an assumption** — say if the register should carry the date elsewhere.
-- **UNVERIFIED here:** PowerPoint keeping the custom XML part on its own re-save (CI MEASURED LibreOffice 24.2's export
-  keeping the part and dropping the shapes' alt text, so the part — not the alt text — is the carrier
-  that survives a re-save; the interop test pins both); PDF rendering outside poppler;
-  Windows / macOS. (The three new browser tests passed on CI's browser job, run 36903412944.)
+- **RULED 2026-10-02 by the operator: column E IS the date of occurrence** — the register is correct as built.
+- **OPERATOR-VERIFIED 2026-10-02 (their machine, real PowerPoint):** an export re-saved by PowerPoint and dropped on
+  the Restore zone restores the slide. Not reproducible in a build session (no PowerPoint); which carrier survived
+  was not reported (a full restore means the custom XML part did; one that says "partial" means the alt text
+  did). CI MEASURED LibreOffice 24.2's export keeping the part and dropping the alt text (the interop test pins
+  both). The studio copy and `lodestar/README.md` still say "PowerPoint is unverified" — a `src/` change
+  (version bump, pyz, installers) for a later PR.
+- **Still UNVERIFIED here:** PDF rendering outside poppler; Windows / macOS. (The three new browser tests passed
+  on CI's browser job, run 36903412944.)
 - **Deferred, named in the ADR:** OWNED == CONTENT mutation test; a browser test for the page switch after a
   restore; a Compare round trip with a DUPLICATE NAME pair; bomb-size tests on the three readers; Polaris²'s own
   wording for an export dropped on its list slot.
